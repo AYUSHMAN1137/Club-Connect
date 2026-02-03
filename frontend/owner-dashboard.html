@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner Dashboard - ClubConnect</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="ui-base.css">
+    <link rel="stylesheet" href="owner-dashboard.css">
+</head>
+
+<body>
+    <!-- Top Navbar -->
+    <nav class="top-navbar">
+        <div class="navbar-brand">
+            <button id="sidebarToggle" class="sidebar-toggle">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <i class="fa-solid fa-users-between-lines"></i>
+            <span id="clubName">Loading...</span>
+        </div>
+        <div class="navbar-right">
+            <label class="dark-mode-toggle" data-tooltip="Toggle Dark Mode">
+                <input type="checkbox" id="darkModeToggle">
+                <span class="toggle-slider"></span>
+                <i class="fa-solid fa-moon"></i>
+            </label>
+            <div class="notification-bell" id="notificationBell" data-tooltip="Notifications"
+                onclick="event.preventDefault(); event.stopPropagation(); const modal = document.getElementById('notificationsModal'); if(modal) { modal.classList.add('active'); loadNotifications(); }">
+                <i class="fa-solid fa-bell"></i>
+                <span class="notification-badge" id="notificationBadge">0</span>
+            </div>
+            <div class="messages-icon" id="messagesIcon" data-tooltip="Messages"
+                onclick="event.preventDefault(); event.stopPropagation(); switchPage('messages');">
+                <i class="fa-solid fa-message"></i>
+                <span class="notification-badge" id="messageBadge">0</span>
+            </div>
+            <div class="user-menu">
+                <div class="user-avatar">
+                    <i class="fa-solid fa-user-circle"></i>
+                </div>
+                <div class="dropdown">
+                    <button class="dropdown-btn">
+                        <span id="ownerName">Owner</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-content" id="userDropdown">
+                        <a href="#" onclick="return false;"><i class="fa-solid fa-user"></i> View Profile</a>
+                        <a href="#" id="logoutBtn" class="danger-link" onclick="handleLogout(event); return false;">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                            Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <div id="sidebarOverlay" class="sidebar-overlay"></div>
+        <!-- Left Sidebar -->
+        <aside class="sidebar">
+            <ul class="menu">
+                <li class="menu-item active" data-page="home" onclick="switchPage('home')">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Dashboard</span>
+                </li>
+                <li class="menu-item" data-page="members" onclick="switchPage('members')">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Members</span>
+                </li>
+                <li class="menu-item" data-page="events" onclick="switchPage('events')">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>Events</span>
+                </li>
+                <li class="menu-item" data-page="announcements" onclick="switchPage('announcements')">
+                    <i class="fa-solid fa-bullhorn"></i>
+                    <span>Announcements</span>
+                </li>
+                <li class="menu-item" data-page="polls" onclick="switchPage('polls')">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Polls</span>
+                </li>
+                <li class="menu-item" data-page="project-progress" onclick="switchPage('project-progress')">
+                    <i class="fa-solid fa-diagram-project"></i>
+                    <span>Project Progress</span>
+                </li>
+                <li class="menu-item" data-page="analytics" onclick="switchPage('analytics')">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Analytics</span>
+                </li>
+                <li class="menu-item" data-page="messages" onclick="switchPage('messages')">
+                    <i class="fa-solid fa-message"></i>
+                    <span>Messages</span>
+                </li>
+                <li class="menu-item" data-page="settings" onclick="switchPage('settings')">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Club Settings</span>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="content">
+            <!-- Home Page -->
+            <div class="page active" id="home-page">
+                <div class="page-header">
+                    <h1>Dashboard Overview 👋</h1>
+                    <p>Welcome back! Here's what's happening with your club.</p>
+                </div>
+
+                <!-- Modern Stats Grid -->
+                <div class="modern-stats-grid">
+                    <div class="modern-stat-card gradient-blue">
+                        <div class="stat-card-top">
+                            <div class="stat-icon-modern">
+                                <i class="fa-solid fa-users"></i>
+                            </div>
+                            <span class="stat-label">Total Members</span>
+                        </div>
+                        <div class="stat-value" id="totalMembers">0</div>
+                        <div class="stat-subtext">Active club members</div>
+                    </div>
+
+                    <div class="modern-stat-card gradient-green is-clickable" id="totalEventsCard">
+                        <div class="stat-card-top">
+                            <div class="stat-icon-modern">
+                                <i class="fa-solid fa-calendar-check"></i>
+                            </div>
+                            <span class="stat-label">Total Events</span>
+                        </div>
+                        <div class="stat-value" id="totalEvents">0</div>
+                        <div class="stat-subtext">Events organized</div>
+                    </div>
+
+                    <div class="modern-stat-card gradient-purple">
+                        <div class="stat-card-top">
+                            <div class="stat-icon-modern">
+                                <i class="fa-solid fa-star"></i>
+                            </div>
+                            <span class="stat-label">Avg Attendance</span>
+                        </div>
+                        <div class="stat-value" id="avgAttendance">0%</div>
+                        <div class="stat-subtext">Event participation</div>
+                    </div>
+
+                    <div class="modern-stat-card gradient-orange">
+                        <div class="stat-card-top">
+                            <div class="stat-icon-modern">
+                                <i class="fa-solid fa-trophy"></i>
+                            </div>
+                            <span class="stat-label">Top Member</span>
+                        </div>
+                        <div class="stat-value stat-value-lg" id="topMemberName">-</div>
+                        <div class="stat-subtext" id="topMemberPoints">0 points</div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="section-modern">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-bolt"></i> Quick Actions</h2>
+                    </div>
+                    <div class="quick-actions-grid">
+                        <button class="quick-action-card" onclick="switchPage('events')">
+                            <div class="quick-action-icon qa-primary">
+                                <i class="fa-solid fa-plus"></i>
+                            </div>
+                            <h3>Create Event</h3>
+                            <p>Schedule a new club event</p>
+                        </button>
+                        <button class="quick-action-card" onclick="switchPage('announcements')">
+                            <div class="quick-action-icon qa-success">
+                                <i class="fa-solid fa-bullhorn"></i>
+                            </div>
+                            <h3>Send Announcement</h3>
+                            <p>Notify all members</p>
+                        </button>
+                        <button class="quick-action-card" onclick="switchPage('members')">
+                            <div class="quick-action-icon qa-accent">
+                                <i class="fa-solid fa-users"></i>
+                            </div>
+                            <h3>Manage Members</h3>
+                            <p>View and award points</p>
+                        </button>
+                        <button class="quick-action-card" onclick="switchPage('analytics')">
+                            <div class="quick-action-icon qa-ocean">
+                                <i class="fa-solid fa-chart-line"></i>
+                            </div>
+                            <h3>View Analytics</h3>
+                            <p>Club performance insights</p>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recent Events -->
+                <div class="section-modern">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-calendar-days"></i> Recent Events</h2>
+                        <a href="#" onclick="switchPage('events')" class="view-all-link">View All →</a>
+                    </div>
+                    <div id="recentEventsList">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-calendar-xmark"></i>
+                            <p>No recent events</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Members Page -->
+            <div class="page" id="members-page">
+                <div class="page-header">
+                    <h1>Club Members</h1>
+                </div>
+
+                <!-- Member Search -->
+                <div class="search-section panel">
+                    <div class="search-row">
+                        <div class="search-field">
+                            <i class="fa-solid fa-search search-icon"></i>
+                            <input type="text" id="memberSearchInput" class="search-input"
+                                placeholder="Search members by name, email, or student ID..." onkeyup="searchMembers()">
+                        </div>
+                        <button onclick="clearSearch()" class="btn-secondary btn-compact">
+                            <i class="fa-solid fa-times"></i> Clear
+                        </button>
+                    </div>
+                    <div id="searchResults" class="search-results"></div>
+                </div>
+
+                <!-- Add Member Section -->
+                <div class="add-member-section panel panel-subtle">
+                    <h3 class="section-title">
+                        <i class="fa-solid fa-user-plus"></i> Quick Add Member
+                    </h3>
+                    <div class="add-member-row">
+                        <div class="add-member-field">
+                            <label class="field-label">Student ID</label>
+                            <input type="text" id="quickAddStudentId" class="field-input"
+                                placeholder="Enter student ID...">
+                        </div>
+                        <button onclick="addMemberByStudentId(); return false;" class="btn-primary btn-wide">
+                            <i class="fa-solid fa-plus"></i> Add Member
+                        </button>
+                    </div>
+                    <p class="hint-text">
+                        <i class="fa-solid fa-info-circle"></i> Enter the student ID of a registered user to add them to
+                        your club
+                    </p>
+                </div>
+
+                <div class="members-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Student ID</th>
+                                <th>Role</th>
+                                <th>Points</th>
+                                <th>Rank</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="membersTableBody">
+                            <tr>
+                                <td colspan="7" class="loading">Loading members...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Events Page -->
+            <div class="page" id="events-page">
+                <div class="page-header">
+                    <h1>Events Management</h1>
+                    <button class="btn-primary" onclick="showCreateEventForm()">
+                        <i class="fa-solid fa-plus"></i> Create New Event
+                    </button>
+                </div>
+
+                <!-- Create Event Form (Hidden by default) -->
+                <div class="event-form-container" id="createEventForm" style="display:none;">
+                    <h3>Create New Event</h3>
+                    <form id="eventForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Event Title *</label>
+                                <input type="text" id="eventTitle" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Date *</label>
+                                <input type="date" id="eventDate" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Venue *</label>
+                                <input type="text" id="eventVenue" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea id="eventDescription" rows="3"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">Create Event</button>
+                            <button type="button" class="btn-secondary" onclick="hideCreateEventForm()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="events-grid" id="eventsGrid">
+                    <p class="loading">Loading events...</p>
+                </div>
+            </div>
+
+            <!-- Announcements Page -->
+            <div class="page" id="announcements-page">
+                <div class="page-header">
+                    <h1>Announcements</h1>
+                    <p>Send messages to all club members</p>
+                </div>
+
+                <div class="announcement-form">
+                    <h3>Send New Announcement</h3>
+                    <form id="announcementForm">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" id="announcementTitle" placeholder="Announcement Title">
+                        </div>
+                        <div class="form-group">
+                            <label>Message *</label>
+                            <textarea id="announcementMessage" rows="4" placeholder="Type your message here..."
+                                required></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary">
+                            <i class="fa-solid fa-paper-plane"></i> Send Announcement
+                        </button>
+                    </form>
+                </div>
+
+                <div class="announcements-list">
+                    <h3>Recent Announcements</h3>
+                    <div id="announcementsList">
+                        <p class="loading">Loading announcements...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Polls Page -->
+            <div class="page" id="polls-page">
+                <div class="polls-create-layout">
+                    <div class="poll-create-card">
+                        <div class="poll-create-header">
+                            <div class="poll-create-title">
+                                <h1>Create Club Poll</h1>
+                                <p>Create a poll for your club members to collect their opinions.</p>
+                            </div>
+                        </div>
+                        <div class="poll-create-divider"></div>
+                        <form id="pollForm" class="poll-create-form">
+                            <div class="form-group">
+                                <label for="pollQuestion">Poll Question *</label>
+                                <input type="text" id="pollQuestion"
+                                    placeholder="Enter the question you want your club members to vote on (e.g. Which event should we organize next?)"
+                                    maxlength="150" required>
+                                <p class="field-error" id="pollQuestionError"></p>
+                            </div>
+                            <div class="poll-options-section">
+                                <label>Poll Options *</label>
+                                <div class="poll-options-box">
+                                    <div id="pollOptionsList" class="poll-options-list"></div>
+                                    <p class="field-error" id="pollOptionsError"></p>
+                                    <button type="button" class="poll-add-option" id="addPollOptionBtn">
+                                        <i class="fa-solid fa-plus"></i> Add another option
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="poll-vote-type">
+                                <label>Voting Type</label>
+                                <div class="poll-segmented">
+                                    <input type="radio" id="pollVoteSingle" name="pollVotingType" value="single"
+                                        checked>
+                                    <label for="pollVoteSingle" class="poll-segment">
+                                        <i class="fa-solid fa-circle-dot"></i>
+                                        Single choice
+                                    </label>
+                                    <input type="radio" id="pollVoteMultiple" name="pollVotingType" value="multiple">
+                                    <label for="pollVoteMultiple" class="poll-segment">
+                                        <i class="fa-solid fa-layer-group"></i>
+                                        Multiple choice
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="poll-end-date">
+                                <div class="poll-toggle-row">
+                                    <div class="poll-toggle-text">
+                                        <span>Set poll end date</span>
+                                        <span class="poll-toggle-hint">Optional</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="pollEndDateToggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="poll-end-date-field" id="pollEndDateField">
+                                    <label for="pollEndDate">Poll End Date</label>
+                                    <input type="date" id="pollEndDate">
+                                </div>
+                            </div>
+                            <div class="poll-form-actions">
+                                <button type="submit" class="btn-primary btn-animate" id="pollCreateBtn" disabled>Create
+                                    Poll</button>
+                            </div>
+                        </form>
+                        <div class="poll-success-banner" id="pollSuccessBanner"></div>
+                    </div>
+                    <div class="polls-list-panel">
+                        <div class="polls-list-header">
+                            <h3>All Polls</h3>
+                            <p>Scroll to view every poll</p>
+                        </div>
+                        <div class="polls-list-scroll" id="pollsList">
+                            <p class="loading">Loading polls...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project Progress Page -->
+            <div class="page" id="project-progress-page">
+                <div class="project-progress-banner progress-banner" id="projectProgressBanner">
+                    <h2 class="banner-title" id="projectProgressClubName">Club Name</h2>
+                    <p class="banner-text" id="projectProgressClubDesc">Club description</p>
+                    <div class="banner-pills">
+                        <span id="projectProgressMembersPill" class="banner-pill"><i class="fa-solid fa-users"></i> 0
+                            Members</span>
+                        <span id="projectProgressIdeasPill" class="banner-pill"><i class="fa-solid fa-lightbulb"></i> 0
+                            Projects</span>
+                    </div>
+                </div>
+                <div class="project-metrics-row metrics-row">
+                    <div class="metric-card">
+                        <div class="metric-label">Total Members</div>
+                        <div id="metricTotalMembers" class="metric-value">0</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Completed</div>
+                        <div id="metricCompleted" class="metric-value success">0</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">In Progress</div>
+                        <div id="metricInProgress" class="metric-value warning">0</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Avg. Progress</div>
+                        <div id="metricAvgProgress" class="metric-value primary">0%</div>
+                    </div>
+                </div>
+                <div class="panel panel-stack">
+                    <div class="panel-header-row">
+                        <h3 class="panel-title">Members & Projects</h3>
+                        <span id="projectProgressPendingBadge" class="badge-pill warning" style="display: none;"><i
+                                class="fa-solid fa-clock"></i> <span id="pendingCount">0</span> Pending approval</span>
+                    </div>
+                    <div id="projectProgressMembersGrid" class="project-members-grid">
+                        <p class="loading">Loading...</p>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h3 class="panel-title">Manage Project Ideas</h3>
+                    <p class="panel-text">Add project ideas that members can choose from. Once a member chooses an idea,
+                        only the description can be edited.</p>
+                    <button type="button" class="btn-primary btn-inline" onclick="showAddProjectIdeaForm()"><i
+                            class="fa-solid fa-plus"></i> Add Project Idea</button>
+                    <div id="projectIdeasList" class="panel-list"></div>
+                </div>
+            </div>
+
+            <!-- Analytics Page -->
+            <div class="page" id="analytics-page">
+                <div class="page-header">
+                    <h1>Advanced Analytics</h1>
+                    <div class="analytics-controls">
+                        <select id="analyticsPeriod" class="form-control select-control"
+                            onchange="loadAdvancedAnalytics()">
+                            <option value="7">Last 7 days</option>
+                            <option value="30" selected>Last 30 days</option>
+                            <option value="90">Last 90 days</option>
+                            <option value="365">Last year</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="analyticsContent">
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <p>Loading analytics...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages Page -->
+            <div class="page" id="messages-page">
+                <div class="page-header">
+                    <h1>Messages</h1>
+                    <button class="btn-primary" onclick="openNewMessageModal()">
+                        <i class="fa-solid fa-plus"></i> New Message
+                    </button>
+                </div>
+
+                <div class="messages-layout">
+                    <!-- Message List -->
+                    <div class="messages-panel">
+                        <h3 class="panel-title">Conversations</h3>
+                        <div id="messageList" class="message-list">
+                            <p class="loading">Loading conversations...</p>
+                        </div>
+                    </div>
+
+                    <!-- Message Chat -->
+                    <div class="chat-panel">
+                        <div id="chatHeader" class="chat-header">
+                            <p class="chat-placeholder">Select a conversation to start messaging</p>
+                        </div>
+                        <div id="chatMessages" class="chat-messages">
+                        </div>
+                        <div id="chatInput" class="chat-input" style="display: none;">
+                            <form id="messageForm" onsubmit="sendMessage(event)">
+                                <div class="chat-row">
+                                    <input type="text" id="messageInput" class="chat-text-input"
+                                        placeholder="Type a message..." required>
+                                    <button type="submit" class="btn-primary">
+                                        <i class="fa-solid fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div class="page" id="settings-page">
+                <div class="page-header">
+                    <h1>Club Settings</h1>
+                    <p>Customize your club</p>
+                </div>
+
+                <div class="settings-form">
+                    <form id="settingsForm">
+                        <div class="form-group">
+                            <label>Club Name</label>
+                            <input type="text" id="settingsClubName">
+                        </div>
+                        <div class="form-group">
+                            <label>Tagline</label>
+                            <input type="text" id="settingsTagline" placeholder="Innovation & Technology">
+                        </div>
+                        <div class="form-group">
+                            <label>Theme Color</label>
+                            <input type="color" id="settingsThemeColor">
+                        </div>
+                        <button type="submit" class="btn-primary">
+                            <i class="fa-solid fa-save"></i> Save Changes
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Award Points Modal -->
+    <div class="modal" id="awardPointsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Award Points</h3>
+                <button class="modal-close" onclick="closeAwardPointsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Award points to <strong id="awardMemberName"></strong></p>
+                <div class="points-options">
+                    <button class="points-btn" onclick="awardPoints(10)">+10 Points</button>
+                    <button class="points-btn" onclick="awardPoints(20)">+20 Points</button>
+                    <button class="points-btn" onclick="awardPoints(50)">+50 Points</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notificationContainer"></div>
+
+    <!-- Notifications Modal -->
+    <div class="modal" id="notificationsModal">
+        <div class="modal-content modal-md">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-bell"></i> Notifications</h3>
+                <div>
+                    <button onclick="markAllNotificationsRead()" class="btn-secondary btn-sm">
+                        Mark All Read
+                    </button>
+                    <button class="modal-close" onclick="closeNotificationsModal()">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body modal-scroll">
+                <div id="notificationsList">
+                    <p class="loading">Loading notifications...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Taking Modal -->
+    <div class="modal" id="attendanceModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-clipboard-check"></i> Take Attendance</h3>
+                <button class="modal-close" onclick="closeAttendanceModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="attendanceContent">
+                    <p class="loading">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Role Assignment Modal -->
+    <div class="modal" id="roleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Assign Role</h3>
+                <button class="modal-close" onclick="closeRoleModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Assign role to <strong id="roleMemberName"></strong></p>
+                <div class="form-group">
+                    <label>Select Role</label>
+                    <select id="roleSelect" class="form-control">
+                        <option value="member">Member</option>
+                        <option value="moderator">Moderator</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <button onclick="assignRole()" class="btn-primary btn-block">
+                    <i class="fa-solid fa-save"></i> Save Role
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Message Modal -->
+    <div class="modal" id="newMessageModal">
+        <div class="modal-content modal-md">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-message"></i> New Message</h3>
+                <button class="modal-close" onclick="closeNewMessageModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="newMessageForm">
+                    <div class="form-group">
+                        <label>Select Recipient</label>
+                        <select id="recipientSelect" class="form-control" required>
+                            <option value="">Choose a member...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Message</label>
+                        <textarea id="newMessageText" class="form-control" rows="5" required></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary btn-block">
+                        <i class="fa-solid fa-paper-plane"></i> Send Message
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Member Profile Modal -->
+    <div class="modal" id="memberProfileModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-id-badge"></i> Member Profile</h3>
+                <button class="modal-close" onclick="closeMemberProfile()">&times;</button>
+            </div>
+            <div class="modal-body" id="memberProfileContent">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>Loading profile...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Events Modal -->
+    <div class="modal" id="allEventsModal">
+        <div class="modal-content modal-xl events-modal-content">
+            <div class="modal-header events-modal-header">
+                <h3 class="events-modal-title">
+                    <i class="fa-solid fa-calendar-days events-modal-icon"></i>
+                    <span>All Events</span>
+                </h3>
+                <button class="modal-close events-modal-close"
+                    onclick="document.getElementById('allEventsModal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body events-modal-body">
+                <div class="events-search-container">
+                    <i class="fa-solid fa-search events-search-icon"></i>
+                    <input id="eventsSearchInput" type="text" class="events-search-input"
+                        placeholder="Search events by title or venue...">
+                </div>
+                <div class="events-table-wrapper">
+                    <table class="events-table" id="allEventsTable">
+                        <thead>
+                            <tr class="events-table-header-row">
+                                <th class="events-table-header">Title</th>
+                                <th class="events-table-header">Date</th>
+                                <th class="events-table-header">Venue</th>
+                                <th class="events-table-header events-table-header-center">RSVPs</th>
+                                <th class="events-table-header events-table-header-center">Attended</th>
+                            </tr>
+                        </thead>
+                        <tbody id="eventsTableBody">
+                            <tr>
+                                <td colspan="5" class="loading">Loading events...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Attendance Session Modal -->
+    <div class="modal" id="qrAttendanceModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-qrcode"></i> QR Attendance Session</h3>
+                <button class="modal-close" onclick="closeQRAttendanceSession()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="qrAttendanceContent">
+                    <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+                        <!-- Left: QR Code + Code -->
+                        <div style="flex: 1; min-width: 300px; text-align: center;">
+                            <h4 id="qrEventTitle" style="margin: 0 0 20px 0;">Event Title</h4>
+
+                            <!-- QR Code -->
+                            <div id="qrCodeContainer"
+                                style="padding: 20px; background: white; border-radius: 16px; display: inline-block; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                                <canvas id="qrCanvas" width="200" height="200"></canvas>
+                            </div>
+
+                            <!-- 7-Digit Code Display -->
+                            <div
+                                style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);">
+                                <p
+                                    style="margin: 0 0 8px 0; color: rgba(255,255,255,0.8); font-size: 13px; letter-spacing: 1px;">
+                                    OR ENTER CODE</p>
+                                <div id="attendanceCodeDisplay"
+                                    style="font-size: 32px; font-weight: 800; color: white; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+                                    ABC XYZ K</div>
+                            </div>
+
+                            <!-- Timer -->
+                            <div style="margin-top: 20px;">
+                                <div
+                                    style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px;">
+                                    <i class="fa-solid fa-clock" style="color: #f59e0b;"></i>
+                                    <span style="font-size: 18px; font-weight: 600;">Refreshing in <span
+                                            id="qrCountdown">25</span>s</span>
+                                </div>
+                                <div style="height: 4px; background: #e5e7eb; border-radius: 2px; overflow: hidden;">
+                                    <div id="qrProgressBar"
+                                        style="width: 100%; height: 100%; background: linear-gradient(90deg, #10b981, #34d399); transition: width 0.1s linear;">
+                                    </div>
+                                </div>
+                            </div>
+                            <p style="margin-top: 15px; font-size: 13px; color: #6b7280;">
+                                <i class="fa-solid fa-shield-halved"></i> Code & QR refresh every 25 seconds
+                            </p>
+                        </div>
+                        <!-- Right: Live Attendance -->
+                        <div style="flex: 1; min-width: 280px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <h4 style="margin: 0;">Live Attendance</h4>
+                                <div style="display: flex; gap: 10px;">
+                                    <span id="qrPresentCount"
+                                        style="background: #10b981; color: white; padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: 600;">0
+                                        Present</span>
+                                    <span id="qrLateCount"
+                                        style="background: #f59e0b; color: white; padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: 600; display: none;">0
+                                        Late</span>
+                                </div>
+                            </div>
+                            <div id="qrAttendeesList"
+                                style="max-height: 350px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 12px; background: #fafafb;">
+                                <p style="padding: 40px 20px; text-align: center; color: #9ca3af;">
+                                    <i class="fa-solid fa-users"
+                                        style="font-size: 32px; margin-bottom: 10px; display: block;"></i>
+                                    Waiting for members to scan...
+                                </p>
+                            </div>
+                            <div style="margin-top: 20px;">
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                    <i class="fa-solid fa-hourglass-half" style="color: #6b7280;"></i>
+                                    <span>Session expires: <strong id="qrExpiresAt">-</strong></span>
+                                </div>
+                                <button onclick="endQRAttendanceSession()" class="btn-secondary" style="width: 100%;">
+                                    <i class="fa-solid fa-stop"></i> End Session
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="utils.js"></script>
+
+    <!-- Inline script to ensure functions work immediately -->
+    <script>
+        console.log('🔧 Initializing fallback functions...');
+
+        // Simple fallback switchPage function that works immediately
+        window.switchPage = window.switchPage || function (pageName) {
+            console.log('🔄 switchPage called:', pageName);
+            try {
+                // Update menu
+                document.querySelectorAll('.menu-item').forEach(item => {
+                    item.classList.remove('active');
+                    if (item.getAttribute('data-page') === pageName) {
+                        item.classList.add('active');
+                    }
+                });
+
+                // Update pages
+                document.querySelectorAll('.page').forEach(page => {
+                    page.classList.remove('active');
+                });
+                const targetPage = document.getElementById(pageName + '-page');
+                if (targetPage) {
+                    targetPage.classList.add('active');
+                    console.log('✅ Page switched to:', pageName);
+                } else {
+                    console.error('❌ Page not found:', pageName + '-page');
+                }
+            } catch (error) {
+                console.error('❌ Error in switchPage:', error);
+            }
+        };
+
+        // Fallback addMemberByStudentId
+        window.addMemberByStudentId = window.addMemberByStudentId || function () {
+            alert('Function loading... Please wait and try again.');
+        };
+
+        // Fallback loadNotifications
+        window.loadNotifications = window.loadNotifications || function () {
+            console.log('loadNotifications called (fallback)');
+        };
+
+        // Fallback handleLogout
+        window.handleLogout = window.handleLogout || function (e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            console.log('🚪 Logout (fallback)');
+            localStorage.removeItem('token');
+            localStorage.removeItem('darkMode');
+            window.location.href = 'index.html';
+        };
+
+        console.log('✅ Fallback functions initialized');
+    </script>
+
+    <script src="owner-dashboard.js"></script>
+
+    <!-- Final check after scripts load -->
+    <script>
+        window.addEventListener('load', function () {
+            console.log('✅ Page fully loaded!');
+            console.log('🔍 switchPage available:', typeof window.switchPage);
+            console.log('🔍 addMemberByStudentId available:', typeof window.addMemberByStudentId);
+            console.log('🔍 Menu items found:', document.querySelectorAll('.menu-item').length);
+            console.log('🔍 Pages found:', document.querySelectorAll('.page').length);
+
+            // Ensure menu items have click handlers (onclick in HTML + event listener as backup)
+            document.querySelectorAll('.menu-item').forEach(item => {
+                if (!item.hasAttribute('data-listener-added')) {
+                    item.setAttribute('data-listener-added', 'true');
+                    item.addEventListener('click', function (e) {
+                        const pageName = this.getAttribute('data-page');
+                        console.log('🎯 Menu item clicked (event listener):', pageName);
+                        if (typeof window.switchPage === 'function') {
+                            window.switchPage(pageName);
+                        }
+                    });
+                }
+            });
+
+            // Test backend connection
+            const apiUrl = window.API_URL || 'http://localhost:4000';
+            fetch(`${apiUrl}/health`)
+                .then(() => console.log('✅ Backend server is running'))
+                .catch(() => console.error('❌ Backend server not responding!'));
+
+            // Ensure club name is loaded
+            setTimeout(() => {
+                const clubNameEl = document.getElementById('clubName');
+                if (clubNameEl && clubNameEl.textContent === 'Loading...') {
+                    console.log('⚠️ Club name still loading, reloading stats...');
+                    if (typeof loadDashboardStats === 'function') {
+                        loadDashboardStats();
+                    }
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+
+</html>
