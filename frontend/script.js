@@ -435,7 +435,7 @@ signInForm.addEventListener('submit', async (e) => {
 
             console.error('Login error:', error);
             if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-                showNotification('Cannot connect to server! Please make sure backend server is running on http://localhost:4000', 'error');
+                showNotification(`Cannot connect to server! Please make sure backend server is running on ${API_URL}`, 'error');
             } else {
                 showNotification('Server error! Please try again. ' + error.message, 'error');
             }
