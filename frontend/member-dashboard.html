@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Member Dashboard - ClubConnect</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <script>
+        if (!localStorage.getItem('token')) {
+            window.location.href = 'index.html';
+        }
+    </script>
+    <link rel="stylesheet" href="ui-base.css">
+    <link rel="stylesheet" href="member-dashboard.css">
+</head>
+
+<body>
+    <!-- Preloader -->
+    <div class="preloader" id="preloader">
+        <div class="loader">
+            <div class="loader-ring"></div>
+            <div class="loader-ring"></div>
+            <div class="loader-ring"></div>
+            <i class="fa-solid fa-users-between-lines loader-icon"></i>
+        </div>
+        <p class="loader-text">Loading ClubConnect...</p>
+    </div>
+
+    <!-- Top Navbar -->
+    <nav class="top-navbar">
+        <div class="navbar-brand">
+            <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle Sidebar">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-users-between-lines"></i>
+                </div>
+                <span class="logo-text">ClubConnect</span>
+            </div>
+        </div>
+
+        <div class="navbar-center">
+            <!-- Club Switcher -->
+            <div class="club-switcher">
+                <button class="club-switcher-btn" id="clubSwitcherBtn">
+                    <div class="club-avatar">
+                        <i class="fa-solid fa-building"></i>
+                    </div>
+                    <div class="club-info">
+                        <span class="club-label">Current Club</span>
+                        <span id="currentClubName">Select Club</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-down switcher-arrow"></i>
+                </button>
+                <div class="club-dropdown" id="clubDropdown">
+                    <div class="club-dropdown-header">
+                        <h4><i class="fa-solid fa-building-user"></i> My Clubs</h4>
+                        <span class="club-count" id="clubCount">0</span>
+                    </div>
+                    <div class="club-search">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" placeholder="Search clubs..." id="clubSearchInput">
+                    </div>
+                    <div class="club-list" id="clubList">
+                        <!-- Clubs loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="navbar-right">
+            <!-- Search Button -->
+            <button class="navbar-icon-btn" id="globalSearchBtn" title="Search">
+                <i class="fa-solid fa-search"></i>
+            </button>
+
+            <!-- Theme Toggle -->
+            <button class="navbar-icon-btn" id="themeToggle" title="Toggle Theme">
+                <i class="fa-solid fa-moon"></i>
+            </button>
+
+            <!-- Notifications -->
+            <div class="notification-wrapper">
+                <button class="navbar-icon-btn" id="notificationBell" title="Notifications">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="notification-badge" id="notificationBadge">3</span>
+                </button>
+                <div class="notification-dropdown" id="notificationDropdown">
+                    <div class="notification-header">
+                        <h4>Notifications</h4>
+                        <button class="mark-all-read" id="markAllRead">Mark all read</button>
+                    </div>
+                    <div class="notification-list" id="notificationList">
+                        <!-- Notifications loaded dynamically -->
+                    </div>
+                    <div class="notification-footer">
+                        <a href="#" onclick="navigateTo('notifications')">View All Notifications</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Menu -->
+            <div class="user-menu">
+                <button class="user-menu-btn" id="userMenuBtn">
+                    <div class="user-avatar" id="navUserAvatar">
+                        <img src="" alt="" id="navUserImg" style="display: none;">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div class="user-info">
+                        <span class="user-name" id="memberName">Member</span>
+                        <span class="user-role" id="memberRole">Member</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="user-dropdown" id="userDropdown">
+                    <div class="user-dropdown-header">
+                        <div class="user-avatar-large">
+                            <img src="" alt="" id="dropdownUserImg" style="display: none;">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <div class="user-details">
+                            <h4 id="dropdownUserName">Member Name</h4>
+                            <p id="dropdownUserEmail">member@email.com</p>
+                        </div>
+                    </div>
+                    <div class="user-dropdown-body">
+                        <a href="#" onclick="navigateTo('profile')">
+                            <i class="fa-solid fa-user-circle"></i> My Profile
+                        </a>
+                        <a href="#" onclick="navigateTo('settings')">
+                            <i class="fa-solid fa-gear"></i> Settings
+                        </a>
+                        <a href="#" onclick="navigateTo('help')">
+                            <i class="fa-solid fa-circle-question"></i> Help & Support
+                        </a>
+                    </div>
+                    <div class="user-dropdown-footer">
+                        <button id="logoutBtn" class="logout-btn">
+                            <i class="fa-solid fa-right-from-bracket"></i> Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Global Search Modal -->
+    <div class="search-modal" id="searchModal">
+        <div class="search-modal-content">
+            <div class="search-input-wrapper">
+                <i class="fa-solid fa-search"></i>
+                <input type="text" id="globalSearchInput" placeholder="Search events, announcements, members...">
+                <kbd>ESC</kbd>
+            </div>
+            <div class="search-results" id="searchResults">
+                <div class="search-empty">
+                    <i class="fa-solid fa-search"></i>
+                    <p>Start typing to search...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+        <!-- Left Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-content">
+                <ul class="menu">
+                    <li class="menu-section">Main</li>
+                    <li class="menu-item active" data-page="home">
+                        <i class="fa-solid fa-house"></i>
+                        <span>Dashboard</span>
+                    </li>
+                    <li class="menu-item" data-page="events">
+                        <i class="fa-solid fa-calendar-days"></i>
+                        <span>Events</span>
+                        <span class="menu-badge" id="upcomingEventsBadge" style="display: none;"></span>
+                    </li>
+                    <li class="menu-item" data-page="attendance">
+                        <i class="fa-solid fa-clipboard-check"></i>
+                        <span>My Attendance</span>
+                    </li>
+
+                    <li class="menu-section">Community</li>
+                    <li class="menu-item" data-page="leaderboard">
+                        <i class="fa-solid fa-trophy"></i>
+                        <span>Leaderboard</span>
+                    </li>
+                    <li class="menu-item" data-page="announcements">
+                        <i class="fa-solid fa-bullhorn"></i>
+                        <span>Announcements</span>
+                        <span class="menu-badge new" id="announcementsBadge" style="display: none;"></span>
+                    </li>
+                    <li class="menu-item" data-page="polls">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span>Polls</span>
+                    </li>
+                    <li class="menu-item" data-page="my-project">
+                        <i class="fa-solid fa-diagram-project"></i>
+                        <span>My Project</span>
+                    </li>
+                    <li class="menu-item" data-page="messages">
+                        <i class="fa-solid fa-envelope"></i>
+                        <span>Messages</span>
+                        <span class="menu-badge" id="messagesBadge" style="display: none;"></span>
+                    </li>
+                    <li class="menu-item" data-page="members">
+                        <i class="fa-solid fa-users"></i>
+                        <span>Members</span>
+                    </li>
+
+                    <li class="menu-section">Resources</li>
+                    <li class="menu-item" data-page="gallery">
+                        <i class="fa-solid fa-images"></i>
+                        <span>Gallery</span>
+                    </li>
+                    <li class="menu-item" data-page="certificates">
+                        <i class="fa-solid fa-certificate"></i>
+                        <span>Certificates</span>
+                    </li>
+                    <li class="menu-item" data-page="resources">
+                        <i class="fa-solid fa-folder-open"></i>
+                        <span>Resources</span>
+                    </li>
+
+                    <li class="menu-section">Account</li>
+                    <li class="menu-item" data-page="profile">
+                        <i class="fa-solid fa-user"></i>
+                        <span>My Profile</span>
+                    </li>
+                    <li class="menu-item" data-page="settings">
+                        <i class="fa-solid fa-gear"></i>
+                        <span>Settings</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer">
+                <div class="member-card">
+                    <div class="member-card-header">
+                        <div class="rank-badge" id="sidebarRankBadge">
+                            <i class="fa-solid fa-medal"></i>
+                        </div>
+                        <div class="member-card-info">
+                            <span class="member-rank" id="sidebarRank">Rookie</span>
+                            <span class="member-points"><span id="sidebarPoints">0</span> pts</span>
+                        </div>
+                    </div>
+                    <div class="rank-progress">
+                        <div class="rank-progress-bar">
+                            <div class="rank-progress-fill" id="sidebarRankProgress" style="width: 30%"></div>
+                        </div>
+                        <span class="rank-progress-text"><span id="pointsToNextRank">70</span> pts to next rank</span>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button class="quick-action-btn" onclick="openQRScanner()" title="Scan QR">
+                        <i class="fa-solid fa-qrcode"></i>
+                    </button>
+                    <button class="quick-action-btn" onclick="showUploadCertificateModal()" title="Upload Certificate">
+                        <i class="fa-solid fa-upload"></i>
+                    </button>
+                    <button class="quick-action-btn" onclick="navigateTo('events')" title="View Events">
+                        <i class="fa-solid fa-calendar-plus"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="content" id="mainContent">
+            <!-- ==================== HOME PAGE ==================== -->
+            <div class="page active" id="home-page">
+                <div class="page-loader" id="homeLoader">
+                    <div class="skeleton-header"></div>
+                    <div class="skeleton-stats">
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                    </div>
+                    <div class="skeleton-section"></div>
+                </div>
+
+                <div id="dashboard-content" style="display: none;">
+                    <!-- Welcome Section -->
+                    <div class="welcome-section">
+                        <div class="welcome-content">
+                            <div class="welcome-text">
+                                <h1>Welcome back, <span id="welcomeName">Member</span>! 👋</h1>
+                                <p id="welcomeMessage">Here's what's happening in your clubs today.</p>
+                            </div>
+                            <div class="welcome-actions">
+                                <button class="btn-primary" onclick="openQRScanner()">
+                                    <i class="fa-solid fa-qrcode"></i> Scan Attendance
+                                </button>
+                                <button class="btn-secondary" onclick="navigateTo('events')">
+                                    <i class="fa-solid fa-calendar"></i> View Events
+                                </button>
+                            </div>
+                        </div>
+                        <div class="welcome-illustration">
+                            <div class="floating-card card-1">
+                                <i class="fa-solid fa-trophy"></i>
+                            </div>
+                            <div class="floating-card card-2">
+                                <i class="fa-solid fa-star"></i>
+                            </div>
+                            <div class="floating-card card-3">
+                                <i class="fa-solid fa-medal"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stats Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card stat-purple" onclick="navigateTo('leaderboard')">
+                            <div class="stat-icon">
+                                <i class="fa-solid fa-trophy"></i>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-value" id="memberPoints">0</span>
+                                <span class="stat-label">Total Points</span>
+                            </div>
+                            <div class="stat-trend up">
+                                <i class="fa-solid fa-arrow-up"></i>
+                                <span>+12%</span>
+                            </div>
+                            <div class="stat-bg-pattern"></div>
+                        </div>
+
+                        <div class="stat-card stat-blue" onclick="navigateTo('profile')">
+                            <div class="stat-icon">
+                                <i class="fa-solid fa-medal"></i>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-value" id="memberRank">Rookie</span>
+                                <span class="stat-label">Current Rank</span>
+                            </div>
+                            <div class="stat-progress-mini">
+                                <div class="progress-bar-mini">
+                                    <div class="progress-fill-mini" id="rankProgress" style="width: 30%"></div>
+                                </div>
+                            </div>
+                            <div class="stat-bg-pattern"></div>
+                        </div>
+
+                        <div class="stat-card stat-green" onclick="navigateTo('attendance')">
+                            <div class="stat-icon">
+                                <i class="fa-solid fa-calendar-check"></i>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-value" id="attendancePercent">0%</span>
+                                <span class="stat-label">Attendance Rate</span>
+                            </div>
+                            <div class="stat-subinfo">
+                                <span><span id="attendedEvents">0</span>/<span id="totalEventsCount">0</span>
+                                    events</span>
+                            </div>
+                            <div class="stat-bg-pattern"></div>
+                        </div>
+
+                        <div class="stat-card stat-orange" onclick="navigateTo('leaderboard')">
+                            <div class="stat-icon">
+                                <i class="fa-solid fa-ranking-star"></i>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-value">#<span id="leaderboardPosition">-</span></span>
+                                <span class="stat-label">Leaderboard Rank</span>
+                            </div>
+                            <div class="stat-trend up">
+                                <i class="fa-solid fa-arrow-up"></i>
+                                <span>+3</span>
+                            </div>
+                            <div class="stat-bg-pattern"></div>
+                        </div>
+                    </div>
+
+                    <!-- Main Dashboard Grid -->
+                    <div class="dashboard-grid">
+                        <!-- Upcoming Events Section -->
+                        <div class="dashboard-card upcoming-events-card">
+                            <div class="card-header">
+                                <div class="card-title">
+                                    <i class="fa-solid fa-calendar-star"></i>
+                                    <h3>Upcoming Events</h3>
+                                </div>
+                                <a href="#" onclick="navigateTo('events')" class="card-link">View All <i
+                                        class="fa-solid fa-arrow-right"></i></a>
+                            </div>
+                            <div class="card-body" id="upcomingEventsList">
+                                <!-- Events loaded dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Activity Chart -->
+                        <div class="dashboard-card chart-card">
+                            <div class="card-header">
+                                <div class="card-title">
+                                    <i class="fa-solid fa-chart-line"></i>
+                                    <h3>Activity Overview</h3>
+                                </div>
+                                <div class="chart-filters">
+                                    <button class="chart-filter active" data-period="week">Week</button>
+                                    <button class="chart-filter" data-period="month">Month</button>
+                                    <button class="chart-filter" data-period="year">Year</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="activityChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity -->
+                        <div class="dashboard-card activity-card">
+                            <div class="card-header">
+                                <div class="card-title">
+                                    <i class="fa-solid fa-clock-rotate-left"></i>
+                                    <h3>Recent Activity</h3>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="activity-timeline" id="recentActivity">
+                                    <!-- Activity loaded dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Stats / Achievements -->
+                        <div class="dashboard-card achievements-card">
+                            <div class="card-header">
+                                <div class="card-title">
+                                    <i class="fa-solid fa-award"></i>
+                                    <h3>Achievements</h3>
+                                </div>
+                                <a href="#" onclick="navigateTo('profile')" class="card-link">View All <i
+                                        class="fa-solid fa-arrow-right"></i></a>
+                            </div>
+                            <div class="card-body">
+                                <div class="achievements-grid" id="achievementsList">
+                                    <!-- Achievements loaded dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Announcements Preview -->
+                        <div class="dashboard-card announcements-preview-card">
+                            <div class="card-header">
+                                <div class="card-title">
+                                    <i class="fa-solid fa-bullhorn"></i>
+                                    <h3>Latest Announcements</h3>
+                                </div>
+                                <a href="#" onclick="navigateTo('announcements')" class="card-link">View All <i
+                                        class="fa-solid fa-arrow-right"></i></a>
+                            </div>
+                            <div class="card-body" id="latestAnnouncements">
+                                <!-- Announcements loaded dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Leaderboard Preview -->
+                        <div class="dashboard-card leaderboard-preview-card">
+                            <div class="card-header">
+                                <div class="card-title">
+                                    <i class="fa-solid fa-trophy"></i>
+                                    <h3>Top Members</h3>
+                                </div>
+                                <a href="#" onclick="navigateTo('leaderboard')" class="card-link">View All <i
+                                        class="fa-solid fa-arrow-right"></i></a>
+                            </div>
+                            <div class="card-body">
+                                <div class="leaderboard-preview" id="leaderboardPreview">
+                                    <!-- Leaderboard loaded dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== EVENTS PAGE ==================== -->
+            <div class="page" id="events-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-calendar-days"></i> Club Events</h1>
+                        <p>Browse and RSVP for upcoming events</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn-icon" id="eventsCalendarView" title="Calendar View">
+                            <i class="fa-solid fa-calendar"></i>
+                        </button>
+                        <button class="btn-icon active" id="eventsGridView" title="Grid View">
+                            <i class="fa-solid fa-grid-2"></i>
+                        </button>
+                        <button class="btn-icon" id="eventsListView" title="List View">
+                            <i class="fa-solid fa-list"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Events Filters -->
+                <div class="filters-bar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" id="eventSearchInput" placeholder="Search events...">
+                    </div>
+                    <div class="filter-group">
+                        <select id="eventStatusFilter">
+                            <option value="all">All Events</option>
+                            <option value="upcoming">Upcoming</option>
+                            <option value="ongoing">Ongoing</option>
+                            <option value="past">Past</option>
+                        </select>
+                        <select id="eventTypeFilter">
+                            <option value="all">All Types</option>
+                            <option value="workshop">Workshop</option>
+                            <option value="seminar">Seminar</option>
+                            <option value="competition">Competition</option>
+                            <option value="social">Social</option>
+                        </select>
+                        <button class="btn-secondary" id="clearFilters">
+                            <i class="fa-solid fa-xmark"></i> Clear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Events Calendar View -->
+                <div class="events-calendar" id="eventsCalendar" style="display: none;">
+                    <div class="calendar-header">
+                        <button class="calendar-nav" id="prevMonth"><i class="fa-solid fa-chevron-left"></i></button>
+                        <h3 id="currentMonth">January 2025</h3>
+                        <button class="calendar-nav" id="nextMonth"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                    <div class="calendar-grid">
+                        <div class="calendar-day-header">Sun</div>
+                        <div class="calendar-day-header">Mon</div>
+                        <div class="calendar-day-header">Tue</div>
+                        <div class="calendar-day-header">Wed</div>
+                        <div class="calendar-day-header">Thu</div>
+                        <div class="calendar-day-header">Fri</div>
+                        <div class="calendar-day-header">Sat</div>
+                        <!-- Calendar days will be generated dynamically -->
+                    </div>
+                    <div class="calendar-events" id="calendarEvents">
+                        <!-- Selected day events -->
+                    </div>
+                </div>
+
+                <!-- Events Grid -->
+                <div class="events-grid" id="eventsGrid">
+                    <!-- Events loaded dynamically -->
+                </div>
+
+                <!-- Events List View -->
+                <div class="events-list" id="eventsList" style="display: none;">
+                    <!-- Events loaded dynamically -->
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state" id="eventsEmpty" style="display: none;">
+                    <div class="empty-icon">
+                        <i class="fa-solid fa-calendar-xmark"></i>
+                    </div>
+                    <h3>No Events Found</h3>
+                    <p>There are no events matching your criteria.</p>
+                </div>
+            </div>
+
+            <!-- ==================== ATTENDANCE PAGE ==================== -->
+            <div class="page" id="attendance-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-clipboard-check"></i> My Attendance</h1>
+                        <p>Track your event participation</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn-primary" onclick="openQRScanner()">
+                            <i class="fa-solid fa-qrcode"></i> Scan QR Code
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Attendance Stats -->
+                <div class="attendance-stats-grid">
+                    <div class="attendance-stat-card">
+                        <div class="stat-circle" id="attendanceCircle">
+                            <svg viewBox="0 0 36 36" class="circular-chart">
+                                <path class="circle-bg" d="M18 2.0845
+                                    a 15.9155 15.9155 0 0 1 0 31.831
+                                    a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path class="circle-fill" id="attendanceCircleFill" stroke-dasharray="75, 100" d="M18 2.0845
+                                    a 15.9155 15.9155 0 0 1 0 31.831
+                                    a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <text x="18" y="20.35" class="percentage" id="attendancePercentText">75%</text>
+                            </svg>
+                        </div>
+                        <h3>Attendance Rate</h3>
+                        <p>Your overall participation</p>
+                    </div>
+
+                    <div class="attendance-stat-card">
+                        <div class="stat-number" id="totalAttended">12</div>
+                        <h3>Events Attended</h3>
+                        <p>Total check-ins</p>
+                    </div>
+
+                    <div class="attendance-stat-card">
+                        <div class="stat-number" id="totalMissed">4</div>
+                        <h3>Events Missed</h3>
+                        <p>Could have attended</p>
+                    </div>
+
+                    <div class="attendance-stat-card">
+                        <div class="stat-number" id="currentStreak">3</div>
+                        <h3>Current Streak 🔥</h3>
+                        <p>Consecutive events</p>
+                    </div>
+                </div>
+
+                <!-- Attendance Chart -->
+                <div class="attendance-chart-section">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fa-solid fa-chart-bar"></i>
+                            <h3>Monthly Attendance</h3>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="attendanceChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Attendance History -->
+                <div class="attendance-history-section">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fa-solid fa-history"></i>
+                            <h3>Attendance History</h3>
+                        </div>
+                        <div class="filter-group">
+                            <select id="attendanceFilterMonth">
+                                <option value="all">All Months</option>
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <!-- Add more months -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="attendance-table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Event</th>
+                                    <th>Date</th>
+                                    <th>Check-in Time</th>
+                                    <th>Status</th>
+                                    <th>Points Earned</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceHistory">
+                                <!-- Attendance history loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== LEADERBOARD PAGE ==================== -->
+            <div class="page" id="leaderboard-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-trophy"></i> Leaderboard</h1>
+                        <p>Top performing club members</p>
+                    </div>
+                    <div class="page-actions">
+                        <select id="leaderboardPeriod">
+                            <option value="all">All Time</option>
+                            <option value="month">This Month</option>
+                            <option value="week">This Week</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Top 3 Podium -->
+                <div class="leaderboard-podium">
+                    <div class="podium-place second" id="podium2">
+                        <div class="podium-avatar">
+                            <img src="" alt="">
+                            <span class="podium-rank">2</span>
+                        </div>
+                        <h4 class="podium-name">Loading...</h4>
+                        <p class="podium-points">0 pts</p>
+                        <div class="podium-stand">2</div>
+                    </div>
+                    <div class="podium-place first" id="podium1">
+                        <div class="podium-crown"><i class="fa-solid fa-crown"></i></div>
+                        <div class="podium-avatar">
+                            <img src="" alt="">
+                            <span class="podium-rank">1</span>
+                        </div>
+                        <h4 class="podium-name">Loading...</h4>
+                        <p class="podium-points">0 pts</p>
+                        <div class="podium-stand">1</div>
+                    </div>
+                    <div class="podium-place third" id="podium3">
+                        <div class="podium-avatar">
+                            <img src="" alt="">
+                            <span class="podium-rank">3</span>
+                        </div>
+                        <h4 class="podium-name">Loading...</h4>
+                        <p class="podium-points">0 pts</p>
+                        <div class="podium-stand">3</div>
+                    </div>
+                </div>
+
+                <!-- Your Position Card -->
+                <div class="your-position-card" id="yourPositionCard">
+                    <div class="your-position-info">
+                        <span class="position-label">Your Position</span>
+                        <span class="position-rank">#<span id="yourRankPosition">-</span></span>
+                    </div>
+                    <div class="your-position-details">
+                        <div class="detail">
+                            <span class="detail-value" id="yourTotalPoints">0</span>
+                            <span class="detail-label">Points</span>
+                        </div>
+                        <div class="detail">
+                            <span class="detail-value" id="yourRankTitle">Rookie</span>
+                            <span class="detail-label">Rank</span>
+                        </div>
+                        <div class="detail">
+                            <span class="detail-value" id="pointsBehind">0</span>
+                            <span class="detail-label">Points to Next</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Full Leaderboard -->
+                <div class="leaderboard-table-section">
+                    <table class="data-table leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Member</th>
+                                <th>Points</th>
+                                <th>Events</th>
+                                <th>Rank Title</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboardTable">
+                            <!-- Leaderboard loaded dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ==================== ANNOUNCEMENTS PAGE ==================== -->
+            <div class="page" id="announcements-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-bullhorn"></i> Announcements</h1>
+                        <p>Latest updates from your clubs</p>
+                    </div>
+                </div>
+
+                <!-- Announcements Filters -->
+                <div class="filters-bar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" id="announcementSearchInput" placeholder="Search announcements...">
+                    </div>
+                    <div class="filter-group">
+                        <select id="announcementClubFilter">
+                            <option value="all">All Clubs</option>
+                        </select>
+                        <select id="announcementPriorityFilter">
+                            <option value="all">All Priority</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="important">Important</option>
+                            <option value="normal">Normal</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Announcements List -->
+                <div class="announcements-container" id="announcementsList">
+                    <!-- Announcements loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- ==================== POLLS PAGE ==================== -->
+            <div class="page" id="polls-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-chart-pie"></i> Polls</h1>
+                        <p>Vote on club polls and see results</p>
+                    </div>
+                </div>
+                <div class="polls-container" id="memberPollsList">
+                    <!-- Polls loaded dynamically -->
+                    <p class="loading">Loading polls...</p>
+                </div>
+            </div>
+
+            <!-- ==================== MY PROJECT PAGE ==================== -->
+            <div class="page" id="my-project-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-diagram-project"></i> My Project</h1>
+                        <p>Choose a project and track your progress</p>
+                    </div>
+                </div>
+                <div id="myProjectContent">
+                    <p class="loading">Loading...</p>
+                </div>
+                <div id="browseProjectIdeasSection" style="margin-top: 24px; display: none;">
+                    <h3 style="margin-bottom: 12px;">Browse project ideas</h3>
+                    <p style="color: #6b7280; margin-bottom: 12px;">Choose one to work on. You can change anytime.</p>
+                    <div id="projectIdeasListMember"></div>
+                </div>
+            </div>
+
+            <!-- ==================== MEMBERS PAGE ==================== -->
+            <div class="page" id="members-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-users"></i> Club Members</h1>
+                        <p>Connect with fellow members</p>
+                    </div>
+                </div>
+
+                <div class="filters-bar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" id="memberSearchInput" placeholder="Search members...">
+                    </div>
+                    <div class="filter-group">
+                        <select id="memberRoleFilter">
+                            <option value="all">All Roles</option>
+                            <option value="admin">Admins</option>
+                            <option value="member">Members</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="members-grid" id="membersGrid">
+                    <!-- Members loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- ==================== GALLERY PAGE ==================== -->
+            <div class="page" id="gallery-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-images"></i> Event Gallery</h1>
+                        <p>Browse photos from events</p>
+                    </div>
+                </div>
+
+                <div class="gallery-filters">
+                    <button class="gallery-filter active" data-filter="all">All</button>
+                    <button class="gallery-filter" data-filter="recent">Recent</button>
+                    <button class="gallery-filter" data-filter="events">Events</button>
+                </div>
+
+                <div class="gallery-grid" id="galleryGrid">
+                    <!-- Gallery loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- ==================== CERTIFICATES PAGE ==================== -->
+            <div class="page" id="certificates-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-certificate"></i> My Certificates</h1>
+                        <p>Your achievements and recognitions</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn-primary" onclick="showUploadCertificateModal()">
+                            <i class="fa-solid fa-upload"></i> Upload Certificate
+                        </button>
+                    </div>
+                </div>
+
+                <div class="certificates-grid" id="certificatesGrid">
+                    <!-- Certificates loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- ==================== RESOURCES PAGE ==================== -->
+            <div class="page" id="resources-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-folder-open"></i> Resources</h1>
+                        <p>Club materials and documents</p>
+                    </div>
+                </div>
+
+                <div class="resources-grid" id="resourcesGrid">
+                    <!-- Resources loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- ==================== PROFILE PAGE ==================== -->
+            <div class="page" id="profile-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-user"></i> My Profile</h1>
+                        <p>Manage your account information</p>
+                    </div>
+                </div>
+
+                <div class="profile-container">
+                    <!-- Profile Header -->
+                    <div class="profile-header-card">
+                        <div class="profile-cover" id="profileCover">
+                            <button class="change-cover-btn" onclick="changeCoverPhoto()">
+                                <i class="fa-solid fa-camera"></i>
+                            </button>
+                        </div>
+                        <div class="profile-header-content">
+                            <div class="profile-avatar-section">
+                                <div class="profile-avatar-wrapper">
+                                    <div class="profile-avatar" id="profileAvatar">
+                                        <img src="" alt="" id="profilePicPreview" style="display: none;">
+                                        <i class="fa-solid fa-user"></i>
+                                    </div>
+                                    <button class="change-avatar-btn"
+                                        onclick="document.getElementById('profilePicInput').click()">
+                                        <i class="fa-solid fa-camera"></i>
+                                    </button>
+                                    <input type="file" id="profilePicInput" accept="image/*" style="display: none;">
+                                </div>
+                            </div>
+                            <div class="profile-header-info">
+                                <h2 id="profileDisplayName">Member Name</h2>
+                                <p id="profileUsername">@username</p>
+                                <div class="profile-badges">
+                                    <span class="badge badge-rank" id="profileRankBadge">Rookie</span>
+                                    <span class="badge badge-member">Member since Jan 2024</span>
+                                </div>
+                            </div>
+                            <div class="profile-header-stats">
+                                <div class="profile-stat">
+                                    <span class="stat-value" id="profilePoints">0</span>
+                                    <span class="stat-label">Points</span>
+                                </div>
+                                <div class="profile-stat">
+                                    <span class="stat-value" id="profileEvents">0</span>
+                                    <span class="stat-label">Events</span>
+                                </div>
+                                <div class="profile-stat">
+                                    <span class="stat-value" id="profileCerts">0</span>
+                                    <span class="stat-label">Certificates</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Profile Content Grid -->
+                    <div class="profile-grid">
+                        <!-- About Section -->
+                        <div class="profile-card">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-circle-info"></i> About</h3>
+                                <button class="btn-icon-small" onclick="editAbout()">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <p id="profileBioDisplay" class="profile-bio">No bio added yet.</p>
+                            </div>
+                        </div>
+
+                        <!-- Personal Info -->
+                        <div class="profile-card">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-user-circle"></i> Personal Information</h3>
+                                <button class="btn-icon-small" onclick="editPersonalInfo()">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="info-grid">
+                                    <div class="info-item">
+                                        <span class="info-label">Email</span>
+                                        <span class="info-value" id="profileEmail">email@example.com</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Student ID</span>
+                                        <span class="info-value" id="profileStudentId">-</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Phone</span>
+                                        <span class="info-value" id="profilePhone">Not provided</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Department</span>
+                                        <span class="info-value" id="profileDepartment">Not provided</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Clubs Section -->
+                        <div class="profile-card">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-building-user"></i> My Clubs</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="clubs-list" id="profileClubsList">
+                                    <!-- Clubs loaded dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Achievements Section -->
+                        <div class="profile-card">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-award"></i> Achievements</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="achievements-list" id="profileAchievements">
+                                    <!-- Achievements loaded dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Activity Section -->
+                        <div class="profile-card full-width">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-chart-line"></i> Activity Graph</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="activity-graph" id="profileActivityGraph">
+                                    <!-- Activity heatmap will be generated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== MESSAGES PAGE ==================== -->
+            <div class="page" id="messages-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-envelope"></i> Messages</h1>
+                        <p>Chat with your club owner</p>
+                    </div>
+                </div>
+
+                <div class="messages-container">
+                    <!-- Contacts Sidebar -->
+                    <div class="messages-sidebar">
+                        <div class="messages-sidebar-header">
+                            <h3><i class="fa-solid fa-user-group"></i> Contacts</h3>
+                        </div>
+                        <div class="contacts-list" id="contactsList">
+                            <!-- Contacts loaded dynamically -->
+                            <div class="loading-state">
+                                <i class="fa-solid fa-spinner fa-spin"></i>
+                                <p>Loading contacts...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Area -->
+                    <div class="messages-chat">
+                        <div class="messages-empty" id="messagesEmpty">
+                            <div class="empty-icon">
+                                <i class="fa-solid fa-comments"></i>
+                            </div>
+                            <h3>Select a Contact</h3>
+                            <p>Choose a contact from the sidebar to start messaging</p>
+                        </div>
+
+                        <div class="messages-active" id="messagesActive" style="display: none;">
+                            <!-- Chat Header -->
+                            <div class="chat-header" id="chatHeader">
+                                <div class="chat-header-info">
+                                    <div class="chat-avatar">
+                                        <i class="fa-solid fa-user"></i>
+                                    </div>
+                                    <div class="chat-details">
+                                        <h3 id="chatContactName">Contact Name</h3>
+                                        <p id="chatContactRole">Club Owner</p>
+                                    </div>
+                                </div>
+                                <div class="chat-header-actions">
+                                    <button class="btn-icon" title="Refresh">
+                                        <i class="fa-solid fa-rotate"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Messages List -->
+                            <div class="chat-messages" id="chatMessages">
+                                <!-- Messages loaded dynamically -->
+                            </div>
+
+                            <!-- Message Input -->
+                            <div class="chat-input">
+                                <form id="messageForm" onsubmit="sendMessage(event)">
+                                    <div class="input-wrapper">
+                                        <textarea id="messageInput" placeholder="Type your message..." rows="1"
+                                            maxlength="1000"></textarea>
+                                        <button type="submit" class="btn-send" id="sendButton">
+                                            <i class="fa-solid fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                    <div class="input-info">
+                                        <span class="char-count"><span id="charCount">0</span>/1000</span>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== SETTINGS PAGE ==================== -->
+            <div class="page" id="settings-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-gear"></i> Settings</h1>
+                        <p>Customize your experience</p>
+                    </div>
+                </div>
+
+                <div class="settings-container">
+                    <div class="settings-sidebar">
+                        <ul class="settings-menu">
+                            <li class="active" data-settings="account">
+                                <i class="fa-solid fa-user-circle"></i> Account
+                            </li>
+                            <li data-settings="notifications">
+                                <i class="fa-solid fa-bell"></i> Notifications
+                            </li>
+                            <li data-settings="privacy">
+                                <i class="fa-solid fa-shield"></i> Privacy
+                            </li>
+                            <li data-settings="appearance">
+                                <i class="fa-solid fa-palette"></i> Appearance
+                            </li>
+                            <li data-settings="security">
+                                <i class="fa-solid fa-lock"></i> Security
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="settings-content">
+                        <!-- Account Settings -->
+                        <div class="settings-section active" id="account-settings">
+                            <h3>Account Settings</h3>
+                            <form id="accountSettingsForm">
+                                <div class="form-group">
+                                    <label>Display Name</label>
+                                    <input type="text" id="settingsDisplayName">
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" id="settingsEmail">
+                                </div>
+                                <div class="form-group">
+                                    <label>Phone</label>
+                                    <input type="tel" id="settingsPhone">
+                                </div>
+                                <div class="form-group">
+                                    <label>Bio</label>
+                                    <textarea id="settingsBio" rows="4"></textarea>
+                                </div>
+                                <button type="submit" class="btn-primary">Save Changes</button>
+                            </form>
+                        </div>
+
+                        <!-- Notification Settings -->
+                        <div class="settings-section" id="notifications-settings">
+                            <h3>Notification Preferences</h3>
+                            <div class="settings-options">
+                                <div class="settings-option">
+                                    <div class="option-info">
+                                        <h4>Email Notifications</h4>
+                                        <p>Receive updates via email</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="emailNotifications" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="settings-option">
+                                    <div class="option-info">
+                                        <h4>Event Reminders</h4>
+                                        <p>Get reminded before events</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="eventReminders" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="settings-option">
+                                    <div class="option-info">
+                                        <h4>New Announcements</h4>
+                                        <p>Notify when new announcements are posted</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="announcementNotifs" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Privacy Settings -->
+                        <div class="settings-section" id="privacy-settings">
+                            <h3>Privacy Settings</h3>
+                            <div class="settings-options">
+                                <div class="settings-option">
+                                    <div class="option-info">
+                                        <h4>Profile Visibility</h4>
+                                        <p>Who can see your profile</p>
+                                    </div>
+                                    <select id="profileVisibility">
+                                        <option value="public">Public</option>
+                                        <option value="members">Club Members Only</option>
+                                        <option value="private">Private</option>
+                                    </select>
+                                </div>
+                                <div class="settings-option">
+                                    <div class="option-info">
+                                        <h4>Show on Leaderboard</h4>
+                                        <p>Display your name on leaderboard</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showOnLeaderboard" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Appearance Settings -->
+                        <div class="settings-section" id="appearance-settings">
+                            <h3>Appearance</h3>
+                            <div class="settings-options">
+                                <div class="settings-option">
+                                    <div class="option-info">
+                                        <h4>Theme</h4>
+                                        <p>Choose your preferred theme</p>
+                                    </div>
+                                    <div class="theme-options">
+                                        <button class="theme-option active" data-theme="light">
+                                            <i class="fa-solid fa-sun"></i> Light
+                                        </button>
+                                        <button class="theme-option" data-theme="dark">
+                                            <i class="fa-solid fa-moon"></i> Dark
+                                        </button>
+                                        <button class="theme-option" data-theme="auto">
+                                            <i class="fa-solid fa-circle-half-stroke"></i> Auto
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="settings-option">
+                                    <div class="option-info">
+                                        <h4>Accent Color</h4>
+                                        <p>Choose your accent color</p>
+                                    </div>
+                                    <div class="color-options">
+                                        <button class="color-option active" data-color="blue"
+                                            style="background: #3b82f6;"></button>
+                                        <button class="color-option" data-color="purple"
+                                            style="background: #8b5cf6;"></button>
+                                        <button class="color-option" data-color="green"
+                                            style="background: #10b981;"></button>
+                                        <button class="color-option" data-color="orange"
+                                            style="background: #f59e0b;"></button>
+                                        <button class="color-option" data-color="pink"
+                                            style="background: #ec4899;"></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Security Settings -->
+                        <div class="settings-section" id="security-settings">
+                            <h3>Security</h3>
+                            <div class="security-section">
+                                <h4>Change Password</h4>
+                                <form id="changePasswordForm">
+                                    <div class="form-group">
+                                        <label>Current Password</label>
+                                        <div class="password-input">
+                                            <input type="password" id="currentPassword">
+                                            <button type="button" class="toggle-password">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>New Password</label>
+                                        <div class="password-input">
+                                            <input type="password" id="newPassword">
+                                            <button type="button" class="toggle-password">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Confirm New Password</label>
+                                        <div class="password-input">
+                                            <input type="password" id="confirmPassword">
+                                            <button type="button" class="toggle-password">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn-primary">Update Password</button>
+                                </form>
+                            </div>
+
+                            <div class="danger-zone">
+                                <h4>Danger Zone</h4>
+                                <p>Once you delete your account, there is no going back. Please be certain.</p>
+                                <button class="btn-danger" onclick="confirmDeleteAccount()">
+                                    <i class="fa-solid fa-trash"></i> Delete Account
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== HELP PAGE ==================== -->
+            <div class="page" id="help-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-circle-question"></i> Help & Support</h1>
+                        <p>Get help with ClubConnect</p>
+                    </div>
+                </div>
+
+                <div class="help-container">
+                    <!-- Quick Help -->
+                    <div class="help-section">
+                        <h3>Quick Links</h3>
+                        <div class="help-links-grid">
+                            <a href="#" class="help-link-card">
+                                <i class="fa-solid fa-book"></i>
+                                <h4>Getting Started</h4>
+                                <p>Learn the basics</p>
+                            </a>
+                            <a href="#" class="help-link-card">
+                                <i class="fa-solid fa-qrcode"></i>
+                                <h4>QR Attendance</h4>
+                                <p>How to mark attendance</p>
+                            </a>
+                            <a href="#" class="help-link-card">
+                                <i class="fa-solid fa-trophy"></i>
+                                <h4>Points & Ranks</h4>
+                                <p>Understanding the system</p>
+                            </a>
+                            <a href="#" class="help-link-card">
+                                <i class="fa-solid fa-certificate"></i>
+                                <h4>Certificates</h4>
+                                <p>Upload & manage</p>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- FAQ -->
+                    <div class="help-section">
+                        <h3>Frequently Asked Questions</h3>
+                        <div class="faq-list">
+                            <div class="faq-item">
+                                <button class="faq-question">
+                                    How do I mark my attendance?
+                                    <i class="fa-solid fa-chevron-down"></i>
+                                </button>
+                                <div class="faq-answer">
+                                    <p>Click on the "Scan QR Code" button and point your camera at the QR code displayed
+                                        at the event. Make sure you're at the event location for successful check-in.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-question">
+                                    How do I earn points?
+                                    <i class="fa-solid fa-chevron-down"></i>
+                                </button>
+                                <div class="faq-answer">
+                                    <p>You earn points by attending events, participating in activities, and completing
+                                        achievements. Different events award different point values.</p>
+                                </div>
+                            </div>
+                            <div class="faq-item">
+                                <button class="faq-question">
+                                    How do I upload a certificate?
+                                    <i class="fa-solid fa-chevron-down"></i>
+                                </button>
+                                <div class="faq-answer">
+                                    <p>Go to the Certificates page and click "Upload Certificate". Fill in the details
+                                        and upload your certificate file (PDF or image format).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contact Support -->
+                    <div class="help-section">
+                        <h3>Contact Support</h3>
+                        <form id="supportForm" class="support-form">
+                            <div class="form-group">
+                                <label>Subject</label>
+                                <input type="text" id="supportSubject" placeholder="Brief description of your issue">
+                            </div>
+                            <div class="form-group">
+                                <label>Category</label>
+                                <select id="supportCategory">
+                                    <option value="">Select a category</option>
+                                    <option value="technical">Technical Issue</option>
+                                    <option value="account">Account Problem</option>
+                                    <option value="events">Events Related</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Message</label>
+                                <textarea id="supportMessage" rows="5"
+                                    placeholder="Describe your issue in detail..."></textarea>
+                            </div>
+                            <button type="submit" class="btn-primary">
+                                <i class="fa-solid fa-paper-plane"></i> Send Message
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- QR Scanner Modal -->
+    <div class="modal" id="qrScannerModal">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-qrcode"></i> Mark Attendance</h3>
+                <button class="modal-close" onclick="closeQRScanner()">&times;</button>
+            </div>
+            <div class="modal-body" id="qrModalBody">
+                <div class="qr-scanner-container">
+                    <div id="qrReader"></div>
+                </div>
+
+                <div style="text-align: center; margin: 25px 0; position: relative;">
+                    <div style="border-bottom: 2px solid #e5e7eb; margin: 0 40px;"></div>
+                    <span
+                        style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 0 15px; color: #9ca3af; font-weight: 600;">OR</span>
+                </div>
+
+                <div
+                    style="text-align: center; padding: 20px; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); border-radius: 16px;">
+                    <p style="margin: 0 0 15px 0; color: #374151; font-weight: 600;"><i
+                            class="fa-solid fa-keyboard"></i> Enter 7-digit attendance code</p>
+                    <div
+                        style="display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="attendanceCodeInput" placeholder="ABC XYZK" maxlength="8"
+                            style="padding: 14px 20px; border: 2px solid #d1d5db; border-radius: 12px; font-size: 22px; font-weight: 700; text-align: center; width: 180px; letter-spacing: 4px; text-transform: uppercase; font-family: 'Courier New', monospace;"
+                            oninput="formatCodeInput(this)"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();submitAttendanceCode();}">
+                        <button onclick="submitAttendanceCode()" class="btn-primary"
+                            style="padding: 14px 24px; font-size: 16px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                            <i class="fa-solid fa-check"></i> Submit
+                        </button>
+                    </div>
+                    <p style="margin: 15px 0 0 0; font-size: 12px; color: #9ca3af;">Get the code from the event
+                        organizer's screen</p>
+                </div>
+
+                <div id="scanningStatus" style="text-align: center; margin-top: 20px; display: none;">
+                    <i class="fa-solid fa-spinner fa-spin" style="color: #3b82f6; font-size: 24px;"></i>
+                    <p style="color: #6b7280; margin-top: 10px;">Processing attendance...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Certificate Modal -->
+    <div class="modal" id="uploadCertificateModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-certificate"></i> Upload Certificate</h3>
+                <button class="modal-close" onclick="closeUploadCertificateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadCertificateForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Certificate Title *</label>
+                            <input type="text" id="certTitle" placeholder="e.g., Participation Certificate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Issue Date</label>
+                            <input type="date" id="certIssueDate">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Select Club *</label>
+                            <select id="certClub" required onchange="loadClubEventsForCert()">
+                                <option value="">Choose a club...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Select Event (Optional)</label>
+                            <select id="certEvent">
+                                <option value="">Choose an event...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Certificate File *</label>
+                        <div class="file-upload-area" id="certFileUpload">
+                            <input type="file" id="certFile" accept=".pdf,.jpg,.jpeg,.png" required>
+                            <div class="file-upload-content">
+                                <i class="fa-solid fa-cloud-upload-alt"></i>
+                                <p>Drag & drop your file here or <span>browse</span></p>
+                                <small>Supports: PDF, JPG, PNG (Max 10MB)</small>
+                            </div>
+                            <div class="file-preview" id="certFilePreview" style="display: none;">
+                                <i class="fa-solid fa-file"></i>
+                                <span id="certFileName"></span>
+                                <button type="button" onclick="removeCertFile()"><i
+                                        class="fa-solid fa-times"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description (Optional)</label>
+                        <textarea id="certDescription" rows="3"
+                            placeholder="Add any notes about this certificate..."></textarea>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn-secondary"
+                            onclick="closeUploadCertificateModal()">Cancel</button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fa-solid fa-upload"></i> Upload Certificate
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Details Modal -->
+    <div class="modal" id="eventDetailsModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="eventModalTitle">Event Details</h3>
+                <button class="modal-close" onclick="closeEventModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="eventModalContent">
+                <!-- Event details loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Certificate View Modal -->
+    <div class="modal" id="certificateViewModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="certViewTitle">Certificate</h3>
+                <button class="modal-close" onclick="closeCertificateView()">&times;</button>
+            </div>
+            <div class="modal-body" id="certificateViewContent">
+                <!-- Certificate preview -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeCertificateView()">Close</button>
+                <button class="btn-primary" id="downloadCertBtn">
+                    <i class="fa-solid fa-download"></i> Download
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div class="modal" id="editProfileModal">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-edit"></i> Edit Profile</h3>
+                <button class="modal-close" onclick="closeEditProfileModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editProfileForm">
+                    <div class="form-group">
+                        <label>Display Name</label>
+                        <input type="text" id="editDisplayName">
+                    </div>
+                    <div class="form-group">
+                        <label>Bio</label>
+                        <textarea id="editBio" rows="4"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="tel" id="editPhone">
+                    </div>
+                    <div class="form-group">
+                        <label>Department</label>
+                        <input type="text" id="editDepartment">
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn-secondary" onclick="closeEditProfileModal()">Cancel</button>
+                        <button type="submit" class="btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Message Modal -->
+    <div class="modal" id="newMessageModal">
+        <div class="modal-content modal-medium">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-envelope"></i> New Message</h3>
+                <button class="modal-close" onclick="closeNewMessageModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="newMessageForm">
+                    <div class="form-group">
+                        <label>To</label>
+                        <input type="text" id="messageTo" placeholder="Search members...">
+                        <div class="recipient-suggestions" id="recipientSuggestions"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Subject</label>
+                        <input type="text" id="messageSubject" placeholder="Message subject">
+                    </div>
+                    <div class="form-group">
+                        <label>Message</label>
+                        <textarea id="messageBody" rows="6" placeholder="Type your message..."></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn-secondary" onclick="closeNewMessageModal()">Cancel</button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fa-solid fa-paper-plane"></i> Send Message
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Lightbox -->
+    <div class="lightbox" id="imageLightbox">
+        <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+        <button class="lightbox-nav prev" onclick="prevImage()"><i class="fa-solid fa-chevron-left"></i></button>
+        <div class="lightbox-content">
+            <img src="" alt="" id="lightboxImage">
+        </div>
+        <button class="lightbox-nav next" onclick="nextImage()"><i class="fa-solid fa-chevron-right"></i></button>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Notification Container (for JS notifications) -->
+    <div id="notificationContainer"></div>
+
+    <!-- Confirm Dialog -->
+    <div class="confirm-dialog" id="confirmDialog">
+        <div class="confirm-content">
+            <div class="confirm-icon" id="confirmIcon">
+                <i class="fa-solid fa-question-circle"></i>
+            </div>
+            <h3 id="confirmTitle">Confirm Action</h3>
+            <p id="confirmMessage">Are you sure you want to proceed?</p>
+            <div class="confirm-actions">
+                <button class="btn-secondary" onclick="closeConfirmDialog()">Cancel</button>
+                <button class="btn-primary" id="confirmBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="member-dashboard.js?v=2.0"></script>
+</body>
+
+</html>

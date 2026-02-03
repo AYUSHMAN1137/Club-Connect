@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClubConnect - Login</title>
+    <!-- Fonts and Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="ui-base.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="auth-pending">
+    <div class="auth-loader" id="authLoader">
+        <div class="auth-loader-content">
+            <div class="auth-loader-orb">
+                <i class="fa-solid fa-users-between-lines auth-loader-icon"></i>
+            </div>
+            <div class="auth-loader-text">Club Connect</div>
+            <div class="auth-loader-subtext">Getting your dashboard ready</div>
+            <div class="auth-loader-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+    <div class="container" id="container">
+        <!-- Sign Up Container -->
+        <div class="form-container sign-up-container">
+            <form id="signUpForm">
+                <h1>Create Account</h1>
+                <div class="icon-decoration">
+                    <i class="fa-solid fa-user-plus"></i>
+                </div>
+                <!-- Inputs matching script.js identifiers -->
+                <div class="input-container">
+                    <input type="text" id="username-up" placeholder="Full Name" required minlength="3">
+                    <i class="fa-solid fa-user"></i>
+                    <span class="error-message"></span>
+                </div>
+                <div class="input-container">
+                    <input type="text" id="student-id-up" placeholder="Student ID" required>
+                    <i class="fa-solid fa-id-card"></i>
+                    <span class="error-message"></span>
+                </div>
+                <div class="input-container">
+                    <input type="email" id="email-up" placeholder="Email" required>
+                    <i class="fa-solid fa-envelope"></i>
+                    <span class="error-message"></span>
+                </div>
+                <div class="input-container password-field">
+                    <input type="password" id="pass-up" placeholder="Password" required minlength="8">
+                    <i class="fa-solid fa-lock"></i>
+                    <i class="fa-solid fa-eye-slash toggle-password"></i>
+                    <span class="error-message"></span>
+                </div>
+
+                <div class="password-strength">
+                    <div class="strength-bar"></div>
+                    <span class="strength-text"></span>
+                </div>
+
+                <button class="btn-submit" type="submit">
+                    <span class="btn-text">Sign Up</span>
+                    <div class="btn-loader"></div>
+                </button>
+                <div class="mobile-link">
+                    <p class="account-text">Already have an account? <a href="#" id="signInMobile">Sign In</a></p>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sign In Container -->
+        <div class="form-container sign-in-container">
+            <form id="signInForm">
+                <h1>Welcome Back</h1>
+                <p>Enter your credentials to access your club dashboard.</p>
+
+                <!-- Inputs matching script.js identifiers -->
+                <div class="input-container">
+                    <input type="text" id="username-in" placeholder="Username / Student ID" required>
+                    <i class="fa-solid fa-user"></i>
+                    <span class="error-message"></span>
+                </div>
+                <div class="input-container password-field">
+                    <input type="password" id="pass-in" placeholder="Password" required>
+                    <i class="fa-solid fa-lock"></i>
+                    <i class="fa-solid fa-eye-slash toggle-password"></i>
+                    <span class="error-message"></span>
+                </div>
+
+                <a href="#" class="forgot-password">Forgot your password?</a>
+
+                <button class="btn-submit" type="submit">
+                    <span class="btn-text">Sign In</span>
+                    <div class="btn-loader"></div>
+                </button>
+
+                <div class="mobile-link">
+                    <p class="account-text">Don't have an account? <a href="#" id="signUpMobile">Sign Up</a></p>
+                </div>
+            </form>
+        </div>
+
+        <!-- Overlay Container -->
+        <div class="overlay-container">
+            <div class="overlay">
+                <div class="overlay-panel overlay-left">
+                    <h1>Welcome Back!</h1>
+                    <p>To keep connected with us please login with your personal info</p>
+                    <button class="ghost" id="signIn">Sign In</button>
+                </div>
+                <div class="overlay-panel overlay-right">
+                    <h1>Hello, Friend!</h1>
+                    <p>Enter your personal details and start journey with us</p>
+                    <button class="ghost" id="signUp">Sign Up</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="notification-container"></div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="success-modal">
+        <div class="success-content">
+            <div class="success-checkmark">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <h2>Success!</h2>
+            <p id="successMessage">Operation completed successfully.</p>
+            <button class="ghost" onclick="hideSuccessModal()"
+                style="margin-top: 20px; color: #333; border-color: #ddd;">Close</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

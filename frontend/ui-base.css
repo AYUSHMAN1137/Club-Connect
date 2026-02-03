@@ -1,0 +1,230 @@
+/* ============================================
+   CLUBCONNECT UI BASE TOKENS + CORE STYLES
+   Modern academic/professional theme
+   ============================================ */
+
+:root {
+    /* Typography */
+    --font-body: 'Manrope', 'Segoe UI', sans-serif;
+    --font-display: 'Sora', 'Manrope', sans-serif;
+
+    /* Neutrals */
+    --white: #ffffff;
+    --gray-25: #fafbfc;
+    --gray-50: #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-400: #94a3b8;
+    --gray-500: #64748b;
+    --gray-600: #475569;
+    --gray-700: #334155;
+    --gray-800: #1e293b;
+    --gray-900: #0f172a;
+
+    /* Brand / Accents */
+    --primary-color: #0f766e;
+    --primary-hover: #0d9488;
+    --primary-light: #ccfbf1;
+    --primary-dark: #115e59;
+    --primary-gradient: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+
+    --secondary-color: #2563eb;
+    --secondary-hover: #1d4ed8;
+    --secondary-light: #dbeafe;
+
+    --accent-color: #f59e0b;
+    --accent-hover: #d97706;
+    --accent-light: #fef3c7;
+
+    /* Status */
+    --success-color: #16a34a;
+    --success-light: #dcfce7;
+    --warning-color: #f59e0b;
+    --warning-light: #fef3c7;
+    --danger-color: #dc2626;
+    --danger-light: #fee2e2;
+    --info-color: #0ea5e9;
+    --info-light: #e0f2fe;
+
+    /* Layout */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 22px;
+    --radius-full: 9999px;
+
+    --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.06);
+    --shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+    --shadow-md: 0 12px 28px rgba(15, 23, 42, 0.12);
+    --shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.16);
+    --shadow-primary: 0 10px 24px rgba(15, 118, 110, 0.25);
+
+    /* Background */
+    --bg-base: #f4f7f7;
+    --bg-soft: #eef2f6;
+    --bg-gradient:
+        radial-gradient(900px 500px at 12% -10%, rgba(20, 184, 166, 0.14) 0%, transparent 60%),
+        radial-gradient(700px 420px at 110% 10%, rgba(245, 158, 11, 0.12) 0%, transparent 55%),
+        linear-gradient(180deg, #f8fafc 0%, #eef2f6 100%);
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+    --gradient-ink: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    --gradient-slate: linear-gradient(135deg, #334155 0%, #64748b 100%);
+    --gradient-ocean: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+    --gradient-amber: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+    --gradient-forest: linear-gradient(135deg, #16a34a 0%, #0f766e 100%);
+
+    /* Text */
+    --text-1: #0f172a;
+    --text-2: #334155;
+    --text-3: #64748b;
+    --text-inverse: #f8fafc;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+}
+
+[data-theme="dark"],
+body.dark-mode {
+    --white: #0f172a;
+    --gray-25: #0b1220;
+    --gray-50: #0f172a;
+    --gray-100: #162134;
+    --gray-200: #243449;
+    --gray-300: #334155;
+    --gray-400: #64748b;
+    --gray-500: #94a3b8;
+    --gray-600: #cbd5e1;
+    --gray-700: #e2e8f0;
+    --gray-800: #f1f5f9;
+    --gray-900: #f8fafc;
+
+    --primary-color: #2dd4bf;
+    --primary-hover: #5eead4;
+    --primary-light: rgba(45, 212, 191, 0.16);
+    --primary-dark: #0f766e;
+    --primary-gradient: linear-gradient(135deg, #0f766e 0%, #2dd4bf 100%);
+
+    --secondary-color: #60a5fa;
+    --secondary-hover: #93c5fd;
+    --secondary-light: rgba(96, 165, 250, 0.16);
+
+    --accent-color: #fbbf24;
+    --accent-hover: #fcd34d;
+    --accent-light: rgba(251, 191, 36, 0.16);
+
+    --success-color: #4ade80;
+    --success-light: rgba(34, 197, 94, 0.16);
+    --warning-color: #fbbf24;
+    --warning-light: rgba(245, 158, 11, 0.16);
+    --danger-color: #f87171;
+    --danger-light: rgba(239, 68, 68, 0.16);
+    --info-color: #38bdf8;
+    --info-light: rgba(14, 165, 233, 0.16);
+
+    --bg-base: #0b1220;
+    --bg-soft: #0f172a;
+    --bg-gradient:
+        radial-gradient(900px 500px at 12% -10%, rgba(13, 148, 136, 0.18) 0%, transparent 60%),
+        radial-gradient(700px 420px at 110% 10%, rgba(245, 158, 11, 0.12) 0%, transparent 55%),
+        linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
+
+    --text-1: #f8fafc;
+    --text-2: #e2e8f0;
+    --text-3: #94a3b8;
+    --text-inverse: #0f172a;
+    --border: #273247;
+    --border-strong: #334155;
+
+    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.25);
+    --shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 14px 32px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 22px 46px rgba(0, 0, 0, 0.55);
+    --shadow-primary: 0 10px 28px rgba(45, 212, 191, 0.25);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-body);
+    color: var(--text-1);
+    background: var(--bg-gradient);
+    background-attachment: fixed;
+    text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-display);
+    color: var(--text-1);
+    letter-spacing: -0.02em;
+}
+
+a {
+    color: var(--primary-color);
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+}
+
+:focus-visible {
+    outline: 3px solid rgba(15, 118, 110, 0.25);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Core button styles to align shared classes */
+.btn-primary,
+.btn-secondary,
+.btn-ghost {
+    border-radius: var(--radius-md);
+}
+
+.btn-primary {
+    background: var(--primary-gradient);
+    box-shadow: var(--shadow-primary);
+}
+
+.btn-secondary {
+    background: var(--gray-100);
+    border: 1px solid var(--border);
+}
+
+.btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+}
+
+/* Table baseline */
+table {
+    border-color: var(--border);
+}
+
+/* Card baseline */
+.surface-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
