@@ -3481,9 +3481,15 @@ const PORT = process.env.PORT || 4000;
 // Ensure SQLite enforces foreign keys, then start server.
 // Schema creation/updates are handled via dedicated migration scripts (see package.json db:* scripts).
 db.sequelize.authenticate()
-    .then(() => db.sequelize.query('PRAGMA foreign_keys = ON;'))
+    .then(async () => {
+        if (db.sequelize.getDialect() === 'sqlite') {
+            await db.sequelize.query('PRAGMA foreign_keys = ON;');
+            console.log('✅ Database connected (foreign keys ON)');
+        } else {
+            console.log('✅ Database connected');
+        }
+    })
     .then(() => {
-        console.log('✅ Database connected (foreign keys ON)');
 
         server.listen(PORT, () => {
             console.log(`🚀 Server running on http://localhost:${PORT}`);
