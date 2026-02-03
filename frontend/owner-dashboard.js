@@ -640,7 +640,7 @@ async function loadDashboardStats() {
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
         if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            showNotification('Cannot connect to server! Please make sure backend server is running on http://localhost:4000', 'error');
+            showNotification(`Cannot connect to server! Please make sure backend server is running on ${getApiUrl()}`, 'error');
         } else {
             showNotification('Failed to load dashboard stats: ' + error.message, 'error');
         }
