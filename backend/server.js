@@ -134,6 +134,45 @@ async function createSqlNotification(userId, { title, message, type = 'system' }
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
+async function ensureAdminUser() {
+    try {
+        const existing = await db.findUserByUsername('admin');
+        const desiredPassword = '1137';
+        if (!existing) {
+            const hashed = await bcrypt.hash(desiredPassword, 10);
+            await db.createUser({
+                studentId: 'ADMIN-1137',
+                username: 'admin',
+                email: 'admin@clubconnect.local',
+                password: hashed,
+                role: 'admin'
+            });
+            console.log('✅ Admin user created');
+            return;
+        }
+        let shouldSave = false;
+        if (existing.role !== 'admin') {
+            existing.role = 'admin';
+            shouldSave = true;
+        }
+        const passwordMatches = await bcrypt.compare(desiredPassword, existing.password);
+        if (!passwordMatches) {
+            existing.password = await bcrypt.hash(desiredPassword, 10);
+            shouldSave = true;
+        }
+        if (!existing.studentId) {
+            existing.studentId = 'ADMIN-1137';
+            shouldSave = true;
+        }
+        if (shouldSave) {
+            await existing.save();
+            console.log('✅ Admin user updated');
+        }
+    } catch (error) {
+        console.error('❌ Failed to ensure admin user:', error);
+    }
+}
+
 // ========== MIDDLEWARE ==========
 
 // Verify JWT token
@@ -179,6 +218,18 @@ function isMember(req, res, next) {
         });
     }
     next();
+}
+
+async function isAdmin(req, res, next) {
+    try {
+        const user = await db.findUserById(req.user.id);
+        if (!user || user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Access denied!' });
+        }
+        next();
+    } catch (error) {
+        return res.status(500).json({ success: false, message: 'Server error!' });
+    }
 }
 
 // ========== ROUTES ==========
@@ -413,6 +464,120 @@ app.get('/auth/me', async (req, res) => {
     }
 });
 
+// ========== ADMIN API ROUTES ==========
+
+// Create owner
+app.post('/admin/create-owner', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const { username, studentId, email, password } = req.body;
+        if (!username || !studentId || !email || !password) {
+            return res.status(400).json({ success: false, message: 'All fields are required!' });
+        }
+        const exists = await db.userExists(email, username, studentId);
+        if (exists) {
+            return res.status(400).json({ success: false, message: 'Username, Student ID, or Email already exists!' });
+        }
+        const hashed = await bcrypt.hash(password, 10);
+        const owner = await db.createUser({ username, studentId, email, password: hashed, role: 'owner' });
+        return res.status(201).json({ success: true, owner: { id: owner.id, username: owner.username, email: owner.email } });
+    } catch (error) {
+        console.error('Create owner error:', error);
+        return res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+// Create member
+app.post('/admin/create-member', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const { username, studentId, email, password } = req.body;
+        if (!username || !studentId || !email || !password) {
+            return res.status(400).json({ success: false, message: 'All fields are required!' });
+        }
+        const exists = await db.userExists(email, username, studentId);
+        if (exists) {
+            return res.status(400).json({ success: false, message: 'Username, Student ID, or Email already exists!' });
+        }
+        const hashed = await bcrypt.hash(password, 10);
+        const member = await db.createUser({ username, studentId, email, password: hashed, role: 'member' });
+        return res.status(201).json({ success: true, member: { id: member.id, username: member.username, email: member.email } });
+    } catch (error) {
+        console.error('Create member error:', error);
+        return res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+// Create club
+app.post('/admin/create-club', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const { name, tagline, themeColor, ownerId } = req.body;
+        if (!name || !ownerId) {
+            return res.status(400).json({ success: false, message: 'Club name and ownerId are required!' });
+        }
+        const owner = await db.findUserById(parseInt(ownerId, 10));
+        if (!owner || owner.role !== 'owner') {
+            return res.status(400).json({ success: false, message: 'Owner not found or invalid role!' });
+        }
+        const existingClub = await db.Club.findOne({ where: { name } });
+        if (existingClub) {
+            return res.status(400).json({ success: false, message: 'Club name already exists!' });
+        }
+        const club = await db.createClub({ name, tagline, themeColor, ownerId: owner.id });
+        return res.status(201).json({ success: true, club });
+    } catch (error) {
+        console.error('Create club error:', error);
+        return res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+// Add member to club (by studentId)
+app.post('/admin/add-member-to-club', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const { studentId, clubId } = req.body;
+        if (!studentId || !clubId) {
+            return res.status(400).json({ success: false, message: 'studentId and clubId required!' });
+        }
+        const user = await db.findUserByStudentId(studentId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'Student not found! They must register first.' });
+        }
+        const { created } = await db.addMemberToClub(user.id, parseInt(clubId, 10));
+        if (!created) {
+            return res.json({ success: false, message: 'User is already a member of this club!' });
+        }
+        return res.json({ success: true, message: 'Member added to club!', memberId: user.id });
+    } catch (error) {
+        console.error('Add member to club error:', error);
+        return res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+// List owners
+app.get('/admin/owners', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const users = await db.User.findAll({ where: { role: 'owner' } });
+        const owners = users.map(u => ({ id: u.id, username: u.username, email: u.email }));
+        return res.json({ success: true, owners });
+    } catch (error) {
+        console.error('List owners error:', error);
+        return res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+// List clubs
+app.get('/admin/clubs', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const clubs = await db.getAllClubs();
+        const simplified = clubs.map(c => ({
+            id: c.id,
+            name: c.name,
+            owner: c.Owner ? { id: c.Owner.id, username: c.Owner.username } : null
+        }));
+        return res.json({ success: true, clubs: simplified });
+    } catch (error) {
+        console.error('List clubs error:', error);
+        return res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
 // ========== OWNER API ROUTES ==========
 
 // Get dashboard stats - NOW USING SQL DATABASE
@@ -3488,6 +3653,9 @@ db.sequelize.authenticate()
         } else {
             console.log('✅ Database connected');
         }
+    })
+    .then(async () => {
+        await ensureAdminUser();
     })
     .then(() => {
 

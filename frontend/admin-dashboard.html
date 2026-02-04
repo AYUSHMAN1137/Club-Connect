@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - ClubConnect</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="ui-base.css">
+    <script>
+        (function () {
+            const hostname = window.location.hostname;
+            const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+            const isFile = window.location.protocol === 'file:' || !hostname;
+            window.API_URL = (isLocal || isFile) ? 'http://localhost:4000' : 'https://club-connect-hvsz.onrender.com';
+        })();
+    </script>
+    <style>
+        body { background: #0b1220; color: #e5e7eb; font-family: 'Manrope', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+        .top-navbar { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#0f172a; border-bottom:1px solid #1f2937; position:sticky; top:0; z-index:10; }
+        .navbar-brand { display:flex; align-items:center; gap:10px; color:#fff; font-weight:600; }
+        .dashboard-container { max-width:1100px; margin:24px auto; padding:0 16px; }
+        .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        .card { background:#0f172a; border:1px solid #1f2937; border-radius:14px; padding:16px; }
+        .card h2 { margin:0 0 10px; font-size:18px; }
+        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+        .form-row.full { grid-template-columns:1fr; }
+        .input { width:100%; background:#0b1220; border:1px solid #1f2937; color:#e5e7eb; padding:10px 12px; border-radius:10px; }
+        .btn { display:inline-flex; align-items:center; gap:8px; background:#2563eb; color:#fff; border:none; border-radius:10px; padding:10px 14px; cursor:pointer; }
+        .btn.secondary { background:#374151; }
+        .list { margin-top:12px; max-height:220px; overflow:auto; border-top:1px dashed #1f2937; padding-top:10px; }
+        .item { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #1f2937; }
+        .notice { color:#9ca3af; font-size:13px; }
+        .notification-container { position:fixed; top:16px; right:16px; z-index:100; }
+        .notification { background:#0f172a; border:1px solid #1f2937; color:#e5e7eb; padding:10px 12px; border-radius:10px; margin-bottom:10px; }
+    </style>
+</head>
+<body>
+    <nav class="top-navbar">
+        <div class="navbar-brand">
+            <i class="fa-solid fa-users-between-lines"></i>
+            <span>ClubConnect Admin</span>
+        </div>
+        <button class="btn secondary" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+    </nav>
+
+    <div class="dashboard-container">
+        <div class="grid">
+            <div class="card">
+                <h2><i class="fa-solid fa-user-shield"></i> Add Owner</h2>
+                <div class="form-row">
+                    <input class="input" id="ownerUsername" placeholder="Username">
+                    <input class="input" id="ownerStudentId" placeholder="Student ID">
+                </div>
+                <div class="form-row">
+                    <input class="input" id="ownerEmail" placeholder="Email">
+                    <input class="input" id="ownerPassword" placeholder="Password" type="password" value="123456">
+                </div>
+                <button class="btn" id="createOwnerBtn"><i class="fa-solid fa-plus"></i> Create Owner</button>
+                <div class="notice">Owner बनाते समय password बाद में बदल सकते हैं</div>
+                <div class="list" id="ownersList"></div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fa-solid fa-building"></i> Create Club</h2>
+                <div class="form-row">
+                    <input class="input" id="clubName" placeholder="Club Name">
+                    <input class="input" id="clubTagline" placeholder="Tagline (optional)">
+                </div>
+                <div class="form-row">
+                    <input class="input" id="clubTheme" placeholder="Theme Color (e.g. #2563eb)">
+                    <select class="input" id="clubOwnerSelect"></select>
+                </div>
+                <button class="btn" id="createClubBtn"><i class="fa-solid fa-plus"></i> Create Club</button>
+                <div class="list" id="clubsList"></div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fa-solid fa-user-plus"></i> Add Member to Club</h2>
+                <div class="form-row">
+                    <input class="input" id="memberStudentId" placeholder="Member Student ID">
+                    <select class="input" id="memberClubSelect"></select>
+                </div>
+                <button class="btn" id="addMemberBtn"><i class="fa-solid fa-user-check"></i> Add Member</button>
+                <div class="notice">Member पहले register होना चाहिए</div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fa-solid fa-id-card"></i> Create Member</h2>
+                <div class="form-row">
+                    <input class="input" id="memberUsername" placeholder="Username">
+                    <input class="input" id="memberStudentIdCreate" placeholder="Student ID">
+                </div>
+                <div class="form-row">
+                    <input class="input" id="memberEmail" placeholder="Email">
+                    <input class="input" id="memberPassword" placeholder="Password" type="password" value="123456">
+                </div>
+                <button class="btn" id="createMemberBtn"><i class="fa-solid fa-user-plus"></i> Create Member</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification-container" id="notificationContainer"></div>
+    <script src="admin-dashboard.js"></script>
+</body>
+</html>

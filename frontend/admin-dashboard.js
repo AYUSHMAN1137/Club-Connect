@@ -1,0 +1,181 @@
+const API_URL = window.API_URL || 'http://localhost:4000';
+const token = localStorage.getItem('token');
+
+async function ensureAdmin() {
+    if (!token) {
+        window.location.href = 'index.html';
+        return;
+    }
+    try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!data.success || data.user.role !== 'admin') {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+            return;
+        }
+    } catch {
+        localStorage.removeItem('token');
+        window.location.href = 'index.html';
+    }
+}
+
+function notify(msg, type = 'info') {
+    const c = document.getElementById('notificationContainer');
+    const el = document.createElement('div');
+    el.className = 'notification';
+    el.textContent = msg;
+    c.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+
+async function fetchOwners() {
+    const res = await fetch(`${API_URL}/admin/owners`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success) {
+        const list = document.getElementById('ownersList');
+        const select = document.getElementById('clubOwnerSelect');
+        list.innerHTML = '';
+        select.innerHTML = '<option value="">Select Owner</option>';
+        data.owners.forEach(o => {
+            const item = document.createElement('div');
+            item.className = 'item';
+            item.innerHTML = `<span>${o.username} (${o.email})</span><span>id: ${o.id}</span>`;
+            list.appendChild(item);
+            const opt = document.createElement('option');
+            opt.value = o.id;
+            opt.textContent = `${o.username} (#${o.id})`;
+            select.appendChild(opt);
+        });
+    }
+}
+
+async function fetchClubs() {
+    const res = await fetch(`${API_URL}/admin/clubs`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success) {
+        const list = document.getElementById('clubsList');
+        const select = document.getElementById('memberClubSelect');
+        list.innerHTML = '';
+        select.innerHTML = '<option value="">Select Club</option>';
+        data.clubs.forEach(c => {
+            const item = document.createElement('div');
+            item.className = 'item';
+            item.innerHTML = `<span>${c.name}</span><span>Owner: ${c.owner?.username || 'none'}</span>`;
+            list.appendChild(item);
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = `${c.name} (#${c.id})`;
+            select.appendChild(opt);
+        });
+    }
+}
+
+async function createOwner() {
+    const username = document.getElementById('ownerUsername').value.trim();
+    const studentId = document.getElementById('ownerStudentId').value.trim();
+    const email = document.getElementById('ownerEmail').value.trim();
+    const password = document.getElementById('ownerPassword').value;
+    if (!username || !studentId || !email || !password) {
+        notify('सारे fields भरें', 'error');
+        return;
+    }
+    const res = await fetch(`${API_URL}/admin/create-owner`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ username, studentId, email, password })
+    });
+    const data = await res.json();
+    if (data.success) {
+        notify('Owner बनाया गया');
+        await fetchOwners();
+    } else {
+        notify(data.message || 'Owner create failed', 'error');
+    }
+}
+
+async function createClub() {
+    const name = document.getElementById('clubName').value.trim();
+    const tagline = document.getElementById('clubTagline').value.trim();
+    const themeColor = document.getElementById('clubTheme').value.trim();
+    const ownerId = document.getElementById('clubOwnerSelect').value;
+    if (!name || !ownerId) {
+        notify('Club name और Owner चुनें', 'error');
+        return;
+    }
+    const res = await fetch(`${API_URL}/admin/create-club`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name, tagline, themeColor, ownerId: parseInt(ownerId, 10) })
+    });
+    const data = await res.json();
+    if (data.success) {
+        notify('Club बनाया गया');
+        await fetchClubs();
+    } else {
+        notify(data.message || 'Club create failed', 'error');
+    }
+}
+
+async function addMemberToClub() {
+    const studentId = document.getElementById('memberStudentId').value.trim();
+    const clubId = document.getElementById('memberClubSelect').value;
+    if (!studentId || !clubId) {
+        notify('Student ID और Club चुनें', 'error');
+        return;
+    }
+    const res = await fetch(`${API_URL}/admin/add-member-to-club`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ studentId, clubId: parseInt(clubId, 10) })
+    });
+    const data = await res.json();
+    if (data.success) {
+        notify('Member club में जोड़ दिया गया');
+    } else {
+        notify(data.message || 'Add member failed', 'error');
+    }
+}
+
+async function createMember() {
+    const username = document.getElementById('memberUsername').value.trim();
+    const studentId = document.getElementById('memberStudentIdCreate').value.trim();
+    const email = document.getElementById('memberEmail').value.trim();
+    const password = document.getElementById('memberPassword').value;
+    if (!username || !studentId || !email || !password) {
+        notify('सारे fields भरें', 'error');
+        return;
+    }
+    const res = await fetch(`${API_URL}/admin/create-member`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ username, studentId, email, password })
+    });
+    const data = await res.json();
+    if (data.success) {
+        notify('Member बनाया गया');
+    } else {
+        notify(data.message || 'Member create failed', 'error');
+    }
+}
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('token');
+    window.location.href = 'index.html';
+});
+document.getElementById('createOwnerBtn').addEventListener('click', createOwner);
+document.getElementById('createClubBtn').addEventListener('click', createClub);
+document.getElementById('addMemberBtn').addEventListener('click', addMemberToClub);
+document.getElementById('createMemberBtn').addEventListener('click', createMember);
+
+window.addEventListener('load', async () => {
+    await ensureAdmin();
+    await fetchOwners();
+    await fetchClubs();
+});
