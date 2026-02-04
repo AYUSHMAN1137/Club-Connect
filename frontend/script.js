@@ -231,7 +231,9 @@ async function redirectIfAuthenticated() {
         });
         const data = await response.json();
         if (data.success && data.user && data.user.role) {
-            const target = data.user.role === 'owner' ? 'owner-dashboard.html' : 'member-dashboard.html';
+            const target = data.user.role === 'owner'
+                ? 'owner-dashboard.html'
+                : (data.user.role === 'admin' ? 'admin-dashboard.html' : 'member-dashboard.html');
             redirected = true;
             window.location.replace(target);
             return;
@@ -357,6 +359,8 @@ signUpForm.addEventListener('submit', async (e) => {
                 // Redirect to dashboard based on role
                 if (data.user.role === 'owner') {
                     window.location.replace('owner-dashboard.html');
+                } else if (data.user.role === 'admin') {
+                    window.location.replace('admin-dashboard.html');
                 } else {
                     window.location.replace('member-dashboard.html');
                 }
@@ -419,6 +423,8 @@ signInForm.addEventListener('submit', async (e) => {
                 // Redirect to dashboard based on role
                 if (data.user.role === 'owner') {
                     window.location.replace('owner-dashboard.html');
+                } else if (data.user.role === 'admin') {
+                    window.location.replace('admin-dashboard.html');
                 } else {
                     window.location.replace('member-dashboard.html');
                 }

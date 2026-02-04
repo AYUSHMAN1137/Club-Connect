@@ -27,6 +27,67 @@ const TABLES = [
     { table: 'AttendanceRecords', model: db.AttendanceRecord }
 ];
 
+const FK_RULES = {
+    Events: [{ field: 'clubId', model: db.Club }],
+    Memberships: [
+        { field: 'userId', model: db.User },
+        { field: 'clubId', model: db.Club }
+    ],
+    Announcements: [
+        { field: 'clubId', model: db.Club },
+        { field: 'createdById', model: db.User, optional: true }
+    ],
+    Attendances: [
+        { field: 'eventId', model: db.Event },
+        { field: 'userId', model: db.User }
+    ],
+    EventRSVPs: [
+        { field: 'eventId', model: db.Event },
+        { field: 'userId', model: db.User }
+    ],
+    PointHistories: [
+        { field: 'userId', model: db.User },
+        { field: 'clubId', model: db.Club }
+    ],
+    Notifications: [{ field: 'userId', model: db.User }],
+    Messages: [
+        { field: 'senderId', model: db.User },
+        { field: 'recipientId', model: db.User }
+    ],
+    GalleryPhotos: [{ field: 'eventId', model: db.Event }],
+    MemberCertificates: [
+        { field: 'memberId', model: db.User },
+        { field: 'clubId', model: db.Club },
+        { field: 'eventId', model: db.Event, optional: true }
+    ],
+    Polls: [
+        { field: 'clubId', model: db.Club },
+        { field: 'createdById', model: db.User }
+    ],
+    PollOptions: [{ field: 'pollId', model: db.Poll }],
+    PollVotes: [
+        { field: 'pollId', model: db.Poll },
+        { field: 'optionId', model: db.PollOption },
+        { field: 'userId', model: db.User }
+    ],
+    ProjectIdeas: [{ field: 'clubId', model: db.Club }],
+    MemberProjects: [
+        { field: 'clubId', model: db.Club },
+        { field: 'userId', model: db.User },
+        { field: 'projectIdeaId', model: db.ProjectIdea, optional: true }
+    ],
+    MemberProjectHistories: [{ field: 'memberProjectId', model: db.MemberProject }],
+    AttendanceSessions: [
+        { field: 'eventId', model: db.Event },
+        { field: 'ownerId', model: db.User }
+    ],
+    AttendanceRecords: [
+        { field: 'sessionId', model: db.AttendanceSession },
+        { field: 'eventId', model: db.Event },
+        { field: 'memberId', model: db.User }
+    ]
+};
+
 function getTableNameForSequence(model) {
     const name = model.getTableName();
     if (typeof name === 'string') return name;
@@ -65,13 +126,44 @@ function fetchAll(sqlite, table) {
     });
 }
 
+async function getExistingIds(model) {
+    const rows = await model.findAll({ attributes: ['id'], raw: true });
+    return new Set(rows.map((r) => String(r.id)));
+}
+
+async function filterByForeignKeys(tableName, rows) {
+    const rules = FK_RULES[tableName];
+    if (!rules || rows.length === 0) return rows;
+
+    const idSets = new Map();
+    for (const rule of rules) {
+        const key = rule.model.name;
+        if (!idSets.has(key)) {
+            idSets.set(key, await getExistingIds(rule.model));
+        }
+    }
+
+    return rows.filter((row) => {
+        for (const rule of rules) {
+            const value = row[rule.field];
+            if (value === null || value === undefined || value === '') {
+                if (rule.optional) continue;
+                return false;
+            }
+            const set = idSets.get(rule.model.name);
+            if (!set.has(String(value))) return false;
+        }
+        return true;
+    });
+}
+
 async function resetSequence(model) {
     if (!model.rawAttributes.id || !model.rawAttributes.id.autoIncrement) return;
     const queryInterface = db.sequelize.getQueryInterface();
-    const seqTable = getTableNameForSequence(model);
-    const quotedTable = queryInterface.quoteTable(model.getTableName());
+    const quotedTable = queryInterface.queryGenerator.quoteTable(model.getTableName());
+    const seqTarget = db.sequelize.escape(quotedTable);
     await db.sequelize.query(
-        `SELECT setval(pg_get_serial_sequence('${seqTable}', 'id'), COALESCE((SELECT MAX(id) FROM ${quotedTable}), 0));`
+        `SELECT setval(pg_get_serial_sequence(${seqTarget}, 'id'), COALESCE((SELECT MAX(id) FROM ${quotedTable}), 0));`
     );
 }
 
@@ -97,15 +189,21 @@ async function migrate() {
 
         const fields = Object.keys(entry.model.rawAttributes);
         const cleanedRows = rows.map((row) => pickFields(row, fields));
+        const filteredRows = await filterByForeignKeys(entry.table, cleanedRows);
 
-        await entry.model.bulkCreate(cleanedRows, {
+        if (filteredRows.length === 0) {
+            console.log(`⏭️  Skipping ${entry.table} (no valid rows)`);
+            continue;
+        }
+
+        await entry.model.bulkCreate(filteredRows, {
             validate: false,
             hooks: false,
             ignoreDuplicates: true
         });
 
         await resetSequence(entry.model);
-        console.log(`✅ Migrated ${entry.table}: ${rows.length}`);
+        console.log(`✅ Migrated ${entry.table}: ${filteredRows.length}`);
     }
 
     sqlite.close();
