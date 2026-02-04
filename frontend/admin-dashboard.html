@@ -59,7 +59,7 @@
                     <input class="input" id="ownerPassword" placeholder="Password" type="password" value="123456">
                 </div>
                 <button class="btn" id="createOwnerBtn"><i class="fa-solid fa-plus"></i> Create Owner</button>
-                <div class="notice">Owner बनाते समय password बाद में बदल सकते हैं</div>
+                <div class="notice">Owners can change their password later</div>
                 <div class="list" id="ownersList"></div>
             </div>
 
@@ -71,20 +71,38 @@
                 </div>
                 <div class="form-row">
                     <input class="input" id="clubTheme" placeholder="Theme Color (e.g. #2563eb)">
-                    <select class="input" id="clubOwnerSelect"></select>
+                    <select class="input" id="clubOwnerSelect">
+                        <option value="">Select Owner</option>
+                    </select>
                 </div>
                 <button class="btn" id="createClubBtn"><i class="fa-solid fa-plus"></i> Create Club</button>
                 <div class="list" id="clubsList"></div>
             </div>
 
             <div class="card">
+                <h2><i class="fa-solid fa-user-plus"></i> Add Owner to Club</h2>
+                <div class="form-row">
+                    <select class="input" id="addOwnerSelect">
+                        <option value="">Select Owner</option>
+                    </select>
+                    <select class="input" id="addOwnerClubSelect">
+                        <option value="">Select Club</option>
+                    </select>
+                </div>
+                <button class="btn" id="addOwnerBtn"><i class="fa-solid fa-link"></i> Add Owner</button>
+                <div class="notice">A club can have multiple owners</div>
+            </div>
+
+            <div class="card">
                 <h2><i class="fa-solid fa-user-plus"></i> Add Member to Club</h2>
                 <div class="form-row">
                     <input class="input" id="memberStudentId" placeholder="Member Student ID">
-                    <select class="input" id="memberClubSelect"></select>
+                    <select class="input" id="memberClubSelect">
+                        <option value="">Select Club</option>
+                    </select>
                 </div>
                 <button class="btn" id="addMemberBtn"><i class="fa-solid fa-user-check"></i> Add Member</button>
-                <div class="notice">Member पहले register होना चाहिए</div>
+                <div class="notice">Members must be registered first</div>
             </div>
 
             <div class="card">

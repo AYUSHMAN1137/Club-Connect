@@ -551,6 +551,31 @@ app.post('/admin/add-member-to-club', verifyToken, isAdmin, async (req, res) => 
     }
 });
 
+app.post('/admin/add-owner-to-club', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const { ownerId, clubId } = req.body;
+        if (!ownerId || !clubId) {
+            return res.status(400).json({ success: false, message: 'ownerId and clubId required!' });
+        }
+        const owner = await db.findUserById(parseInt(ownerId, 10));
+        if (!owner || owner.role !== 'owner') {
+            return res.status(400).json({ success: false, message: 'Owner not found or invalid role!' });
+        }
+        const club = await db.findClubById(parseInt(clubId, 10));
+        if (!club) {
+            return res.status(404).json({ success: false, message: 'Club not found!' });
+        }
+        const { created } = await db.addOwnerToClub(owner.id, club.id);
+        if (!created) {
+            return res.json({ success: false, message: 'Owner already assigned to this club!' });
+        }
+        return res.json({ success: true, message: 'Owner added to club!' });
+    } catch (error) {
+        console.error('Add owner to club error:', error);
+        return res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
 // List owners
 app.get('/admin/owners', verifyToken, isAdmin, async (req, res) => {
     try {
@@ -570,7 +595,13 @@ app.get('/admin/clubs', verifyToken, isAdmin, async (req, res) => {
         const simplified = clubs.map(c => ({
             id: c.id,
             name: c.name,
-            owner: c.Owner ? { id: c.Owner.id, username: c.Owner.username } : null
+            owner: c.Owner ? { id: c.Owner.id, username: c.Owner.username } : null,
+            owners: Array.from(new Map(
+                [
+                    ...(c.Owner ? [c.Owner] : []),
+                    ...(c.Owners || [])
+                ].map(o => [o.id, o])
+            ).values()).map(o => ({ id: o.id, username: o.username, email: o.email }))
         }));
         return res.json({ success: true, clubs: simplified });
     } catch (error) {
@@ -3146,17 +3177,14 @@ app.post('/messages', verifyToken, async (req, res) => {
             }
 
             // Find owner from club
-            const owner = await db.findUserById(activeClub.ownerId);
+            const ownerIds = new Set(
+                [
+                    activeClub.ownerId,
+                    ...(activeClub.Owners || []).map(o => o.id)
+                ].filter(Boolean)
+            );
 
-            if (!owner) {
-                return res.status(403).json({
-                    success: false,
-                    message: 'Club owner not found!'
-                });
-            }
-
-            // Check if member is trying to message the owner
-            if (!parsedRecipientId || parsedRecipientId !== owner.id) {
+            if (!parsedRecipientId || !ownerIds.has(parsedRecipientId)) {
                 return res.status(403).json({
                     success: false,
                     message: '🔒 You can only message your club owner!'

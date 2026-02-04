@@ -1,4 +1,4 @@
-const { sequelize, User, Club, Membership, Announcement, Event, EventRSVP, PointHistory, Notification } = require('../models');
+const { sequelize, User, Club, Membership, Announcement, Event, EventRSVP, PointHistory, Notification, ClubOwner } = require('../models');
 // const bcrypt = require('bcryptjs');
 
 async function seedData() {
@@ -18,6 +18,8 @@ async function seedData() {
         // 2. Create Clubs
         const club1 = await Club.create({ name: 'IEEE', tagline: 'Tech for Humanity', themeColor: '#00629B', ownerId: owner1.id });
         const club2 = await Club.create({ name: 'Utopia', tagline: 'Innovation Hub', themeColor: '#FFC800', ownerId: owner2.id });
+        await ClubOwner.create({ userId: owner1.id, clubId: club1.id });
+        await ClubOwner.create({ userId: owner2.id, clubId: club2.id });
 
         // 3. Create Memberships
         await Membership.create({ userId: member1.id, clubId: club1.id, points: 100, rank: 'Bronze', status: 'active' });
