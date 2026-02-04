@@ -138,50 +138,80 @@ async function userExists(email, username, studentId) {
  * Get all clubs
  */
 async function getAllClubs() {
-    return await Club.findAll({
-        include: [
-            { model: User, as: 'Owner', attributes: ['id', 'username', 'email'] },
-            { model: User, as: 'Owners', attributes: ['id', 'username', 'email'], through: { attributes: [] } }
-        ]
-    });
+    try {
+        return await Club.findAll({
+            include: [
+                { model: User, as: 'Owner', attributes: ['id', 'username', 'email'] },
+                { model: User, as: 'Owners', attributes: ['id', 'username', 'email'], through: { attributes: [] } }
+            ]
+        });
+    } catch (error) {
+        return await Club.findAll({
+            include: [{ model: User, as: 'Owner', attributes: ['id', 'username', 'email'] }]
+        });
+    }
 }
 
 /**
  * Find club by ID
  */
 async function findClubById(id) {
-    return await Club.findByPk(id, {
-        include: [
-            { model: User, as: 'Owner', attributes: ['id', 'username', 'email'] },
-            { model: User, as: 'Owners', attributes: ['id', 'username', 'email'], through: { attributes: [] } }
-        ]
-    });
+    try {
+        return await Club.findByPk(id, {
+            include: [
+                { model: User, as: 'Owner', attributes: ['id', 'username', 'email'] },
+                { model: User, as: 'Owners', attributes: ['id', 'username', 'email'], through: { attributes: [] } }
+            ]
+        });
+    } catch (error) {
+        return await Club.findByPk(id, {
+            include: [{ model: User, as: 'Owner', attributes: ['id', 'username', 'email'] }]
+        });
+    }
 }
 
 /**
  * Find club by owner ID
  */
 async function findClubByOwnerId(ownerId) {
-    const directClub = await Club.findOne({
-        where: { ownerId },
-        include: [
-            { model: User, as: 'Owner', attributes: ['id', 'username', 'email'] },
-            { model: User, as: 'Owners', attributes: ['id', 'username', 'email'], through: { attributes: [] } }
-        ]
-    });
+    let directClub = null;
+    try {
+        directClub = await Club.findOne({
+            where: { ownerId },
+            include: [
+                { model: User, as: 'Owner', attributes: ['id', 'username', 'email'] },
+                { model: User, as: 'Owners', attributes: ['id', 'username', 'email'], through: { attributes: [] } }
+            ]
+        });
+    } catch (error) {
+        directClub = await Club.findOne({
+            where: { ownerId },
+            include: [{ model: User, as: 'Owner', attributes: ['id', 'username', 'email'] }]
+        });
+    }
     if (directClub) {
         return directClub;
     }
-    const ownerLink = await ClubOwner.findOne({ where: { userId: ownerId } });
-    if (!ownerLink) {
+    try {
+        const ownerLink = await ClubOwner.findOne({ where: { userId: ownerId } });
+        if (!ownerLink) {
+            return null;
+        }
+        try {
+            return await Club.findByPk(ownerLink.clubId, {
+                include: [
+                    { model: User, as: 'Owner', attributes: ['id', 'username', 'email'] },
+                    { model: User, as: 'Owners', attributes: ['id', 'username', 'email'], through: { attributes: [] } }
+                ]
+            });
+        } catch (error) {
+            return await Club.findByPk(ownerLink.clubId, {
+                include: [{ model: User, as: 'Owner', attributes: ['id', 'username', 'email'] }]
+            });
+        }
+    } catch (error) {
         return null;
     }
-    return await Club.findByPk(ownerLink.clubId, {
-        include: [
-            { model: User, as: 'Owner', attributes: ['id', 'username', 'email'] },
-            { model: User, as: 'Owners', attributes: ['id', 'username', 'email'], through: { attributes: [] } }
-        ]
-    });
 }
 
 /**

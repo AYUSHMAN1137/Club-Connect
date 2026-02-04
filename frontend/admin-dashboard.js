@@ -31,15 +31,28 @@ function notify(msg, type = 'info') {
     setTimeout(() => el.remove(), 3000);
 }
 
+function setSelectLoading(select, text) {
+    if (!select) return;
+    select.disabled = true;
+    select.innerHTML = `<option value="">${text}</option>`;
+}
+
+function setSelectReady(select) {
+    if (!select) return;
+    select.disabled = false;
+}
+
 async function fetchOwners() {
+    const select = document.getElementById('clubOwnerSelect');
+    const addOwnerSelect = document.getElementById('addOwnerSelect');
+    setSelectLoading(select, 'Loading owners...');
+    setSelectLoading(addOwnerSelect, 'Loading owners...');
     const res = await fetch(`${API_URL}/admin/owners`, {
         headers: { Authorization: `Bearer ${token}` }
     });
     const data = await res.json();
     if (data.success) {
         const list = document.getElementById('ownersList');
-        const select = document.getElementById('clubOwnerSelect');
-        const addOwnerSelect = document.getElementById('addOwnerSelect');
         const selectedOwner = select?.value || '';
         const selectedAddOwner = addOwnerSelect?.value || '';
         list.innerHTML = '';
@@ -69,18 +82,22 @@ async function fetchOwners() {
         if (addOwnerSelect && selectedAddOwner) {
             addOwnerSelect.value = selectedAddOwner;
         }
+        setSelectReady(select);
+        setSelectReady(addOwnerSelect);
     }
 }
 
 async function fetchClubs() {
+    const select = document.getElementById('memberClubSelect');
+    const addOwnerClubSelect = document.getElementById('addOwnerClubSelect');
+    setSelectLoading(select, 'Loading clubs...');
+    setSelectLoading(addOwnerClubSelect, 'Loading clubs...');
     const res = await fetch(`${API_URL}/admin/clubs`, {
         headers: { Authorization: `Bearer ${token}` }
     });
     const data = await res.json();
     if (data.success) {
         const list = document.getElementById('clubsList');
-        const select = document.getElementById('memberClubSelect');
-        const addOwnerClubSelect = document.getElementById('addOwnerClubSelect');
         const selectedClub = select?.value || '';
         const selectedAddOwnerClub = addOwnerClubSelect?.value || '';
         list.innerHTML = '';
@@ -113,6 +130,8 @@ async function fetchClubs() {
         if (addOwnerClubSelect && selectedAddOwnerClub) {
             addOwnerClubSelect.value = selectedAddOwnerClub;
         }
+        setSelectReady(select);
+        setSelectReady(addOwnerClubSelect);
     }
 }
 
