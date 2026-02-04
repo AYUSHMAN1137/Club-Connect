@@ -25,6 +25,7 @@ const {
     MemberProjectHistory,
     AttendanceSession,
     AttendanceRecord,
+    ClubOwner,
     sequelize
 } = require('../models');
 const { Op } = require('sequelize');
@@ -138,7 +139,10 @@ async function userExists(email, username, studentId) {
  */
 async function getAllClubs() {
     return await Club.findAll({
-        include: [{ model: User, as: 'Owner', attributes: ['id', 'username', 'email'] }]
+        include: [
+            { model: User, as: 'Owner', attributes: ['id', 'username', 'email'] },
+            { model: User, as: 'Owners', attributes: ['id', 'username', 'email'], through: { attributes: [] } }
+        ]
     });
 }
 
@@ -147,7 +151,10 @@ async function getAllClubs() {
  */
 async function findClubById(id) {
     return await Club.findByPk(id, {
-        include: [{ model: User, as: 'Owner', attributes: ['id', 'username', 'email'] }]
+        include: [
+            { model: User, as: 'Owner', attributes: ['id', 'username', 'email'] },
+            { model: User, as: 'Owners', attributes: ['id', 'username', 'email'], through: { attributes: [] } }
+        ]
     });
 }
 
@@ -155,9 +162,25 @@ async function findClubById(id) {
  * Find club by owner ID
  */
 async function findClubByOwnerId(ownerId) {
-    return await Club.findOne({
+    const directClub = await Club.findOne({
         where: { ownerId },
-        include: [{ model: User, as: 'Owner', attributes: ['id', 'username', 'email'] }]
+        include: [
+            { model: User, as: 'Owner', attributes: ['id', 'username', 'email'] },
+            { model: User, as: 'Owners', attributes: ['id', 'username', 'email'], through: { attributes: [] } }
+        ]
+    });
+    if (directClub) {
+        return directClub;
+    }
+    const ownerLink = await ClubOwner.findOne({ where: { userId: ownerId } });
+    if (!ownerLink) {
+        return null;
+    }
+    return await Club.findByPk(ownerLink.clubId, {
+        include: [
+            { model: User, as: 'Owner', attributes: ['id', 'username', 'email'] },
+            { model: User, as: 'Owners', attributes: ['id', 'username', 'email'], through: { attributes: [] } }
+        ]
     });
 }
 
@@ -165,7 +188,7 @@ async function findClubByOwnerId(ownerId) {
  * Create new club
  */
 async function createClub(clubData) {
-    return await Club.create({
+    const club = await Club.create({
         name: clubData.name,
         tagline: clubData.tagline || '',
         themeColor: clubData.themeColor || '#000000',
@@ -173,6 +196,11 @@ async function createClub(clubData) {
         description: clubData.description || '',
         ownerId: clubData.ownerId
     });
+    await ClubOwner.findOrCreate({
+        where: { clubId: club.id, userId: clubData.ownerId },
+        defaults: { clubId: club.id, userId: clubData.ownerId }
+    });
+    return club;
 }
 
 /**
@@ -185,6 +213,14 @@ async function updateClub(id, updates) {
         return club;
     }
     return null;
+}
+
+async function addOwnerToClub(userId, clubId) {
+    const [ownerLink, created] = await ClubOwner.findOrCreate({
+        where: { userId, clubId },
+        defaults: { userId, clubId }
+    });
+    return { ownerLink, created };
 }
 
 // ========== MEMBERSHIP FUNCTIONS ==========
@@ -935,6 +971,7 @@ module.exports = {
     findClubByOwnerId,
     createClub,
     updateClub,
+    addOwnerToClub,
 
     // Membership functions
     getClubMembers,
@@ -987,6 +1024,7 @@ module.exports = {
     // Raw models (for advanced queries)
     User,
     Club,
+    ClubOwner,
     Event,
     Membership,
     Announcement,
@@ -1008,4 +1046,3 @@ module.exports = {
     sequelize,
     markAttendanceWithPoints
 };
-

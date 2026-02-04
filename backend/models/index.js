@@ -14,12 +14,14 @@ const MemberProject = require('./MemberProject');
 const MemberProjectHistory = require('./MemberProjectHistory');
 const AttendanceSession = require('./AttendanceSession');
 const AttendanceRecord = require('./AttendanceRecord');
+const ClubOwner = require('./ClubOwner');
 
 // ========== RELATIONSHIPS ==========
 
-// Club Owner Relationship
 Club.belongsTo(User, { as: 'Owner', foreignKey: 'ownerId' });
 User.hasOne(Club, { as: 'OwnedClub', foreignKey: 'ownerId' });
+Club.belongsToMany(User, { through: ClubOwner, as: 'Owners', foreignKey: 'clubId', otherKey: 'userId' });
+User.belongsToMany(Club, { through: ClubOwner, as: 'OwnedClubs', foreignKey: 'userId', otherKey: 'clubId' });
 
 // Membership (User <-> Club) - Many to Many with CASCADE
 User.belongsToMany(Club, { through: Membership, foreignKey: 'userId', otherKey: 'clubId' });
@@ -150,5 +152,6 @@ module.exports = {
     MemberProject,
     MemberProjectHistory,
     AttendanceSession,
-    AttendanceRecord
+    AttendanceRecord,
+    ClubOwner
 };

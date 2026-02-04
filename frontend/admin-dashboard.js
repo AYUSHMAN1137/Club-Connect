@@ -39,8 +39,14 @@ async function fetchOwners() {
     if (data.success) {
         const list = document.getElementById('ownersList');
         const select = document.getElementById('clubOwnerSelect');
+        const addOwnerSelect = document.getElementById('addOwnerSelect');
+        const selectedOwner = select?.value || '';
+        const selectedAddOwner = addOwnerSelect?.value || '';
         list.innerHTML = '';
         select.innerHTML = '<option value="">Select Owner</option>';
+        if (addOwnerSelect) {
+            addOwnerSelect.innerHTML = '<option value="">Select Owner</option>';
+        }
         data.owners.forEach(o => {
             const item = document.createElement('div');
             item.className = 'item';
@@ -50,7 +56,19 @@ async function fetchOwners() {
             opt.value = o.id;
             opt.textContent = `${o.username} (#${o.id})`;
             select.appendChild(opt);
+            if (addOwnerSelect) {
+                const addOpt = document.createElement('option');
+                addOpt.value = o.id;
+                addOpt.textContent = `${o.username} (#${o.id})`;
+                addOwnerSelect.appendChild(addOpt);
+            }
         });
+        if (selectedOwner) {
+            select.value = selectedOwner;
+        }
+        if (addOwnerSelect && selectedAddOwner) {
+            addOwnerSelect.value = selectedAddOwner;
+        }
     }
 }
 
@@ -62,18 +80,39 @@ async function fetchClubs() {
     if (data.success) {
         const list = document.getElementById('clubsList');
         const select = document.getElementById('memberClubSelect');
+        const addOwnerClubSelect = document.getElementById('addOwnerClubSelect');
+        const selectedClub = select?.value || '';
+        const selectedAddOwnerClub = addOwnerClubSelect?.value || '';
         list.innerHTML = '';
         select.innerHTML = '<option value="">Select Club</option>';
+        if (addOwnerClubSelect) {
+            addOwnerClubSelect.innerHTML = '<option value="">Select Club</option>';
+        }
         data.clubs.forEach(c => {
             const item = document.createElement('div');
             item.className = 'item';
-            item.innerHTML = `<span>${c.name}</span><span>Owner: ${c.owner?.username || 'none'}</span>`;
+            const ownerNames = (c.owners && c.owners.length > 0)
+                ? c.owners.map(o => o.username).join(', ')
+                : (c.owner?.username || 'none');
+            item.innerHTML = `<span>${c.name}</span><span>Owners: ${ownerNames}</span>`;
             list.appendChild(item);
             const opt = document.createElement('option');
             opt.value = c.id;
             opt.textContent = `${c.name} (#${c.id})`;
             select.appendChild(opt);
+            if (addOwnerClubSelect) {
+                const addOpt = document.createElement('option');
+                addOpt.value = c.id;
+                addOpt.textContent = `${c.name} (#${c.id})`;
+                addOwnerClubSelect.appendChild(addOpt);
+            }
         });
+        if (selectedClub) {
+            select.value = selectedClub;
+        }
+        if (addOwnerClubSelect && selectedAddOwnerClub) {
+            addOwnerClubSelect.value = selectedAddOwnerClub;
+        }
     }
 }
 
@@ -83,7 +122,7 @@ async function createOwner() {
     const email = document.getElementById('ownerEmail').value.trim();
     const password = document.getElementById('ownerPassword').value;
     if (!username || !studentId || !email || !password) {
-        notify('सारे fields भरें', 'error');
+        notify('Fill in all owner fields', 'error');
         return;
     }
     const res = await fetch(`${API_URL}/admin/create-owner`, {
@@ -93,7 +132,7 @@ async function createOwner() {
     });
     const data = await res.json();
     if (data.success) {
-        notify('Owner बनाया गया');
+        notify('Owner created');
         await fetchOwners();
     } else {
         notify(data.message || 'Owner create failed', 'error');
@@ -106,7 +145,7 @@ async function createClub() {
     const themeColor = document.getElementById('clubTheme').value.trim();
     const ownerId = document.getElementById('clubOwnerSelect').value;
     if (!name || !ownerId) {
-        notify('Club name और Owner चुनें', 'error');
+        notify('Select a club name and owner', 'error');
         return;
     }
     const res = await fetch(`${API_URL}/admin/create-club`, {
@@ -116,10 +155,31 @@ async function createClub() {
     });
     const data = await res.json();
     if (data.success) {
-        notify('Club बनाया गया');
+        notify('Club created');
         await fetchClubs();
     } else {
         notify(data.message || 'Club create failed', 'error');
+    }
+}
+
+async function addOwnerToClub() {
+    const ownerId = document.getElementById('addOwnerSelect').value;
+    const clubId = document.getElementById('addOwnerClubSelect').value;
+    if (!ownerId || !clubId) {
+        notify('Select an owner and club', 'error');
+        return;
+    }
+    const res = await fetch(`${API_URL}/admin/add-owner-to-club`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ownerId: parseInt(ownerId, 10), clubId: parseInt(clubId, 10) })
+    });
+    const data = await res.json();
+    if (data.success) {
+        notify('Owner added to club');
+        await fetchClubs();
+    } else {
+        notify(data.message || 'Add owner failed', 'error');
     }
 }
 
@@ -127,7 +187,7 @@ async function addMemberToClub() {
     const studentId = document.getElementById('memberStudentId').value.trim();
     const clubId = document.getElementById('memberClubSelect').value;
     if (!studentId || !clubId) {
-        notify('Student ID और Club चुनें', 'error');
+        notify('Select student ID and club', 'error');
         return;
     }
     const res = await fetch(`${API_URL}/admin/add-member-to-club`, {
@@ -137,7 +197,7 @@ async function addMemberToClub() {
     });
     const data = await res.json();
     if (data.success) {
-        notify('Member club में जोड़ दिया गया');
+        notify('Member added to club');
     } else {
         notify(data.message || 'Add member failed', 'error');
     }
@@ -149,7 +209,7 @@ async function createMember() {
     const email = document.getElementById('memberEmail').value.trim();
     const password = document.getElementById('memberPassword').value;
     if (!username || !studentId || !email || !password) {
-        notify('सारे fields भरें', 'error');
+        notify('Fill in all member fields', 'error');
         return;
     }
     const res = await fetch(`${API_URL}/admin/create-member`, {
@@ -159,7 +219,7 @@ async function createMember() {
     });
     const data = await res.json();
     if (data.success) {
-        notify('Member बनाया गया');
+        notify('Member created');
     } else {
         notify(data.message || 'Member create failed', 'error');
     }
@@ -171,6 +231,7 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
 });
 document.getElementById('createOwnerBtn').addEventListener('click', createOwner);
 document.getElementById('createClubBtn').addEventListener('click', createClub);
+document.getElementById('addOwnerBtn').addEventListener('click', addOwnerToClub);
 document.getElementById('addMemberBtn').addEventListener('click', addMemberToClub);
 document.getElementById('createMemberBtn').addEventListener('click', createMember);
 
@@ -178,4 +239,28 @@ window.addEventListener('load', async () => {
     await ensureAdmin();
     await fetchOwners();
     await fetchClubs();
+    const ownerSelect = document.getElementById('clubOwnerSelect');
+    const addOwnerSelect = document.getElementById('addOwnerSelect');
+    const addOwnerClubSelect = document.getElementById('addOwnerClubSelect');
+    const memberClubSelect = document.getElementById('memberClubSelect');
+    if (ownerSelect) {
+        ownerSelect.addEventListener('focus', () => {
+            if (ownerSelect.options.length <= 1) fetchOwners();
+        });
+    }
+    if (addOwnerSelect) {
+        addOwnerSelect.addEventListener('focus', () => {
+            if (addOwnerSelect.options.length <= 1) fetchOwners();
+        });
+    }
+    if (addOwnerClubSelect) {
+        addOwnerClubSelect.addEventListener('focus', () => {
+            if (addOwnerClubSelect.options.length <= 1) fetchClubs();
+        });
+    }
+    if (memberClubSelect) {
+        memberClubSelect.addEventListener('focus', () => {
+            if (memberClubSelect.options.length <= 1) fetchClubs();
+        });
+    }
 });
