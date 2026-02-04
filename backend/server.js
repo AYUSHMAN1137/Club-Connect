@@ -18,6 +18,8 @@ const { generateNonce, generateAttendanceToken, verifyAttendanceToken, generateA
 
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || '*';
 
+db.ClubOwner.sync().catch(() => null);
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
