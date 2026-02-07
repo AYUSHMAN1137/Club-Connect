@@ -5373,6 +5373,163 @@ img {
     }
 }
 
+@media (max-width: 600px) {
+    :root {
+        --navbar-height: 58px;
+        --sidebar-width: 240px;
+    }
+
+    .top-navbar {
+        padding: 0 12px;
+    }
+
+    .sidebar {
+        width: 240px;
+    }
+
+    .content {
+        padding: 12px;
+    }
+
+    .welcome-section {
+        padding: 20px;
+        border-radius: 18px;
+        margin-bottom: 18px;
+    }
+
+    .welcome-section::before,
+    .welcome-section::after {
+        display: none;
+    }
+
+    .welcome-text h1 {
+        font-size: 24px;
+    }
+
+    .welcome-text p {
+        font-size: 14px;
+        margin-bottom: 16px;
+    }
+
+    .welcome-actions {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 13px;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+        margin-bottom: 18px;
+    }
+
+    .stat-card {
+        padding: 18px;
+        border-radius: 16px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .stat-card .stat-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+        margin-bottom: 12px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .dashboard-card {
+        border-radius: 16px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .dashboard-card .card-header {
+        padding: 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .card-title h3 {
+        font-size: 15px;
+    }
+
+    .card-link {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+
+    .card-body {
+        padding: 16px;
+    }
+
+    .attendance-chart-section,
+    .attendance-history-section {
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .chart-container {
+        height: 220px;
+    }
+
+    .data-table thead th,
+    .data-table tbody td {
+        padding: 10px;
+        font-size: 12px;
+    }
+
+    .leaderboard-table-section {
+        padding: 14px;
+        overflow-x: auto;
+        border-radius: 16px;
+    }
+
+    .leaderboard-table {
+        min-width: 520px;
+    }
+
+    .leaderboard-table .table-avatar {
+        width: 32px;
+        height: 32px;
+    }
+
+    .your-position-details {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .announcement-card {
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .announcement-card-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .announcement-card-meta {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+}
+
 @media (max-width: 480px) {
     .welcome-text h1 {
         font-size: 22px;

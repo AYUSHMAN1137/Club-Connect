@@ -114,6 +114,21 @@ function setDashboardLoading(isLoading) {
     }
 }
 
+function showPreloader() {
+    const preloader = document.getElementById('preloader');
+    if (preloader) {
+        preloader.classList.remove('hidden');
+    }
+}
+
+function hidePreloaderAfter(startedAt, minMs = 1200) {
+    const elapsed = Date.now() - startedAt;
+    const wait = Math.max(0, minMs - elapsed);
+    setTimeout(() => {
+        hidePreloader();
+    }, wait);
+}
+
 // Club Switcher Functionality
 async function loadMyClubs() {
     try {
@@ -217,7 +232,9 @@ document.addEventListener('click', (e) => {
 
 // Switch active club
 async function switchClub(clubId) {
+    const startedAt = Date.now();
     try {
+        showPreloader();
         setClubSwitcherLoading(true);
         setDashboardLoading(true);
         const response = await fetch(`${API_URL}/member/switch-club`, {
@@ -237,18 +254,22 @@ async function switchClub(clubId) {
             if (clubDropdown) clubDropdown.classList.remove('active');
             const clubSwitcher = document.querySelector('.club-switcher');
             if (clubSwitcher) clubSwitcher.classList.remove('active');
-            loadMyClubs();
-            loadDashboard(); // Reload dashboard with new club data
+            await Promise.all([loadMyClubs(), loadDashboard()]);
+            setClubSwitcherLoading(false);
+            setDashboardLoading(false);
+            hidePreloaderAfter(startedAt);
         } else {
             showNotification(data.message, 'error');
             setClubSwitcherLoading(false);
             setDashboardLoading(false);
+            hidePreloaderAfter(startedAt);
         }
     } catch (error) {
         console.error('Error switching club:', error);
         showNotification('Failed to switch club', 'error');
         setClubSwitcherLoading(false);
         setDashboardLoading(false);
+        hidePreloaderAfter(startedAt);
     }
 }
 
