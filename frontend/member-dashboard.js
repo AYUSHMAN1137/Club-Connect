@@ -649,7 +649,7 @@ async function loadDashboardStats() {
 
 let eventsUiInitialized = false;
 let eventsAll = [];
-let eventsViewMode = 'grid';
+let eventsViewMode = 'list';
 let eventsCalendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let eventsSelectedDayKey = null;
 
@@ -679,13 +679,11 @@ function getEventsFilters() {
 }
 
 function setEventsView(view) {
-    eventsViewMode = view;
+    eventsViewMode = view === 'calendar' || view === 'list' ? view : 'list';
     const calendarBtn = document.getElementById('eventsCalendarView');
-    const gridBtn = document.getElementById('eventsGridView');
     const listBtn = document.getElementById('eventsListView');
-    [calendarBtn, gridBtn, listBtn].forEach(btn => btn?.classList.remove('active'));
+    [calendarBtn, listBtn].forEach(btn => btn?.classList.remove('active'));
     if (view === 'calendar') calendarBtn?.classList.add('active');
-    if (view === 'grid') gridBtn?.classList.add('active');
     if (view === 'list') listBtn?.classList.add('active');
     renderEvents();
 }
@@ -1040,7 +1038,6 @@ function initEventsUi() {
     });
 
     document.getElementById('eventsCalendarView')?.addEventListener('click', () => setEventsView('calendar'));
-    document.getElementById('eventsGridView')?.addEventListener('click', () => setEventsView('grid'));
     document.getElementById('eventsListView')?.addEventListener('click', () => setEventsView('list'));
 
     document.getElementById('prevMonth')?.addEventListener('click', () => {
