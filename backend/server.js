@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const { Op } = require('sequelize');
+const { Op, DataTypes } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
 const QRCode = require('qrcode');
@@ -1414,6 +1414,14 @@ async function resolveMemberClubContext(userId) {
     }
     const activeClub = clubs.find(c => c.id === activeClubId) || clubs[0];
     return { member, clubs, activeClubId, activeClub };
+}
+
+async function ensureActiveClubColumn() {
+    const qi = db.sequelize.getQueryInterface();
+    const table = await qi.describeTable('Users');
+    if (!table.activeClubId) {
+        await qi.addColumn('Users', 'activeClubId', { type: DataTypes.INTEGER, allowNull: true });
+    }
 }
 
 // Get member dashboard - NOW USING SQL DATABASE
@@ -3679,6 +3687,9 @@ db.sequelize.authenticate()
         } else {
             console.log('✅ Database connected');
         }
+    })
+    .then(async () => {
+        await ensureActiveClubColumn();
     })
     .then(async () => {
         await ensureAdminUser();
