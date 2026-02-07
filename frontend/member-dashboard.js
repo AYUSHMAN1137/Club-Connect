@@ -87,10 +87,48 @@ async function verifyAuth() {
     }
 }
 
+function setClubSwitcherLoading(isLoading) {
+    const switcher = document.querySelector('.club-switcher');
+    const button = document.getElementById('clubSwitcherBtn');
+    const nameEl = document.getElementById('currentClubName');
+    if (isLoading) {
+        if (switcher) switcher.classList.add('switching');
+        if (button) button.disabled = true;
+        if (nameEl) nameEl.innerHTML = '<span class="switching-text">Switching...</span>';
+    } else {
+        if (switcher) switcher.classList.remove('switching');
+        if (button) button.disabled = false;
+    }
+}
+
+function setDashboardLoading(isLoading) {
+    const homeLoader = document.getElementById('homeLoader');
+    const dashboardContent = document.getElementById('dashboard-content');
+    if (!homeLoader || !dashboardContent) return;
+    if (isLoading) {
+        homeLoader.style.display = 'block';
+        dashboardContent.style.display = 'none';
+    } else {
+        homeLoader.style.display = 'none';
+        dashboardContent.style.display = 'block';
+    }
+}
+
 // Club Switcher Functionality
 async function loadMyClubs() {
     try {
         console.log('🔄 Loading clubs for member...');
+        const clubList = document.getElementById('clubList');
+        const clubCount = document.getElementById('clubCount');
+        if (clubList) {
+            clubList.innerHTML = `
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>Loading clubs...</p>
+                </div>
+            `;
+        }
+        if (clubCount) clubCount.textContent = '...';
         const response = await fetch(`${API_URL}/member/my-clubs`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -101,26 +139,26 @@ async function loadMyClubs() {
         console.log('📦 Clubs response:', data);
 
         if (data.success && data.clubs && data.clubs.length > 0) {
-            const activeClub = data.clubs.find(c => c.isActive) || data.clubs[0];
+            const activeClub = data.clubs.find(c => c.id === data.activeClub) || data.clubs.find(c => c.isActive) || data.clubs[0];
             console.log('✅ Active club found:', activeClub);
             document.getElementById('currentClubName').textContent = activeClub.name;
 
-            const clubList = document.getElementById('clubList');
             clubList.innerHTML = data.clubs.map(club => `
-                <div class="club-item ${club.isActive ? 'active' : ''}" onclick="switchClub(${club.id})">
+                <div class="club-item ${(club.id === data.activeClub || club.isActive) ? 'active' : ''}" onclick="switchClub(${club.id})">
                     <i class="fa-solid fa-building"></i>
                     <div class="club-item-info">
                         <h5>${club.name}</h5>
                         <p>${club.tagline || 'No tagline'}</p>
                     </div>
-                    ${club.isActive ? '<i class="fa-solid fa-check" style="color: #10b981; margin-left: auto;"></i>' : ''}
+                    ${(club.id === data.activeClub || club.isActive) ? '<i class="fa-solid fa-check" style="color: #10b981; margin-left: auto;"></i>' : ''}
                 </div>
             `).join('');
+            if (clubCount) clubCount.textContent = data.clubs.length;
+            setClubSwitcherLoading(false);
         } else {
             // No clubs - show message
             console.log('⚠️ No clubs found for member');
             document.getElementById('currentClubName').textContent = 'No Club';
-            const clubList = document.getElementById('clubList');
             clubList.innerHTML = `
                 <div style="padding: 20px; text-align: center; color: #6b7280;">
                     <i class="fa-solid fa-info-circle" style="font-size: 24px; margin-bottom: 10px;"></i>
@@ -128,9 +166,12 @@ async function loadMyClubs() {
                     <p style="margin: 5px 0 0 0; font-size: 12px; color: #9ca3af;">Wait for club head to add you.</p>
                 </div>
             `;
+            if (clubCount) clubCount.textContent = '0';
+            setClubSwitcherLoading(false);
         }
     } catch (error) {
         console.error('❌ Error loading clubs:', error);
+        setClubSwitcherLoading(false);
     }
 }
 
@@ -177,6 +218,8 @@ document.addEventListener('click', (e) => {
 // Switch active club
 async function switchClub(clubId) {
     try {
+        setClubSwitcherLoading(true);
+        setDashboardLoading(true);
         const response = await fetch(`${API_URL}/member/switch-club`, {
             method: 'POST',
             headers: {
@@ -195,10 +238,14 @@ async function switchClub(clubId) {
             loadDashboard(); // Reload dashboard with new club data
         } else {
             showNotification(data.message, 'error');
+            setClubSwitcherLoading(false);
+            setDashboardLoading(false);
         }
     } catch (error) {
         console.error('Error switching club:', error);
         showNotification('Failed to switch club', 'error');
+        setClubSwitcherLoading(false);
+        setDashboardLoading(false);
     }
 }
 
@@ -441,6 +488,7 @@ async function loadDashboardStats() {
                     // Load student ID
                     loadStudentId();
                 }
+                setDashboardLoading(false);
                 return;
             }
 
@@ -565,6 +613,7 @@ async function loadDashboardStats() {
                         </div>
                     `;
             }
+            setDashboardLoading(false);
         } else {
             throw new Error(dashData.message || 'Failed to load dashboard data');
         }

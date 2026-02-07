@@ -1402,17 +1402,27 @@ app.delete('/owner/gallery/:photoId', verifyToken, isOwner, async (req, res) => 
 
 // ========== MEMBER API ROUTES ==========
 
+async function resolveMemberClubContext(userId) {
+    const member = await db.findUserById(userId);
+    if (!member) return { member: null, clubs: [], activeClubId: null, activeClub: null };
+    const clubs = await db.getUserClubs(userId);
+    if (!clubs || clubs.length === 0) return { member, clubs: [], activeClubId: null, activeClub: null };
+    let activeClubId = member.activeClubId;
+    if (!activeClubId || !clubs.some(c => c.id === activeClubId)) {
+        activeClubId = clubs[0].id;
+        await db.updateUser(userId, { activeClubId });
+    }
+    const activeClub = clubs.find(c => c.id === activeClubId) || clubs[0];
+    return { member, clubs, activeClubId, activeClub };
+}
+
 // Get member dashboard - NOW USING SQL DATABASE
 app.get('/member/dashboard', verifyToken, isMember, async (req, res) => {
     try {
-        // Find member using SQL
-        const member = await db.findUserById(req.user.id);
+        const { member, clubs: memberClubs, activeClub, activeClubId } = await resolveMemberClubContext(req.user.id);
         if (!member) {
             return res.status(404).json({ success: false, message: 'Member not found!' });
         }
-
-        // Get member's clubs using SQL
-        const memberClubs = await db.getUserClubs(req.user.id);
 
         // Handle case when member has no club
         if (!memberClubs || memberClubs.length === 0) {
@@ -1435,9 +1445,7 @@ app.get('/member/dashboard', verifyToken, isMember, async (req, res) => {
             });
         }
 
-        // Get first/active club (simplified)
-        const activeClub = memberClubs[0];
-        const club = await db.findClubById(activeClub.id);
+        const club = await db.findClubById(activeClubId || activeClub.id);
 
         // Get club events using SQL
         const clubEvents = await db.getClubEvents(activeClub.id);
@@ -1483,16 +1491,13 @@ app.get('/member/dashboard', verifyToken, isMember, async (req, res) => {
 // Get member events - NOW USING SQL DATABASE
 app.get('/member/events', verifyToken, isMember, async (req, res) => {
     try {
-        // Get member's clubs using SQL
-        const memberClubs = await db.getUserClubs(req.user.id);
+        const { clubs: memberClubs, activeClub } = await resolveMemberClubContext(req.user.id);
 
         // Handle case when member has no club
         if (!memberClubs || memberClubs.length === 0) {
             return res.json({ success: true, events: [] });
         }
 
-        // Get active club events using SQL
-        const activeClub = memberClubs[0];
         const clubEvents = await db.getClubEvents(activeClub.id);
 
         // Add hasRsvped and hasAttended for each event
@@ -1614,8 +1619,7 @@ app.get('/member/attendance', verifyToken, isMember, async (req, res) => {
 // Get leaderboard
 app.get('/member/leaderboard', verifyToken, isMember, async (req, res) => {
     try {
-        // Get member's clubs using SQL
-        const memberClubs = await db.getUserClubs(req.user.id);
+        const { clubs: memberClubs, activeClub } = await resolveMemberClubContext(req.user.id);
 
         if (!memberClubs || memberClubs.length === 0) {
             // No club - return empty leaderboard
@@ -1623,8 +1627,6 @@ app.get('/member/leaderboard', verifyToken, isMember, async (req, res) => {
         }
 
         // Get active club
-        const activeClub = memberClubs[0];
-
         // Get club leaderboard using SQL
         const leaderboard = await db.getClubLeaderboard(activeClub.id, 50);
 
@@ -1705,9 +1707,9 @@ app.post('/member/polls/:id/vote', verifyToken, isMember, async (req, res) => {
 app.get('/member/project-ideas', verifyToken, isMember, async (req, res) => {
     try {
         const clubId = req.query.clubId ? parseInt(req.query.clubId, 10) : null;
-        const clubs = await db.getUserClubs(req.user.id);
+        const { clubs, activeClubId } = await resolveMemberClubContext(req.user.id);
         if (!clubs || clubs.length === 0) return res.json({ success: true, projectIdeas: [] });
-        const targetClubId = clubId || clubs[0].id;
+        const targetClubId = clubId || activeClubId || clubs[0].id;
         const membership = await db.getMembership(req.user.id, targetClubId);
         if (!membership) return res.json({ success: true, projectIdeas: [] });
         const ideas = await db.getProjectIdeasByClubId(targetClubId);
@@ -1724,9 +1726,9 @@ app.get('/member/project-ideas', verifyToken, isMember, async (req, res) => {
 app.get('/member/my-project', verifyToken, isMember, async (req, res) => {
     try {
         const clubId = req.query.clubId ? parseInt(req.query.clubId, 10) : null;
-        const clubs = await db.getUserClubs(req.user.id);
+        const { clubs, activeClubId } = await resolveMemberClubContext(req.user.id);
         if (!clubs || clubs.length === 0) return res.json({ success: true, memberProject: null });
-        const targetClubId = clubId || clubs[0].id;
+        const targetClubId = clubId || activeClubId || clubs[0].id;
         const mp = await db.getMemberProject(req.user.id, targetClubId);
         res.json({ success: true, memberProject: mp });
     } catch (error) {
@@ -1738,9 +1740,9 @@ app.get('/member/my-project', verifyToken, isMember, async (req, res) => {
 app.put('/member/my-project/progress', verifyToken, isMember, async (req, res) => {
     try {
         const { status, progressPercent } = req.body;
-        const clubs = await db.getUserClubs(req.user.id);
+        const { clubs, activeClubId } = await resolveMemberClubContext(req.user.id);
         if (!clubs || clubs.length === 0) return res.status(400).json({ success: false, message: 'Not in any club!' });
-        const clubId = req.body.clubId ? parseInt(req.body.clubId, 10) : clubs[0].id;
+        const clubId = req.body.clubId ? parseInt(req.body.clubId, 10) : (activeClubId || clubs[0].id);
         const mp = await db.updateMemberProjectProgress(req.user.id, clubId, { status, progressPercent });
         res.json({ success: true, message: 'Progress updated!', memberProject: mp.toJSON ? mp.toJSON() : mp });
     } catch (error) {
@@ -2005,14 +2007,10 @@ app.get('/member/achievements', verifyToken, isMember, async (req, res) => {
 // Get member profile (Universal & Active Club Context)
 app.get('/member/profile', verifyToken, isMember, async (req, res) => {
     try {
-        // Find member using SQL
-        const member = await db.findUserById(req.user.id);
+        const { member, clubs: memberClubs, activeClub } = await resolveMemberClubContext(req.user.id);
         if (!member) {
             return res.status(404).json({ success: false, message: 'Member not found!' });
         }
-
-        // Get member's clubs using SQL
-        const memberClubs = await db.getUserClubs(req.user.id);
 
         // Calculate total points and build clubs data
         let totalPoints = 0;
@@ -2032,10 +2030,9 @@ app.get('/member/profile', verifyToken, isMember, async (req, res) => {
             });
         }
 
-        // Get active club (first club)
-        if (memberClubs.length > 0) {
-            activeClubPoints = memberClubs[0].points || 0;
-            activeClubRank = memberClubs[0].rank || 'Rookie';
+        if (activeClub) {
+            activeClubPoints = activeClub.points || 0;
+            activeClubRank = activeClub.rank || 'Rookie';
         }
 
         console.log(`📋 [SQL] Profile loaded for: ${member.username}`);
@@ -2073,14 +2070,10 @@ app.get('/member/profile', verifyToken, isMember, async (req, res) => {
 // Get member's clubs - NOW USING SQL DATABASE
 app.get('/member/my-clubs', verifyToken, isMember, async (req, res) => {
     try {
-        // Find member using SQL
-        const member = await db.findUserById(req.user.id);
+        const { member, clubs: memberClubs, activeClubId } = await resolveMemberClubContext(req.user.id);
         if (!member) {
             return res.status(404).json({ success: false, message: 'Member not found!' });
         }
-
-        // Get member's clubs using SQL
-        const memberClubs = await db.getUserClubs(req.user.id);
 
         console.log(`📋 [SQL] Fetched ${memberClubs.length} clubs for member: ${member.username}`);
 
@@ -2091,9 +2084,9 @@ app.get('/member/my-clubs', verifyToken, isMember, async (req, res) => {
                 name: c.name,
                 logo: c.logo,
                 tagline: c.tagline,
-                isActive: false // 'activeClub' concept is simplified in SQL for now
+                isActive: activeClubId ? c.id === activeClubId : false
             })),
-            activeClub: memberClubs.length > 0 ? memberClubs[0].id : null
+            activeClub: activeClubId || (memberClubs.length > 0 ? memberClubs[0].id : null)
         });
     } catch (error) {
         console.error('Error fetching clubs:', error);
@@ -2121,9 +2114,12 @@ app.post('/member/switch-club', verifyToken, isMember, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Club ID required!' });
         }
 
-        // In SQL version, we don't persist activeClub yet. 
-        // This is a placeholder to keep frontend happy.
-        console.log(`🔄 [SQL] Switch club requested to ID: ${clubId} (Not persisted)`);
+        const membership = await db.getMembership(req.user.id, parseInt(clubId, 10));
+        if (!membership) {
+            return res.status(403).json({ success: false, message: 'You are not a member of this club!' });
+        }
+        await db.updateUser(req.user.id, { activeClubId: parseInt(clubId, 10) });
+        console.log(`🔄 [SQL] Active club set to ID: ${clubId}`);
 
         res.json({
             success: true,
@@ -3373,11 +3369,11 @@ app.get('/member/my-projects', verifyToken, isMember, async (req, res) => {
     try {
         const userId = req.user.id;
 
-        const clubs = await db.getUserClubs(userId);
+        const { clubs, activeClubId } = await resolveMemberClubContext(userId);
         if (!clubs || clubs.length === 0) {
             return res.json({ success: true, memberProjects: [] });
         }
-        const clubId = clubs[0].id;
+        const clubId = activeClubId || clubs[0].id;
 
         // Get all active (non-archived) projects for this member
         const projects = await db.MemberProject.findAll({
@@ -3407,11 +3403,11 @@ app.get('/member/project-ideas', verifyToken, isMember, async (req, res) => {
     try {
         const userId = req.user.id;
 
-        const clubs = await db.getUserClubs(userId);
+        const { clubs, activeClubId } = await resolveMemberClubContext(userId);
         if (!clubs || clubs.length === 0) {
             return res.json({ success: true, projectIdeas: [] });
         }
-        const clubId = clubs[0].id;
+        const clubId = activeClubId || clubs[0].id;
 
         // Get all project ideas for this club
         const ideas = await db.ProjectIdea.findAll({
@@ -3447,14 +3443,14 @@ app.post('/member/choose-project', verifyToken, isMember, async (req, res) => {
         }
 
         // Use same club resolution as rest of app (first club from getUserClubs)
-        const clubs = await db.getUserClubs(userId);
+        const { clubs, activeClubId } = await resolveMemberClubContext(userId);
         if (!clubs || clubs.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'You are not a member of any club'
             });
         }
-        const clubId = clubs[0].id;
+        const clubId = activeClubId || clubs[0].id;
 
         // Check how many active projects the user already has
         const activeProjectsCount = await db.MemberProject.count({

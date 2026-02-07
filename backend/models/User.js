@@ -49,6 +49,11 @@ const User = sequelize.define('User', {
     department: {
         type: DataTypes.STRING,
         defaultValue: ''
+    },
+    activeClubId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: { model: 'Clubs', key: 'id' }
     }
 }, {
     timestamps: true,
