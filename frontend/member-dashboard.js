@@ -647,89 +647,432 @@ async function loadDashboardStats() {
     }
 }
 
-// Load Events
-async function loadEvents() {
-    try {
-        const response = await fetch(`${API_URL}/member/events`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+let eventsUiInitialized = false;
+let eventsAll = [];
+let eventsViewMode = 'grid';
+let eventsCalendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+let eventsSelectedDayKey = null;
 
-        const data = await response.json();
+function formatLocalDateKey(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
 
-        if (data.success) {
+function getDateOnly(dateInput) {
+    const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function getEventStatus(dateOnlyEvent, dateOnlyToday) {
+    if (dateOnlyEvent.getTime() === dateOnlyToday.getTime()) return 'today';
+    if (dateOnlyEvent < dateOnlyToday) return 'past';
+    return 'upcoming';
+}
+
+function getEventsFilters() {
+    const q = (document.getElementById('eventSearchInput')?.value || '').trim().toLowerCase();
+    const status = (document.getElementById('eventStatusFilter')?.value || 'all').trim().toLowerCase();
+    const type = (document.getElementById('eventTypeFilter')?.value || 'all').trim().toLowerCase();
+    return { q, status, type };
+}
+
+function setEventsView(view) {
+    eventsViewMode = view;
+    const calendarBtn = document.getElementById('eventsCalendarView');
+    const gridBtn = document.getElementById('eventsGridView');
+    const listBtn = document.getElementById('eventsListView');
+    [calendarBtn, gridBtn, listBtn].forEach(btn => btn?.classList.remove('active'));
+    if (view === 'calendar') calendarBtn?.classList.add('active');
+    if (view === 'grid') gridBtn?.classList.add('active');
+    if (view === 'list') listBtn?.classList.add('active');
+    renderEvents();
+}
+
+function applyEventsVisibility(view) {
+    const calendar = document.getElementById('eventsCalendar');
+    const grid = document.getElementById('eventsGrid');
+    const list = document.getElementById('eventsList');
+    const empty = document.getElementById('eventsEmpty');
+
+    if (calendar) calendar.style.display = view === 'calendar' ? '' : 'none';
+    if (grid) grid.style.display = view === 'grid' ? '' : 'none';
+    if (list) list.style.display = view === 'list' ? '' : 'none';
+    if (empty) empty.style.display = 'none';
+}
+
+function getFilteredEvents() {
+    const { q, status, type } = getEventsFilters();
+    const normalizedStatus = status === 'ongoing' ? 'today' : status;
+    const today = getDateOnly(new Date());
+
+    return (eventsAll || []).filter(ev => {
+        const dateOnlyEvent = getDateOnly(ev.date);
+        const computedStatus = getEventStatus(dateOnlyEvent, today);
+
+        if (normalizedStatus !== 'all' && computedStatus !== normalizedStatus) return false;
+
+        if (type !== 'all') {
+            const eventType = String(ev.type || '').trim().toLowerCase();
+            if (!eventType || eventType !== type) return false;
+        }
+
+        if (q) {
+            const hay = `${ev.title || ''} ${ev.venue || ''} ${ev.description || ''}`.toLowerCase();
+            if (!hay.includes(q)) return false;
+        }
+
+        return true;
+    });
+}
+
+function renderEvents() {
+    applyEventsVisibility(eventsViewMode);
+
+    const filtered = getFilteredEvents();
+    const empty = document.getElementById('eventsEmpty');
+
+    if (eventsViewMode === 'grid') {
+        if (filtered.length === 0) {
             const grid = document.getElementById('eventsGrid');
+            if (grid) grid.innerHTML = '';
+            if (empty) empty.style.display = '';
+            return;
+        }
+        renderEventsGrid(filtered);
+        if (empty) empty.style.display = 'none';
+        return;
+    }
 
-            if (data.events.length === 0) {
-                grid.innerHTML = '<p class="loading">No events yet</p>';
-                return;
-            }
+    if (eventsViewMode === 'list') {
+        if (filtered.length === 0) {
+            const list = document.getElementById('eventsList');
+            if (list) list.innerHTML = '';
+            if (empty) empty.style.display = '';
+            return;
+        }
+        renderEventsList(filtered);
+        if (empty) empty.style.display = 'none';
+        return;
+    }
 
-            grid.innerHTML = data.events.map(event => {
+    renderEventsCalendar(filtered);
+    if (empty) empty.style.display = 'none';
+}
+
+function buildEventActionButtons(event, isPast) {
+    let rsvpButton;
+    if (event.hasRsvped) {
+        rsvpButton = `<button class="btn-event-action btn-rsvped" disabled>
+            <i class="fa-solid fa-check-circle"></i> RSVP'd
+        </button>`;
+    } else if (isPast) {
+        rsvpButton = `<button class="btn-event-action btn-past" disabled>
+            <i class="fa-solid fa-clock"></i> Closed
+        </button>`;
+    } else {
+        rsvpButton = `<button class="btn-event-action btn-rsvp" onclick="rsvpEvent(${event.id})">
+            <i class="fa-solid fa-calendar-check"></i> RSVP
+        </button>`;
+    }
+
+    let attendanceButton;
+    if (event.hasAttended) {
+        attendanceButton = `<button class="btn-event-action btn-attended" disabled>
+            <i class="fa-solid fa-check-double"></i> Attended
+        </button>`;
+    } else if (isPast) {
+        attendanceButton = `<button class="btn-event-action btn-past" disabled>
+            <i class="fa-solid fa-ban"></i> Missed
+        </button>`;
+    } else {
+        attendanceButton = `<button class="btn-event-action btn-scan" onclick="openQRScanner()">
+            <i class="fa-solid fa-qrcode"></i> Mark Attendance
+        </button>`;
+    }
+
+    return { rsvpButton, attendanceButton };
+}
+
+function renderEventsGrid(events) {
+    const grid = document.getElementById('eventsGrid');
+    if (!grid) return;
+
+    const today = getDateOnly(new Date());
+
+    grid.innerHTML = events.map(event => {
+        const d = new Date(event.date);
+        const dateOnlyEvent = getDateOnly(d);
+        const status = getEventStatus(dateOnlyEvent, today);
+        const day = d.getDate();
+        const month = d.toLocaleString('default', { month: 'short' });
+        const isPast = status === 'past';
+        const venue = event.venue || 'TBA';
+        const description = event.description || 'No description';
+        const rsvpCountRaw = Number(event.rsvpCount);
+        const rsvpCount = Number.isFinite(rsvpCountRaw) ? rsvpCountRaw : (Array.isArray(event.rsvpList) ? event.rsvpList.length : 0);
+        const attendedCountRaw = Number(event.attendedCount);
+        const attendedCount = Number.isFinite(attendedCountRaw) ? attendedCountRaw : (Array.isArray(event.attendanceList) ? event.attendanceList.length : 0);
+
+        const { rsvpButton, attendanceButton } = buildEventActionButtons(event, isPast);
+
+        return `
+        <div class="event-card">
+            <div class="event-card-header">
+                <div class="event-date-badge ${status}">
+                    <div class="event-date-day">${day}</div>
+                    <div class="event-date-month">${month}</div>
+                </div>
+                <div class="event-card-headline">
+                    <div class="event-card-topline">
+                        <h3 class="event-card-title">${event.title}</h3>
+                        <span class="event-status-pill ${status}">${status === 'today' ? 'Today' : status === 'past' ? 'Past' : 'Upcoming'}</span>
+                    </div>
+                    <div class="event-card-subline">
+                        <span class="event-card-meta"><i class="fa-solid fa-location-dot"></i> ${venue}</span>
+                        <span class="event-card-meta"><i class="fa-solid fa-calendar-day"></i> ${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="event-card-body">
+                <p class="event-card-description"><i class="fa-solid fa-align-left"></i> ${description}</p>
+                <div class="event-card-stats">
+                    <span class="event-card-stat"><i class="fa-solid fa-ticket"></i> ${rsvpCount} RSVP</span>
+                    <span class="event-card-stat"><i class="fa-solid fa-users"></i> ${attendedCount} Attended</span>
+                </div>
+            </div>
+            <div class="event-card-footer">
+                ${rsvpButton}
+                ${attendanceButton}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderEventsList(events) {
+    const list = document.getElementById('eventsList');
+    if (!list) return;
+
+    const today = getDateOnly(new Date());
+
+    list.innerHTML = events.map(event => {
+        const d = new Date(event.date);
+        const dateOnlyEvent = getDateOnly(d);
+        const status = getEventStatus(dateOnlyEvent, today);
+        const day = d.getDate();
+        const month = d.toLocaleString('default', { month: 'short' });
+        const isPast = status === 'past';
+        const venue = event.venue || 'TBA';
+        const rsvpCountRaw = Number(event.rsvpCount);
+        const rsvpCount = Number.isFinite(rsvpCountRaw) ? rsvpCountRaw : (Array.isArray(event.rsvpList) ? event.rsvpList.length : 0);
+        const attendedCountRaw = Number(event.attendedCount);
+        const attendedCount = Number.isFinite(attendedCountRaw) ? attendedCountRaw : (Array.isArray(event.attendanceList) ? event.attendanceList.length : 0);
+
+        const { rsvpButton, attendanceButton } = buildEventActionButtons(event, isPast);
+
+        return `
+        <div class="event-list-item">
+            <div class="event-list-date">
+                <div class="day">${day}</div>
+                <div class="month">${month}</div>
+            </div>
+            <div class="event-list-info">
+                <div class="event-list-title-row">
+                    <h4>${event.title}</h4>
+                    <span class="event-status-pill ${status}">${status === 'today' ? 'Today' : status === 'past' ? 'Past' : 'Upcoming'}</span>
+                </div>
+                <p><i class="fa-solid fa-location-dot"></i> ${venue}</p>
+                <div class="event-list-stats">
+                    <span class="event-list-stat"><i class="fa-solid fa-ticket"></i> ${rsvpCount} RSVP</span>
+                    <span class="event-list-stat"><i class="fa-solid fa-users"></i> ${attendedCount} Attended</span>
+                </div>
+            </div>
+            <div class="event-list-actions">
+                ${rsvpButton}
+                ${attendanceButton}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function buildEventsByDayMap(events) {
+    const map = new Map();
+    (events || []).forEach(ev => {
+        const key = formatLocalDateKey(getDateOnly(ev.date));
+        const arr = map.get(key) || [];
+        arr.push(ev);
+        map.set(key, arr);
+    });
+    return map;
+}
+
+function renderCalendarDayEvents(dayKey, dayEvents) {
+    const container = document.getElementById('calendarEvents');
+    if (!container) return;
+
+    if (!dayEvents || dayEvents.length === 0) {
+        container.innerHTML = `
+            <div class="calendar-events-empty">
+                <div class="calendar-events-empty-icon"><i class="fa-solid fa-calendar-xmark"></i></div>
+                <div class="calendar-events-empty-text">
+                    <h4>No events</h4>
+                    <p>${dayKey}</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    const today = getDateOnly(new Date());
+
+    container.innerHTML = `
+        <div class="calendar-events-header">
+            <h4>Events on ${dayKey}</h4>
+            <span>${dayEvents.length}</span>
+        </div>
+        <div class="calendar-events-list">
+            ${dayEvents.map(event => {
                 const d = new Date(event.date);
-                const day = d.getDate();
-                const month = d.toLocaleString('default', { month: 'short' });
-                const isPast = d < new Date(Date.now() - 86400000);
-
-                // Determine RSVP button state
-                let rsvpButton;
-                if (event.hasRsvped) {
-                    rsvpButton = `<button class="btn-event-action btn-rsvped" disabled>
-                        <i class="fa-solid fa-check-circle"></i> RSVP'd
-                    </button>`;
-                } else if (isPast) {
-                    rsvpButton = `<button class="btn-event-action btn-past" disabled>
-                        <i class="fa-solid fa-clock"></i> Closed
-                    </button>`;
-                } else {
-                    rsvpButton = `<button class="btn-event-action btn-rsvp" onclick="rsvpEvent(${event.id})">
-                        <i class="fa-solid fa-calendar-check"></i> RSVP
-                    </button>`;
-                }
-
-                // Determine Attendance button state
-                let attendanceButton;
-                if (event.hasAttended) {
-                    attendanceButton = `<button class="btn-event-action btn-attended" disabled>
-                        <i class="fa-solid fa-check-double"></i> Attended
-                    </button>`;
-                } else if (isPast) {
-                    attendanceButton = `<button class="btn-event-action btn-past" disabled>
-                        <i class="fa-solid fa-ban"></i> Missed
-                    </button>`;
-                } else {
-                    attendanceButton = `<button class="btn-event-action btn-scan" onclick="openQRScanner()">
-                        <i class="fa-solid fa-qrcode"></i> Mark Attendance
-                    </button>`;
-                }
-
+                const status = getEventStatus(getDateOnly(d), today);
+                const isPast = status === 'past';
+                const venue = event.venue || 'TBA';
+                const { rsvpButton, attendanceButton } = buildEventActionButtons(event, isPast);
                 return `
-                <div class="event-card">
-                    <div class="event-card-header">
-                        <div class="event-date-badge ${isPast ? 'past' : ''}">
-                            <div class="event-date-day">${day}</div>
-                            <div class="event-date-month">${month}</div>
+                <div class="calendar-event-item">
+                    <div class="calendar-event-main">
+                        <div class="calendar-event-title-row">
+                            <h5>${event.title}</h5>
+                            <span class="event-status-pill ${status}">${status === 'today' ? 'Today' : status === 'past' ? 'Past' : 'Upcoming'}</span>
                         </div>
-                        <div>
-                            <h3>${event.title}</h3>
-                            <p><i class="fa-solid fa-location-dot"></i> ${event.venue}</p>
-                        </div>
+                        <p><i class="fa-solid fa-location-dot"></i> ${venue}</p>
                     </div>
-                    <div class="event-card-body">
-                        <p><i class="fa-solid fa-align-left"></i> ${event.description || 'No description'}</p>
-                        <p><i class="fa-solid fa-users"></i> ${event.attendedCount || 0} Attended</p>
-                    </div>
-                    <div class="event-card-footer">
+                    <div class="calendar-event-actions">
                         ${rsvpButton}
                         ${attendanceButton}
                     </div>
                 </div>`;
-            }).join('');
+            }).join('')}
+        </div>
+    `;
+}
+
+function renderEventsCalendar(events) {
+    const monthEl = document.getElementById('currentMonth');
+    if (monthEl) {
+        monthEl.textContent = eventsCalendarMonth.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+    }
+
+    const grid = document.querySelector('#eventsCalendar .calendar-grid');
+    if (!grid) return;
+
+    grid.querySelectorAll('.calendar-day').forEach(el => el.remove());
+
+    const year = eventsCalendarMonth.getFullYear();
+    const month = eventsCalendarMonth.getMonth();
+    const first = new Date(year, month, 1);
+    const startDow = first.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const prevMonthDays = new Date(year, month, 0).getDate();
+
+    const today = getDateOnly(new Date());
+    const byDay = buildEventsByDayMap(events);
+
+    const cells = 42;
+    for (let i = 0; i < cells; i++) {
+        const dayNum = i - startDow + 1;
+        let cellDate;
+        if (dayNum < 1) {
+            cellDate = new Date(year, month - 1, prevMonthDays + dayNum);
+        } else if (dayNum > daysInMonth) {
+            cellDate = new Date(year, month + 1, dayNum - daysInMonth);
+        } else {
+            cellDate = new Date(year, month, dayNum);
         }
+
+        const dateOnly = getDateOnly(cellDate);
+        const key = formatLocalDateKey(dateOnly);
+        const inMonth = cellDate.getMonth() === month;
+        const hasEvent = byDay.has(key);
+
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day';
+        if (!inMonth) cell.classList.add('other-month');
+        if (dateOnly.getTime() === today.getTime()) cell.classList.add('today');
+        if (hasEvent) cell.classList.add('has-event');
+        if (eventsSelectedDayKey && key === eventsSelectedDayKey) cell.classList.add('selected');
+        cell.textContent = String(cellDate.getDate());
+        cell.dataset.dateKey = key;
+        cell.addEventListener('click', () => {
+            eventsSelectedDayKey = key;
+            grid.querySelectorAll('.calendar-day.selected').forEach(el => el.classList.remove('selected'));
+            cell.classList.add('selected');
+            renderCalendarDayEvents(key, byDay.get(key) || []);
+        });
+
+        grid.appendChild(cell);
+    }
+
+    if (!eventsSelectedDayKey) {
+        eventsSelectedDayKey = formatLocalDateKey(today);
+    }
+
+    const selectedEvents = byDay.get(eventsSelectedDayKey) || [];
+    renderCalendarDayEvents(eventsSelectedDayKey, selectedEvents);
+}
+
+function initEventsUi() {
+    if (eventsUiInitialized) return;
+    eventsUiInitialized = true;
+
+    document.getElementById('eventSearchInput')?.addEventListener('input', () => renderEvents());
+    document.getElementById('eventStatusFilter')?.addEventListener('change', () => renderEvents());
+    document.getElementById('eventTypeFilter')?.addEventListener('change', () => renderEvents());
+
+    document.getElementById('clearFilters')?.addEventListener('click', () => {
+        const search = document.getElementById('eventSearchInput');
+        const status = document.getElementById('eventStatusFilter');
+        const type = document.getElementById('eventTypeFilter');
+        if (search) search.value = '';
+        if (status) status.value = 'all';
+        if (type) type.value = 'all';
+        renderEvents();
+    });
+
+    document.getElementById('eventsCalendarView')?.addEventListener('click', () => setEventsView('calendar'));
+    document.getElementById('eventsGridView')?.addEventListener('click', () => setEventsView('grid'));
+    document.getElementById('eventsListView')?.addEventListener('click', () => setEventsView('list'));
+
+    document.getElementById('prevMonth')?.addEventListener('click', () => {
+        eventsCalendarMonth = new Date(eventsCalendarMonth.getFullYear(), eventsCalendarMonth.getMonth() - 1, 1);
+        renderEvents();
+    });
+
+    document.getElementById('nextMonth')?.addEventListener('click', () => {
+        eventsCalendarMonth = new Date(eventsCalendarMonth.getFullYear(), eventsCalendarMonth.getMonth() + 1, 1);
+        renderEvents();
+    });
+}
+
+async function loadEvents() {
+    initEventsUi();
+    try {
+        const response = await fetch(`${API_URL}/member/events`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load events');
+        }
+
+        eventsAll = Array.isArray(data.events) ? data.events : [];
+        renderEvents();
     } catch (error) {
         console.error('Error loading events:', error);
         showNotification('Failed to load events', 'error');
+        eventsAll = [];
+        renderEvents();
     }
 }
 
