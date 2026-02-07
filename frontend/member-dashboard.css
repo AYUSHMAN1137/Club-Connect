@@ -5853,6 +5853,7 @@ img {
     .page-header {
         flex-direction: column;
         align-items: flex-start;
+    }
 
     .page-actions {
         width: 100%;
@@ -5885,6 +5886,145 @@ img {
     .events-grid {
         grid-template-columns: 1fr;
     }
+
+    #events-page .page-header {
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    #events-page .page-title h1 {
+        font-size: 20px;
+        gap: 10px;
+    }
+
+    #events-page .page-title p {
+        font-size: 13px;
+    }
+
+    #events-page .page-actions {
+        width: auto;
+        align-self: flex-start;
+        padding: 6px;
+    }
+
+    #events-page .page-actions .btn-icon {
+        width: 38px;
+        height: 38px;
+    }
+
+    #events-page .filters-bar {
+        padding: 12px;
+        gap: 12px;
+    }
+
+    #events-page .search-box {
+        min-width: 0;
+        padding: 10px 12px;
+    }
+
+    #events-page .filter-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    #events-page .filter-group select {
+        width: 100%;
+        min-width: 0;
+    }
+
+    #events-page #clearFilters {
+        grid-column: 1 / -1;
+        width: 100%;
+        justify-content: center;
+    }
+
+    #events-page .events-calendar {
+        padding: 14px;
+    }
+
+    #events-page .calendar-grid {
+        gap: 4px;
+    }
+
+    #events-page .calendar-day-header {
+        padding: 8px 0;
+        font-size: 11px;
+    }
+
+    #events-page .calendar-day {
+        font-size: 13px;
+        border-radius: var(--radius-sm);
+    }
+
+    #events-page .calendar-event-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    #events-page .calendar-event-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    #events-page .calendar-event-actions .btn-event-action {
+        width: 100%;
+        justify-content: center;
+    }
+
+    #events-page .events-list {
+        gap: 12px;
+    }
+
+    #events-page .event-list-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 14px;
+    }
+
+    #events-page .event-list-date {
+        width: auto;
+        display: flex;
+        align-items: baseline;
+        justify-content: flex-start;
+        gap: 10px;
+        text-align: left;
+    }
+
+    #events-page .event-list-date .day {
+        font-size: 20px;
+        line-height: 1;
+    }
+
+    #events-page .event-list-date .month {
+        font-size: 12px;
+        line-height: 1;
+    }
+
+    #events-page .event-list-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    #events-page .event-list-actions .btn-event-action {
+        width: 100%;
+        justify-content: center;
+        padding: 10px 14px;
+    }
+
+    #events-page .event-card-footer {
+        flex-direction: column;
+        padding: 14px;
+    }
+
+    #events-page .event-card-footer .btn-event-action {
+        width: 100%;
+        justify-content: center;
+    }
+
 
     .help-links-grid {
         grid-template-columns: repeat(2, 1fr);
