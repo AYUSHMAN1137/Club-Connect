@@ -2730,8 +2730,22 @@ function openCertificateView(title, fileUrl, fileType) {
     modal?.classList.add('active');
 }
 
-// Show upload certificate modal
+function resetUploadCertificateForm() {
+    const form = document.getElementById('uploadCertificateForm');
+    const fileInput = document.getElementById('certFile');
+    const filePreview = document.getElementById('certFilePreview');
+    const fileName = document.getElementById('certFileName');
+    const uploadContent = document.querySelector('#certFileUpload .file-upload-content');
+
+    if (form) form.reset();
+    if (fileInput) fileInput.value = '';
+    if (fileName) fileName.textContent = '';
+    if (filePreview) filePreview.style.display = 'none';
+    if (uploadContent) uploadContent.style.display = 'block';
+}
+
 async function showUploadCertificateModal() {
+    resetUploadCertificateForm();
     document.getElementById('uploadCertificateModal').classList.add('active');
 
     // Load user's clubs for dropdown
@@ -2757,7 +2771,7 @@ async function showUploadCertificateModal() {
 // Close upload certificate modal
 function closeUploadCertificateModal() {
     document.getElementById('uploadCertificateModal').classList.remove('active');
-    document.getElementById('uploadCertificateForm').reset();
+    resetUploadCertificateForm();
 }
 
 // Load club events for certificate

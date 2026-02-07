@@ -6564,15 +6564,15 @@ a:focus-visible {
 
 .contact-item:hover {
     background: var(--gray-50);
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
 }
 
 .contact-item.active {
-    background: var(--primary-light);
+    background: rgba(15, 118, 110, 0.08);
     border-color: var(--primary-color);
     border-left-color: var(--primary-color);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-md);
 }
 
 .contact-avatar {
