@@ -18,6 +18,15 @@ function getApiUrl() {
     return window.API_URL || 'http://localhost:4000';
 }
 
+function getFullImageUrl(path) {
+    if (!path) return '';
+    const normalized = String(path).replace(/\\/g, '/').trim();
+    if (!normalized) return '';
+    if (normalized.startsWith('http')) return normalized;
+    if (normalized.startsWith('/')) return `${getApiUrl()}${normalized}`;
+    return `${getApiUrl()}/${normalized}`;
+}
+
 // Build participation stats from events for a given member
 async function computeMemberEventStats(memberId) {
     try {
@@ -798,6 +807,9 @@ function renderMemberProfile(member, stats = null) {
     const attendedCount = stats?.attendedCount ?? 0;
     const recent = stats?.recent || [];
 
+    const profilePicUrl = getFullImageUrl(member.profilePic || member.profilePhoto || member.avatar || member.photoUrl || member.photo);
+    const hasProfilePic = Boolean(profilePicUrl);
+
     // Get initials for avatar
     const initials = safeName ? safeName.substring(0, 2).toUpperCase() : 'UN';
 
@@ -838,7 +850,8 @@ function renderMemberProfile(member, stats = null) {
         <div class="profile-header-section">
             <div class="profile-avatar-wrapper">
                 <div class="profile-avatar-large">
-                    <span class="profile-avatar-initials">${initials}</span>
+                    ${hasProfilePic ? `<img class="profile-avatar-img" src="${profilePicUrl}" alt="${safeName}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
+                    <span class="profile-avatar-initials" style="${hasProfilePic ? 'display: none;' : ''}">${initials}</span>
                     <div class="profile-avatar-ring"></div>
                 </div>
             </div>
@@ -1041,7 +1054,7 @@ async function loadMembers() {
                 const safeRole = escapeHtml((member.clubRole || 'member'));
                 return `
                 <tr data-member-id="${member.id}">
-                    <td><button class="link-btn member-link" data-member-id="${member.id}">${safeName}</button></td>
+                    <td><button type="button" class="link-btn member-link" data-member-id="${member.id}" onclick="openMemberProfile(${member.id})">${safeName}</button></td>
                     <td>${safeEmail}</td>
                     <td>${safeStudentId}</td>
                     <td><span class="role-badge ${(member.clubRole || 'member').toLowerCase()}">${safeRole.toUpperCase()}</span></td>
@@ -2883,7 +2896,7 @@ async function loadAttendanceData(eventId) {
                                    onchange="toggleMemberSelection(${member.id})"
                                    onclick="event.stopPropagation()">
                             <div style="flex: 1;">
-                                <strong>${member.username}</strong>
+                                <button type="button" class="link-btn member-link" onclick="openMemberProfile(${member.id}); event.stopPropagation();">${member.username}</button>
                                 <p style="margin: 5px 0 0 0; font-size: 13px; color: #6b7280;">
                                     ${member.email} • ${member.studentId}
                                 </p>
@@ -3804,7 +3817,7 @@ async function updateAttendanceList() {
                             ${(a.username || 'U').charAt(0).toUpperCase()}
                         </div>
                         <div style="flex: 1;">
-                            <strong>${a.username || 'Unknown'}</strong>
+                            <button type="button" class="link-btn member-link" onclick="openMemberProfile(${a.id}); event.stopPropagation();">${a.username || 'Unknown'}</button>
                             <p style="margin: 2px 0 0 0; font-size: 12px; color: #6b7280;">
                                 ${new Date(a.checkedInAt).toLocaleTimeString()}
                             </p>
