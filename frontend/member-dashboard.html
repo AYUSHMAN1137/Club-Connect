@@ -1072,6 +1072,15 @@
                     <div class="messages-sidebar">
                         <div class="messages-sidebar-header">
                             <h3><i class="fa-solid fa-user-group"></i> Contacts</h3>
+                            <div class="sidebar-actions">
+                                <button class="btn-secondary btn-sm" id="newMessageBtn">
+                                    <i class="fa-solid fa-plus"></i> New Message
+                                </button>
+                            </div>
+                        </div>
+                        <div class="messages-search">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="messagesSearch" placeholder="Search conversations...">
                         </div>
                         <div class="contacts-list" id="contactsList">
                             <!-- Contacts loaded dynamically -->
@@ -1105,6 +1114,9 @@
                                     </div>
                                 </div>
                                 <div class="chat-header-actions">
+                                    <button class="btn-icon" id="backToListBtn" title="Back to list">
+                                        <i class="fa-solid fa-arrow-left"></i>
+                                    </button>
                                     <button class="btn-icon" title="Refresh">
                                         <i class="fa-solid fa-rotate"></i>
                                     </button>

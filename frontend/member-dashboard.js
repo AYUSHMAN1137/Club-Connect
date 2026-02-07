@@ -4370,6 +4370,8 @@ async function loadContacts() {
 
             contactsList.innerHTML = data.contacts.map(contact => {
                 const roleLabel = contact.role || 'Club Owner';
+                const lastMessageText = contact.lastMessage?.message || '';
+                const preview = lastMessageText.length > 50 ? `${lastMessageText.substring(0, 50)}...` : lastMessageText;
                 return `
                     <div class="contact-item"
                         data-contact-id="${contact.id}"
@@ -4381,7 +4383,7 @@ async function loadContacts() {
                         <div class="contact-info">
                             <div class="contact-name">${escapeHtml(contact.username)}</div>
                             <div class="contact-last-message">
-                                ${contact.lastMessage ? escapeHtml(contact.lastMessage.message.substring(0, 30) + '...') : 'No messages yet'}
+                                ${contact.lastMessage ? escapeHtml(preview) : 'No messages yet'}
                             </div>
                         </div>
                         <div class="contact-meta">
@@ -4402,7 +4404,7 @@ async function loadContacts() {
             });
 
             // Auto-select first contact if available
-            if (data.contacts.length > 0) {
+            if (data.contacts.length > 0 && window.innerWidth > 900) {
                 const firstContact = data.contacts[0];
                 const firstEl = contactsList.querySelector('.contact-item');
                 selectContact(firstContact.id, firstContact.username, firstContact.role, firstEl);
@@ -4414,7 +4416,16 @@ async function loadContacts() {
     }
 }
 
-// Select Contact
+function setMessagesChatOpen(isOpen) {
+    const container = document.querySelector('#messages-page .messages-container');
+    if (!container) return;
+    if (isOpen) {
+        container.classList.add('chat-open');
+    } else {
+        container.classList.remove('chat-open');
+    }
+}
+
 async function selectContact(recipientId, username, role, element) {
     currentRecipientId = recipientId;
 
@@ -4430,6 +4441,10 @@ async function selectContact(recipientId, username, role, element) {
     });
     if (element) {
         element.classList.add('active');
+    }
+
+    if (window.innerWidth <= 900) {
+        setMessagesChatOpen(true);
     }
 
     // Load messages
@@ -4613,6 +4628,10 @@ function escapeHtml(text) {
 document.addEventListener('DOMContentLoaded', () => {
     const messageInput = document.getElementById('messageInput');
     const charCount = document.getElementById('charCount');
+    const backToListBtn = document.getElementById('backToListBtn');
+    const newMessageBtn = document.getElementById('newMessageBtn');
+    const messagesSearch = document.getElementById('messagesSearch');
+    const contactsList = document.getElementById('contactsList');
 
     if (messageInput && charCount) {
         messageInput.addEventListener('input', () => {
@@ -4623,6 +4642,39 @@ document.addEventListener('DOMContentLoaded', () => {
             messageInput.style.height = messageInput.scrollHeight + 'px';
         });
     }
+
+    if (backToListBtn) {
+        backToListBtn.addEventListener('click', () => {
+            setMessagesChatOpen(false);
+        });
+    }
+
+    if (newMessageBtn) {
+        newMessageBtn.addEventListener('click', () => {
+            setMessagesChatOpen(false);
+            if (messagesSearch) {
+                messagesSearch.focus();
+            }
+        });
+    }
+
+    if (messagesSearch && contactsList) {
+        messagesSearch.addEventListener('input', () => {
+            const query = messagesSearch.value.trim().toLowerCase();
+            contactsList.querySelectorAll('.contact-item').forEach(item => {
+                const name = (item.dataset.contactName || '').toLowerCase();
+                const lastMessage = item.querySelector('.contact-last-message')?.textContent?.toLowerCase() || '';
+                const matches = name.includes(query) || lastMessage.includes(query);
+                item.style.display = matches ? '' : 'none';
+            });
+        });
+    }
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 900) {
+            setMessagesChatOpen(false);
+        }
+    });
 });
 
 console.log('✅ Messaging system initialized');
