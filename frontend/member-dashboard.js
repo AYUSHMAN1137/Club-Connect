@@ -233,7 +233,10 @@ async function switchClub(clubId) {
 
         if (data.success) {
             showNotification(data.message, 'success');
-            document.getElementById('clubDropdown').classList.remove('active');
+            const clubDropdown = document.getElementById('clubDropdown');
+            if (clubDropdown) clubDropdown.classList.remove('active');
+            const clubSwitcher = document.querySelector('.club-switcher');
+            if (clubSwitcher) clubSwitcher.classList.remove('active');
             loadMyClubs();
             loadDashboard(); // Reload dashboard with new club data
         } else {
