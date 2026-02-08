@@ -117,105 +117,164 @@
         <main class="content">
             <!-- Home Page -->
             <div class="page active" id="home-page">
-                <div class="page-header">
-                    <h1>Dashboard Overview 👋</h1>
-                    <p>Welcome back! Here's what's happening with your club.</p>
+                <div class="owner-welcome">
+                    <div class="owner-welcome-content">
+                        <div class="owner-welcome-text">
+                            <h1>Welcome back! 👋</h1>
+                            <p>Here’s a quick snapshot of your club today.</p>
+                        </div>
+                        <div class="owner-welcome-actions">
+                            <button class="btn-primary" onclick="switchPage('events')">
+                                <i class="fa-solid fa-plus"></i> Create Event
+                            </button>
+                            <button class="btn-secondary" onclick="switchPage('announcements')">
+                                <i class="fa-solid fa-bullhorn"></i> Send Announcement
+                            </button>
+                        </div>
+                    </div>
+                    <div class="owner-welcome-visual">
+                        <div class="owner-visual-card owner-visual-primary">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div class="owner-visual-card owner-visual-accent">
+                            <i class="fa-solid fa-star"></i>
+                        </div>
+                        <div class="owner-visual-card owner-visual-ocean">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Modern Stats Grid -->
-                <div class="modern-stats-grid">
-                    <div class="modern-stat-card gradient-blue">
-                        <div class="stat-card-top">
-                            <div class="stat-icon-modern">
+                <div class="owner-stats-grid">
+                    <div class="owner-stat-card owner-stat-teal">
+                        <div class="owner-stat-top">
+                            <div class="owner-stat-icon">
                                 <i class="fa-solid fa-users"></i>
                             </div>
-                            <span class="stat-label">Total Members</span>
+                            <span class="owner-stat-label">Total Members</span>
                         </div>
-                        <div class="stat-value" id="totalMembers">0</div>
-                        <div class="stat-subtext">Active club members</div>
+                        <div class="owner-stat-value" id="totalMembers">0</div>
+                        <div class="owner-stat-subtext">Active club members</div>
                     </div>
 
-                    <div class="modern-stat-card gradient-green is-clickable" id="totalEventsCard">
-                        <div class="stat-card-top">
-                            <div class="stat-icon-modern">
+                    <div class="owner-stat-card owner-stat-blue is-clickable" id="totalEventsCard">
+                        <div class="owner-stat-top">
+                            <div class="owner-stat-icon">
                                 <i class="fa-solid fa-calendar-check"></i>
                             </div>
-                            <span class="stat-label">Total Events</span>
+                            <span class="owner-stat-label">Total Events</span>
                         </div>
-                        <div class="stat-value" id="totalEvents">0</div>
-                        <div class="stat-subtext">Events organized</div>
+                        <div class="owner-stat-value" id="totalEvents">0</div>
+                        <div class="owner-stat-subtext">Events organized</div>
                     </div>
 
-                    <div class="modern-stat-card gradient-purple">
-                        <div class="stat-card-top">
-                            <div class="stat-icon-modern">
+                    <div class="owner-stat-card owner-stat-purple">
+                        <div class="owner-stat-top">
+                            <div class="owner-stat-icon">
                                 <i class="fa-solid fa-star"></i>
                             </div>
-                            <span class="stat-label">Avg Attendance</span>
+                            <span class="owner-stat-label">Avg Attendance</span>
                         </div>
-                        <div class="stat-value" id="avgAttendance">0%</div>
-                        <div class="stat-subtext">Event participation</div>
+                        <div class="owner-stat-value" id="avgAttendance">0%</div>
+                        <div class="owner-stat-subtext">Event participation</div>
                     </div>
 
-                    <div class="modern-stat-card gradient-orange">
-                        <div class="stat-card-top">
-                            <div class="stat-icon-modern">
+                    <div class="owner-stat-card owner-stat-amber">
+                        <div class="owner-stat-top">
+                            <div class="owner-stat-icon">
                                 <i class="fa-solid fa-trophy"></i>
                             </div>
-                            <span class="stat-label">Top Member</span>
+                            <span class="owner-stat-label">Top Member</span>
                         </div>
-                        <div class="stat-value stat-value-lg" id="topMemberName">-</div>
-                        <div class="stat-subtext" id="topMemberPoints">0 points</div>
+                        <div class="owner-stat-value owner-stat-value-lg" id="topMemberName">-</div>
+                        <div class="owner-stat-subtext" id="topMemberPoints">0 points</div>
                     </div>
                 </div>
 
-                <!-- Quick Actions -->
-                <div class="section-modern">
-                    <div class="section-header">
-                        <h2><i class="fa-solid fa-bolt"></i> Quick Actions</h2>
+                <div class="owner-dashboard-grid">
+                    <div class="owner-dashboard-card owner-card-wide">
+                        <div class="owner-card-header">
+                            <div class="owner-card-title">
+                                <i class="fa-solid fa-calendar-days"></i>
+                                <h3>Recent Events</h3>
+                            </div>
+                            <a href="#" onclick="switchPage('events')" class="owner-card-link">View All <i
+                                    class="fa-solid fa-arrow-right"></i></a>
+                        </div>
+                        <div class="owner-card-body" id="recentEventsList">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-calendar-xmark"></i>
+                                <p>No recent events</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="quick-actions-grid">
-                        <button class="quick-action-card" onclick="switchPage('events')">
-                            <div class="quick-action-icon qa-primary">
-                                <i class="fa-solid fa-plus"></i>
-                            </div>
-                            <h3>Create Event</h3>
-                            <p>Schedule a new club event</p>
-                        </button>
-                        <button class="quick-action-card" onclick="switchPage('announcements')">
-                            <div class="quick-action-icon qa-success">
-                                <i class="fa-solid fa-bullhorn"></i>
-                            </div>
-                            <h3>Send Announcement</h3>
-                            <p>Notify all members</p>
-                        </button>
-                        <button class="quick-action-card" onclick="switchPage('members')">
-                            <div class="quick-action-icon qa-accent">
-                                <i class="fa-solid fa-users"></i>
-                            </div>
-                            <h3>Manage Members</h3>
-                            <p>View and award points</p>
-                        </button>
-                        <button class="quick-action-card" onclick="switchPage('analytics')">
-                            <div class="quick-action-icon qa-ocean">
-                                <i class="fa-solid fa-chart-line"></i>
-                            </div>
-                            <h3>View Analytics</h3>
-                            <p>Club performance insights</p>
-                        </button>
-                    </div>
-                </div>
 
-                <!-- Recent Events -->
-                <div class="section-modern">
-                    <div class="section-header">
-                        <h2><i class="fa-solid fa-calendar-days"></i> Recent Events</h2>
-                        <a href="#" onclick="switchPage('events')" class="view-all-link">View All →</a>
+                    <div class="owner-dashboard-card">
+                        <div class="owner-card-header">
+                            <div class="owner-card-title">
+                                <i class="fa-solid fa-bolt"></i>
+                                <h3>Quick Actions</h3>
+                            </div>
+                        </div>
+                        <div class="owner-card-body">
+                            <div class="owner-action-grid">
+                                <button class="owner-action-btn" onclick="switchPage('events')">
+                                    <i class="fa-solid fa-plus"></i>
+                                    <span>Create Event</span>
+                                </button>
+                                <button class="owner-action-btn" onclick="switchPage('announcements')">
+                                    <i class="fa-solid fa-bullhorn"></i>
+                                    <span>Send Announcement</span>
+                                </button>
+                                <button class="owner-action-btn" onclick="switchPage('members')">
+                                    <i class="fa-solid fa-users"></i>
+                                    <span>Manage Members</span>
+                                </button>
+                                <button class="owner-action-btn" onclick="switchPage('analytics')">
+                                    <i class="fa-solid fa-chart-line"></i>
+                                    <span>View Analytics</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div id="recentEventsList">
-                        <div class="empty-state">
-                            <i class="fa-solid fa-calendar-xmark"></i>
-                            <p>No recent events</p>
+
+                    <div class="owner-dashboard-card">
+                        <div class="owner-card-header">
+                            <div class="owner-card-title">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <h3>Owner Checklist</h3>
+                            </div>
+                        </div>
+                        <div class="owner-card-body">
+                            <div class="owner-checklist">
+                                <div class="owner-check-item">
+                                    <div class="owner-check-icon">
+                                        <i class="fa-solid fa-bullhorn"></i>
+                                    </div>
+                                    <div class="owner-check-content">
+                                        <h4>Post weekly update</h4>
+                                        <p>Keep members engaged with the latest news.</p>
+                                    </div>
+                                </div>
+                                <div class="owner-check-item">
+                                    <div class="owner-check-icon">
+                                        <i class="fa-solid fa-calendar-day"></i>
+                                    </div>
+                                    <div class="owner-check-content">
+                                        <h4>Plan next event</h4>
+                                        <p>Schedule something exciting for your club.</p>
+                                    </div>
+                                </div>
+                                <div class="owner-check-item">
+                                    <div class="owner-check-icon">
+                                        <i class="fa-solid fa-users-gear"></i>
+                                    </div>
+                                    <div class="owner-check-content">
+                                        <h4>Review member roles</h4>
+                                        <p>Assign roles to keep your team active.</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
