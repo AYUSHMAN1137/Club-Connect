@@ -807,7 +807,14 @@ function renderMemberProfile(member, stats = null) {
     const attendedCount = stats?.attendedCount ?? 0;
     const recent = stats?.recent || [];
 
-    const profilePicUrl = getFullImageUrl(member.profilePic || member.profilePhoto || member.avatar || member.photoUrl || member.photo);
+    const profilePicUrl = getFullImageUrl(
+        member.profilePic ||
+        member.profile?.pic ||
+        member.profilePhoto ||
+        member.avatar ||
+        member.photoUrl ||
+        member.photo
+    );
     const hasProfilePic = Boolean(profilePicUrl);
 
     // Get initials for avatar
