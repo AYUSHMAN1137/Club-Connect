@@ -593,18 +593,33 @@ async function getNotifications(userId) {
 }
 
 // ========== ANNOUNCEMENT FUNCTIONS ==========
-async function getAnnouncementsForUser(userId) {
+async function getAnnouncementsForUser(userId, clubId = null, includeGlobal = true) {
+    if (clubId) {
+        const scopedConditions = includeGlobal
+            ? [{ clubId }, { clubId: null }]
+            : [{ clubId }];
+        return await Announcement.findAll({
+            where: scopedConditions.length === 1 ? scopedConditions[0] : { [Op.or]: scopedConditions },
+            order: [['date', 'DESC']]
+        });
+    }
+
     const userClubs = await getUserClubs(userId);
     const clubIds = userClubs.map(c => c.id);
+    const conditions = [];
 
-    // Get announcements where clubId is in user's clubs OR clubId is null (global)
+    if (clubIds.length > 0) {
+        conditions.push({ clubId: { [Op.in]: clubIds } });
+    }
+    if (includeGlobal) {
+        conditions.push({ clubId: null });
+    }
+    if (conditions.length === 0) {
+        return [];
+    }
+
     return await Announcement.findAll({
-        where: {
-            [Op.or]: [
-                { clubId: { [Op.in]: clubIds } },
-                { clubId: null }
-            ]
-        },
+        where: conditions.length === 1 ? conditions[0] : { [Op.or]: conditions },
         order: [['date', 'DESC']]
     });
 }

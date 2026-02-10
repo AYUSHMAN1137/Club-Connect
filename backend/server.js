@@ -1659,9 +1659,14 @@ app.get('/member/leaderboard', verifyToken, isMember, async (req, res) => {
 // Get announcements - PURE SQL
 app.get('/member/announcements', verifyToken, isMember, async (req, res) => {
     try {
-        const announcements = await db.getAnnouncementsForUser(req.user.id);
+        const { clubs: memberClubs, activeClubId, activeClub } = await resolveMemberClubContext(req.user.id);
+        if (!memberClubs || memberClubs.length === 0) {
+            return res.json({ success: true, announcements: [] });
+        }
+        const clubId = activeClubId || activeClub?.id || memberClubs[0].id;
+        const announcements = await db.getAnnouncementsForUser(req.user.id, clubId);
 
-        console.log(`📢 [SQL] Fetched ${announcements.length} announcements for member`);
+        console.log(`📢 [SQL] Fetched ${announcements.length} announcements for member (clubId: ${clubId})`);
 
         res.json({ success: true, announcements });
     } catch (error) {
