@@ -10,28 +10,42 @@ const User = sequelize.define('User', {
     studentId: {
         type: DataTypes.STRING, /* e.g. "1137" */
         allowNull: false,
-        unique: true
+        unique: true,
+        validate: {
+            notEmpty: true
+        }
     },
     username: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true
+        unique: true,
+        validate: {
+            notEmpty: true
+        }
     },
     email: {
         type: DataTypes.STRING,
         allowNull: false,
         unique: true,
         validate: {
-            isEmail: true
+            isEmail: true,
+            notEmpty: true
         }
     },
     password: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: false,
+        validate: {
+            notEmpty: true
+        }
     },
     role: {
         type: DataTypes.STRING, /* 'member', 'owner', 'admin' */
-        defaultValue: 'member'
+        allowNull: false,
+        defaultValue: 'member',
+        validate: {
+            isIn: [['member', 'owner', 'admin']]
+        }
     },
     // Profile details
     profilePic: {
