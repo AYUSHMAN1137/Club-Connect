@@ -255,6 +255,7 @@ async function switchClub(clubId) {
             const clubSwitcher = document.querySelector('.club-switcher');
             if (clubSwitcher) clubSwitcher.classList.remove('active');
             await Promise.all([loadMyClubs(), loadDashboard()]);
+            refreshActivePageData();
             setClubSwitcherLoading(false);
             setDashboardLoading(false);
             hidePreloaderAfter(startedAt);
@@ -447,6 +448,49 @@ function switchPage(pageName, options = {}) {
         } else {
             history.pushState({ page: pageName }, '', `#${pageName}`);
         }
+    }
+}
+
+function refreshActivePageData() {
+    const pageName = getActivePageName() || 'home';
+    switch (pageName) {
+        case 'home':
+            loadDashboardStats();
+            loadDashboardWidgets();
+            break;
+        case 'events':
+            loadEvents();
+            break;
+        case 'attendance':
+            loadAttendance();
+            break;
+        case 'leaderboard':
+            loadLeaderboard();
+            break;
+        case 'announcements':
+            loadAnnouncements();
+            break;
+        case 'polls':
+            loadMemberPolls();
+            break;
+        case 'my-project':
+            loadMyProject();
+            break;
+        case 'messages':
+            loadMessages();
+            break;
+        case 'gallery':
+            loadGallery();
+            break;
+        case 'certificates':
+            loadCertificates();
+            break;
+        case 'profile':
+            loadProfile();
+            break;
+        case 'settings':
+            loadSettings();
+            break;
     }
 }
 
