@@ -155,6 +155,90 @@ function initClickThroughs() {
     } catch (err) { console.warn('initClickThroughs failed:', err); }
 }
 
+function getOwnerChecklistStorageKey() {
+    const userKey = currentUserId ? `user:${currentUserId}` : 'user:unknown';
+    const clubKey = currentClubId ? `club:${currentClubId}` : 'club:unknown';
+    return `ownerChecklist:${userKey}:${clubKey}`;
+}
+
+function loadOwnerChecklistState() {
+    try {
+        const raw = localStorage.getItem(getOwnerChecklistStorageKey());
+        const parsed = raw ? JSON.parse(raw) : {};
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function saveOwnerChecklistState(state) {
+    try {
+        localStorage.setItem(getOwnerChecklistStorageKey(), JSON.stringify(state || {}));
+    } catch (e) { }
+}
+
+function applyOwnerChecklistState(items, state) {
+    items.forEach((item, index) => {
+        const id = item.getAttribute('data-check-id') || String(index);
+        const completed = !!state[id];
+        item.classList.toggle('is-complete', completed);
+        item.setAttribute('aria-checked', completed ? 'true' : 'false');
+    });
+}
+
+function initOwnerChecklist(options = {}) {
+    try {
+        const checklist = document.querySelector('.owner-checklist');
+        if (!checklist) return;
+        const alreadyInit = checklist.hasAttribute('data-init');
+        if (!alreadyInit) checklist.setAttribute('data-init', 'true');
+        const items = Array.from(checklist.querySelectorAll('.owner-check-item'));
+        const progressText = document.querySelector('.owner-checklist-progress span');
+        const progressFill = document.querySelector('.owner-checklist-fill');
+
+        const updateProgress = () => {
+            const total = items.length;
+            const completed = items.filter((item) => item.classList.contains('is-complete')).length;
+            if (progressText) {
+                progressText.textContent = `${completed} of ${total} tasks completed`;
+            }
+            if (progressFill) {
+                const width = total > 0 ? Math.round((completed / total) * 100) : 0;
+                progressFill.style.width = `${width}%`;
+            }
+        };
+
+        const restore = () => {
+            const state = loadOwnerChecklistState();
+            applyOwnerChecklistState(items, state);
+            updateProgress();
+        };
+
+        if (!alreadyInit) {
+            items.forEach((item, index) => {
+                if (!item.getAttribute('data-check-id')) item.setAttribute('data-check-id', String(index));
+                item.addEventListener('click', () => {
+                    item.classList.toggle('is-complete');
+                    const id = item.getAttribute('data-check-id') || String(index);
+                    const state = loadOwnerChecklistState();
+                    state[id] = item.classList.contains('is-complete');
+                    saveOwnerChecklistState(state);
+                    item.setAttribute('aria-checked', state[id] ? 'true' : 'false');
+                    updateProgress();
+                });
+            });
+        }
+
+        if (options.forceRestore || !alreadyInit) {
+            restore();
+        } else {
+            updateProgress();
+        }
+    } catch (err) {
+        console.warn('initOwnerChecklist failed:', err);
+    }
+}
+
 // ========== CLUB-SPECIFIC DATA MANAGEMENT ==========
 // IMPORTANT: All data is club-specific. When an owner logs in:
 // - Club name shows their club name (from dashboard-stats)
@@ -215,7 +299,12 @@ async function verifyAuth() {
         if (ownerNameEl) {
             ownerNameEl.textContent = data.user.username;
         }
+        const welcomeOwnerNameEl = document.getElementById('welcomeOwnerName');
+        if (welcomeOwnerNameEl) {
+            welcomeOwnerNameEl.textContent = data.user.username || 'Owner';
+        }
         currentUserId = data.user.id;
+        initOwnerChecklist({ forceRestore: true });
 
         // Clear any cached data when new user logs in
         allLoadedMembers = [];
@@ -326,8 +415,10 @@ window.handleLogout = handleLogout;
 let menuItems;
 let pages;
 let historyInitialized = false;
+let navigationInitialized = false;
 
 function initializeNavigation() {
+    if (navigationInitialized) return;
     menuItems = document.querySelectorAll('.menu-item');
     pages = document.querySelectorAll('.page');
 
@@ -335,10 +426,14 @@ function initializeNavigation() {
     console.log('Found pages:', pages.length);
 
     menuItems.forEach(item => {
+        if (item.hasAttribute('data-nav-listener-added')) return;
+        item.setAttribute('data-nav-listener-added', 'true');
         item.addEventListener('click', () => {
             const pageName = item.getAttribute('data-page');
             console.log('Menu item clicked:', pageName);
-            switchPage(pageName);
+            if (!item.hasAttribute('onclick')) {
+                switchPage(pageName);
+            }
 
             // Close sidebar on mobile when item clicked
             const sidebar = document.querySelector('.sidebar');
@@ -349,6 +444,7 @@ function initializeNavigation() {
             }
         });
     });
+    navigationInitialized = true;
 
     // Mobile Sidebar Toggle
     const sidebarToggle = document.getElementById('sidebarToggle');
@@ -410,6 +506,9 @@ function switchPage(pageName, options = {}) {
 
     try {
         const previousPageName = getActivePageName();
+        if (previousPageName === pageName && !options.force) {
+            return;
+        }
         // Get fresh references if not initialized
         const currentMenuItems = menuItems || document.querySelectorAll('.menu-item');
         const currentPages = pages || document.querySelectorAll('.page');
@@ -586,8 +685,13 @@ async function loadDashboardStats() {
             } else {
                 console.error('❌ Club name element not found or stats.clubName missing');
             }
+            const welcomeClubNameEl = document.getElementById('welcomeClubName');
+            if (welcomeClubNameEl && stats.clubName) {
+                welcomeClubNameEl.textContent = stats.clubName;
+            }
             currentClubId = stats.clubId || null;
             console.log('✅ Current club ID set to:', currentClubId);
+            initOwnerChecklist({ forceRestore: true });
 
             // Update basic stats
             document.getElementById('totalMembers').textContent = stats.totalMembers;
@@ -616,24 +720,152 @@ async function loadDashboardStats() {
                 document.getElementById('topMemberPoints').textContent = 'No members';
             }
 
+            const topMembersList = document.getElementById('topMembersList');
+            if (topMembersList) {
+                if (membersData.success && Array.isArray(membersData.members) && membersData.members.length > 0) {
+                    const top = [...membersData.members]
+                        .sort((a, b) => (b.points || 0) - (a.points || 0))
+                        .slice(0, 5);
+
+                    topMembersList.innerHTML = top.map((m) => {
+                        const name = escapeHtml(m.username || 'Member');
+                        const initials = name ? name.substring(0, 2).toUpperCase() : 'UN';
+                        const points = Number(m.points) || 0;
+                        const role = escapeHtml((m.clubRole || 'member').toUpperCase());
+                        return `
+                            <button class="owner-member-row owner-member-row-btn" type="button" onclick="openMemberProfile(${m.id})">
+                                <span class="owner-member-avatar" aria-hidden="true">${initials}</span>
+                                <span class="owner-member-info">
+                                    <span class="owner-member-name">${name}</span>
+                                    <span class="owner-member-meta">${role}</span>
+                                </span>
+                                <span class="owner-member-points">${points} pts</span>
+                            </button>
+                        `;
+                    }).join('');
+                } else {
+                    topMembersList.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fa-solid fa-users"></i>
+                            <p>No members yet</p>
+                        </div>
+                    `;
+                }
+            }
+
+            const upcomingBody = document.getElementById('upcomingEventBody');
+            if (upcomingBody) {
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const upcoming = (eventsData.success ? (eventsData.events || []) : [])
+                    .filter((ev) => {
+                        const d = new Date(ev.date);
+                        if (Number.isNaN(d.getTime())) return false;
+                        return d >= today;
+                    })
+                    .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+
+                if (upcoming) {
+                    const title = escapeHtml(upcoming.title || 'Upcoming event');
+                    const venue = escapeHtml(upcoming.venue || 'TBA');
+                    const date = new Date(upcoming.date);
+                    const dateText = date.toLocaleDateString();
+                    const diffDays = Math.max(0, Math.round((date - today) / (24 * 60 * 60 * 1000)));
+                    const pill = diffDays === 0 ? 'Today' : `In ${diffDays} day${diffDays === 1 ? '' : 's'}`;
+                    upcomingBody.innerHTML = `
+                        <div class="owner-upcoming-item">
+                            <div class="owner-upcoming-icon" aria-hidden="true">
+                                <i class="fa-solid fa-calendar-day"></i>
+                            </div>
+                            <div class="owner-upcoming-info">
+                                <p class="owner-upcoming-title">${title}</p>
+                                <p class="owner-upcoming-meta">${dateText} • ${venue}</p>
+                            </div>
+                            <span class="owner-upcoming-pill">${pill}</span>
+                        </div>
+                    `;
+                } else {
+                    upcomingBody.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fa-solid fa-calendar-plus"></i>
+                            <p>No upcoming events</p>
+                        </div>
+                    `;
+                }
+            }
+
+            const activityList = document.getElementById('recentActivityList');
+            if (activityList) {
+                try {
+                    const resp = await fetch(`${getApiUrl()}/notifications`, {
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        cache: 'no-cache'
+                    });
+                    const json = await resp.json();
+                    if (resp.ok && json && json.success && Array.isArray(json.notifications) && json.notifications.length > 0) {
+                        const items = [...json.notifications]
+                            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                            .slice(0, 4);
+
+                        activityList.innerHTML = items.map((n) => {
+                            const title = escapeHtml(n.title || 'Notification');
+                            const message = escapeHtml(n.message || '');
+                            const timeText = new Date(n.createdAt).toLocaleString();
+                            const unread = !n.read;
+                            const icon = unread ? 'bell' : 'bell';
+                            return `
+                                <button class="owner-activity-item ${unread ? 'is-unread' : ''}" type="button" onclick="markNotificationRead(${n.id})">
+                                    <span class="owner-activity-icon" aria-hidden="true"><i class="fa-solid fa-${icon}"></i></span>
+                                    <span class="owner-activity-info">
+                                        <span class="owner-activity-title">${title}</span>
+                                        <span class="owner-activity-message">${message}</span>
+                                        <span class="owner-activity-time">${timeText}</span>
+                                    </span>
+                                </button>
+                            `;
+                        }).join('');
+                    } else {
+                        activityList.innerHTML = `
+                            <div class="empty-state">
+                                <i class="fa-solid fa-bell-slash"></i>
+                                <p>No recent activity</p>
+                            </div>
+                        `;
+                    }
+                } catch (e) {
+                    activityList.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fa-solid fa-bell-slash"></i>
+                            <p>No recent activity</p>
+                        </div>
+                    `;
+                }
+            }
+
             // Load recent events (last 3)
             const recentEventsList = document.getElementById('recentEventsList');
             if (eventsData.success && eventsData.events.length > 0) {
-                const recentEvents = eventsData.events.slice(0, 3);
-                recentEventsList.innerHTML = recentEvents.map(event => `
+                const recentEvents = [...eventsData.events]
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                    .slice(0, 3);
+                recentEventsList.innerHTML = recentEvents.map(event => {
+                    const title = escapeHtml(event.title || '');
+                    const venue = escapeHtml(event.venue || 'TBA');
+                    const attended = event.attendanceList ? event.attendanceList.length : 0;
+                    const dateText = new Date(event.date).toLocaleDateString();
+                    return `
                     <div class="recent-event-item">
                         <div class="recent-event-icon">
                             <i class="fa-solid fa-calendar-day"></i>
                         </div>
                         <div class="recent-event-info">
-                            <h4>${event.title}</h4>
-                            <p><i class="fa-solid fa-calendar"></i> ${new Date(event.date).toLocaleDateString()} • ${event.venue}</p>
+                            <h4>${title}</h4>
+                            <p><i class="fa-solid fa-calendar"></i> ${dateText} • ${venue}</p>
                         </div>
-                        <span style="color: #3b82f6; font-weight: 600; font-size: 14px;">
-                            ${event.attendanceList ? event.attendanceList.length : 0} attended
-                        </span>
+                        <a class="recent-event-meta" href="#" onclick="return false;">${attended} attended</a>
                     </div>
-                `).join('');
+                `;
+                }).join('');
             } else {
                 recentEventsList.innerHTML = `
                     <div class="empty-state">
@@ -1176,7 +1408,10 @@ async function removeMember(memberId, memberName) {
 }
 
 // Load Events
+let eventsLoadInFlight = false;
 async function loadEvents() {
+    if (eventsLoadInFlight) return;
+    eventsLoadInFlight = true;
     try {
         const response = await fetch(`${getApiUrl()}/owner/events`, {
             headers: {
@@ -1253,6 +1488,8 @@ async function loadEvents() {
         } else {
             showNotification('Failed to load events: ' + error.message, 'error');
         }
+    } finally {
+        eventsLoadInFlight = false;
     }
 }
 
@@ -2631,7 +2868,10 @@ console.log('🔑 Token exists:', !!token);
 // Always try to initialize
 function initializeDashboard() {
     try {
+        if (window.__ownerDashboardInitialized) return;
+        window.__ownerDashboardInitialized = true;
         console.log('🚀 Initializing dashboard...');
+        initOwnerChecklist();
         verifyAuth();
     } catch (error) {
         console.error('❌ Error initializing dashboard:', error);
@@ -2641,18 +2881,10 @@ function initializeDashboard() {
 
 if (document.readyState === 'loading') {
     console.log('⏳ Waiting for DOM to load...');
-    document.addEventListener('DOMContentLoaded', initializeDashboard);
+    document.addEventListener('DOMContentLoaded', initializeDashboard, { once: true });
 } else {
     console.log('✅ DOM already loaded, initializing now...');
-    // Small delay to ensure all scripts are loaded
-    setTimeout(initializeDashboard, 100);
-}
-
-// Also try immediately
-try {
     initializeDashboard();
-} catch (e) {
-    console.warn('Could not initialize immediately:', e);
 }
 
 // ========== SOCKET.IO ==========
@@ -3075,12 +3307,12 @@ function updateNotificationBadge(count) {
                 .then(data => {
                     if (data.success) {
                         badge.textContent = data.unreadCount || 0;
-                        badge.style.display = (data.unreadCount || 0) > 0 ? 'block' : 'none';
+                        badge.style.display = (data.unreadCount || 0) > 0 ? 'inline-flex' : 'none';
                     }
                 });
         } else {
             badge.textContent = count || 0;
-            badge.style.display = (count || 0) > 0 ? 'block' : 'none';
+            badge.style.display = (count || 0) > 0 ? 'inline-flex' : 'none';
         }
     }
 }
