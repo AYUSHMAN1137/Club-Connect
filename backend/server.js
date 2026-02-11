@@ -20,28 +20,42 @@ const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || '*';
 
 db.ClubOwner.sync().catch(() => null);
 Promise.all([
-    db.Workshop.sync().catch(() => null),
-    db.WorkshopSession.sync().catch(() => null),
-    db.CodeBundle.sync().catch(() => null),
-    db.CodeSection.sync().catch(() => null),
-    db.RealtimeEventLog.sync().catch(() => null)
+    db.Workshop.sync({ alter: true }).catch(() => null),
+    db.WorkshopSession.sync({ alter: true }).catch(() => null),
+    db.CodeBundle.sync({ alter: true }).catch(() => null),
+    db.CodeSection.sync({ alter: true }).catch(() => null),
+    db.RealtimeEventLog.sync({ alter: true }).catch(() => null)
 ]).catch(() => null);
 
 let workshopSchemaReady = false;
+let workshopSchemaInitPromise = null;
 
 function isMissingTableError(error) {
     const message = String(error?.message || '').toLowerCase();
-    return message.includes('no such table') || (message.includes('relation') && message.includes('does not exist'));
+    return (
+        message.includes('no such table') ||
+        (message.includes('relation') && message.includes('does not exist')) ||
+        (message.includes('column') && message.includes('does not exist'))
+    );
 }
 
 async function ensureWorkshopSchema() {
     if (workshopSchemaReady) return;
-    await db.Workshop.sync();
-    await db.WorkshopSession.sync();
-    await db.CodeBundle.sync();
-    await db.CodeSection.sync();
-    await db.RealtimeEventLog.sync();
-    workshopSchemaReady = true;
+    if (!workshopSchemaInitPromise) {
+        workshopSchemaInitPromise = (async () => {
+            await db.Workshop.sync({ alter: true });
+            await db.WorkshopSession.sync({ alter: true });
+            await db.CodeBundle.sync({ alter: true });
+            await db.CodeSection.sync({ alter: true });
+            await db.RealtimeEventLog.sync({ alter: true });
+            workshopSchemaReady = true;
+        })().catch((error) => {
+            workshopSchemaInitPromise = null;
+            workshopSchemaReady = false;
+            throw error;
+        });
+    }
+    await workshopSchemaInitPromise;
 }
 
 const app = express();
