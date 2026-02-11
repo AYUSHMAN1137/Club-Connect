@@ -15,6 +15,11 @@ const MemberProjectHistory = require('./MemberProjectHistory');
 const AttendanceSession = require('./AttendanceSession');
 const AttendanceRecord = require('./AttendanceRecord');
 const ClubOwner = require('./ClubOwner');
+const Workshop = require('./Workshop');
+const WorkshopSession = require('./WorkshopSession');
+const CodeBundle = require('./CodeBundle');
+const CodeSection = require('./CodeSection');
+const RealtimeEventLog = require('./RealtimeEventLog');
 
 // ========== RELATIONSHIPS ==========
 
@@ -131,6 +136,29 @@ AttendanceRecord.belongsTo(Event, { foreignKey: 'eventId', onDelete: 'CASCADE' }
 User.hasMany(AttendanceRecord, { as: 'AttendanceRecords', foreignKey: 'memberId', onDelete: 'CASCADE' });
 AttendanceRecord.belongsTo(User, { as: 'Member', foreignKey: 'memberId', onDelete: 'CASCADE' });
 
+Club.hasMany(Workshop, { foreignKey: 'clubId', onDelete: 'CASCADE' });
+Workshop.belongsTo(Club, { foreignKey: 'clubId', onDelete: 'CASCADE' });
+User.hasMany(Workshop, { as: 'InstructorWorkshops', foreignKey: 'instructorId', onDelete: 'CASCADE' });
+Workshop.belongsTo(User, { as: 'Instructor', foreignKey: 'instructorId', onDelete: 'CASCADE' });
+
+Workshop.hasMany(WorkshopSession, { foreignKey: 'workshopId', onDelete: 'CASCADE' });
+WorkshopSession.belongsTo(Workshop, { foreignKey: 'workshopId', onDelete: 'CASCADE' });
+
+WorkshopSession.hasMany(CodeBundle, { foreignKey: 'sessionId', onDelete: 'CASCADE' });
+CodeBundle.belongsTo(WorkshopSession, { foreignKey: 'sessionId', onDelete: 'CASCADE' });
+User.hasMany(CodeBundle, { as: 'AuthoredCodeBundles', foreignKey: 'authorId', onDelete: 'CASCADE' });
+CodeBundle.belongsTo(User, { as: 'Author', foreignKey: 'authorId', onDelete: 'CASCADE' });
+
+WorkshopSession.hasMany(CodeSection, { foreignKey: 'sessionId', onDelete: 'CASCADE' });
+CodeSection.belongsTo(WorkshopSession, { foreignKey: 'sessionId', onDelete: 'CASCADE' });
+CodeBundle.hasMany(CodeSection, { foreignKey: 'codeBundleId', onDelete: 'SET NULL' });
+CodeSection.belongsTo(CodeBundle, { foreignKey: 'codeBundleId', onDelete: 'SET NULL' });
+
+WorkshopSession.hasMany(RealtimeEventLog, { foreignKey: 'sessionId', onDelete: 'CASCADE' });
+RealtimeEventLog.belongsTo(WorkshopSession, { foreignKey: 'sessionId', onDelete: 'CASCADE' });
+User.hasMany(RealtimeEventLog, { as: 'RealtimeEvents', foreignKey: 'actorId', onDelete: 'SET NULL' });
+RealtimeEventLog.belongsTo(User, { as: 'Actor', foreignKey: 'actorId', onDelete: 'SET NULL' });
+
 module.exports = {
     sequelize,
     User,
@@ -153,5 +181,10 @@ module.exports = {
     MemberProjectHistory,
     AttendanceSession,
     AttendanceRecord,
-    ClubOwner
+    ClubOwner,
+    Workshop,
+    WorkshopSession,
+    CodeBundle,
+    CodeSection,
+    RealtimeEventLog
 };

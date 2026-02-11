@@ -193,6 +193,10 @@
                         <span>Events</span>
                         <span class="menu-badge" id="upcomingEventsBadge" style="display: none;"></span>
                     </li>
+                    <li class="menu-item" data-page="workshops">
+                        <i class="fa-solid fa-chalkboard-user"></i>
+                        <span>Workshops</span>
+                    </li>
                     <li class="menu-item" data-page="attendance">
                         <i class="fa-solid fa-clipboard-check"></i>
                         <span>My Attendance</span>
@@ -580,6 +584,86 @@
                     </div>
                     <h3>No Events Found</h3>
                     <p>There are no events matching your criteria.</p>
+                </div>
+            </div>
+
+            <div class="page" id="workshops-page">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-chalkboard-user"></i> Workshops</h1>
+                        <p>Join live coding sessions</p>
+                    </div>
+                </div>
+                <div class="workshops-layout">
+                    <div class="workshop-list-panel">
+                        <div id="memberWorkshopCards" class="workshop-card-grid">
+                            <div class="loading-spinner">
+                                <div class="spinner"></div>
+                                <p>Loading workshops...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="workshop-detail-panel" id="memberWorkshopDetail">
+                        <div class="workshop-detail-empty">
+                            <i class="fa-solid fa-chalkboard-user"></i>
+                            <p>Select a workshop to view details.</p>
+                        </div>
+                        <div class="workshop-detail-content" id="memberWorkshopDetailContent" style="display: none;">
+                            <div class="workshop-detail-header">
+                                <h2 id="memberWorkshopTitle">Workshop</h2>
+                                <span class="workshop-status-badge" id="memberWorkshopStatus">Upcoming</span>
+                            </div>
+                            <p id="memberWorkshopDescription"></p>
+                            <div class="workshop-meta">
+                                <div><i class="fa-solid fa-clock"></i> <span id="memberWorkshopTime">-</span></div>
+                                <div><i class="fa-solid fa-user"></i> <span id="memberWorkshopInstructor">-</span></div>
+                            </div>
+                            <div class="workshop-tools">
+                                <h3>Required Tools</h3>
+                                <div id="memberWorkshopTools" class="tools-list"></div>
+                            </div>
+                            <div class="workshop-detail-actions">
+                                <button class="btn-primary" id="memberWorkshopNextBtn" onclick="openMemberWorkshopInterface()" disabled>Next</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="workshop-interface" id="memberWorkshopInterface" style="display: none;">
+                    <div class="workshop-interface-header">
+                        <div>
+                            <h2 id="memberInterfaceTitle">Live Workshop</h2>
+                            <div class="live-indicator"><span class="live-dot"></span> Live</div>
+                        </div>
+                        <div class="workshop-interface-actions">
+                            <span id="memberPreviewStatus">Preview Disabled</span>
+                        </div>
+                    </div>
+                    <div class="workshop-interface-body">
+                        <div class="workshop-editor-panel">
+                            <pre id="memberCodeViewer"></pre>
+                        </div>
+                        <div class="workshop-side-panel">
+                            <div class="sections-panel">
+                                <div class="panel-header">
+                                    <h3>Visible Sections</h3>
+                                </div>
+                                <div id="memberSectionsList" class="sections-list"></div>
+                            </div>
+                            <div class="participants-panel">
+                                <h3>Participants</h3>
+                                <div id="memberParticipantsCount">0 connected</div>
+                            </div>
+                            <div class="preview-panel">
+                                <div class="panel-header">
+                                    <h3>Preview</h3>
+                                </div>
+                                <div class="preview-container" id="memberPreviewContainer" style="display: none;">
+                                    <iframe id="memberPreviewFrame" sandbox="allow-scripts"></iframe>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

@@ -26,6 +26,11 @@ const {
     AttendanceSession,
     AttendanceRecord,
     ClubOwner,
+    Workshop,
+    WorkshopSession,
+    CodeBundle,
+    CodeSection,
+    RealtimeEventLog,
     sequelize
 } = require('../models');
 const { Op } = require('sequelize');
@@ -1070,6 +1075,11 @@ module.exports = {
     User,
     Club,
     ClubOwner,
+    Workshop,
+    WorkshopSession,
+    CodeBundle,
+    CodeSection,
+    RealtimeEventLog,
     Event,
     Membership,
     Announcement,

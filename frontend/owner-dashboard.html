@@ -86,6 +86,10 @@
                     <i class="fa-solid fa-calendar-days"></i>
                     <span>Events</span>
                 </li>
+                <li class="menu-item" data-page="workshops" onclick="switchPage('workshops')">
+                    <i class="fa-solid fa-chalkboard-user"></i>
+                    <span>Workshops</span>
+                </li>
                 <li class="menu-item" data-page="announcements" onclick="switchPage('announcements')">
                     <i class="fa-solid fa-bullhorn"></i>
                     <span>Announcements</span>
@@ -121,7 +125,8 @@
                     <div class="owner-welcome">
                         <div class="owner-welcome-content">
                             <div class="owner-welcome-text">
-                                <h1>Welcome back, <span id="welcomeOwnerName">Owner</span>! <span class="owner-welcome-emoji">👋</span></h1>
+                                <h1>Welcome back, <span id="welcomeOwnerName">Owner</span>! <span
+                                        class="owner-welcome-emoji">👋</span></h1>
                                 <p>Here’s a quick snapshot of <span id="welcomeClubName">your club</span> today.</p>
                             </div>
                             <div class="owner-welcome-actions">
@@ -220,7 +225,8 @@
                                 </div>
                                 <div class="owner-card-body">
                                     <div class="owner-action-grid">
-                                        <button class="owner-action-btn owner-action-primary" onclick="switchPage('events')">
+                                        <button class="owner-action-btn owner-action-primary"
+                                            onclick="switchPage('events')">
                                             <i class="fa-solid fa-plus"></i>
                                             <span>Create Event</span>
                                         </button>
@@ -246,7 +252,9 @@
                                         <i class="fa-solid fa-clock-rotate-left"></i>
                                         <h3>Recent Activity</h3>
                                     </div>
-                                    <a href="#" class="owner-card-link" onclick="document.getElementById('notificationsModal')?.classList.add('active'); loadNotifications(); return false;">View All <i class="fa-solid fa-arrow-right"></i></a>
+                                    <a href="#" class="owner-card-link"
+                                        onclick="document.getElementById('notificationsModal')?.classList.add('active'); loadNotifications(); return false;">View
+                                        All <i class="fa-solid fa-arrow-right"></i></a>
                                 </div>
                                 <div class="owner-card-body" id="recentActivityList">
                                     <div class="empty-state">
@@ -264,8 +272,8 @@
                                         <i class="fa-solid fa-clock"></i>
                                         <h3>Upcoming Event</h3>
                                     </div>
-                                    <a href="#" onclick="switchPage('events'); return false;" class="owner-card-link">Manage <i
-                                            class="fa-solid fa-arrow-right"></i></a>
+                                    <a href="#" onclick="switchPage('events'); return false;"
+                                        class="owner-card-link">Manage <i class="fa-solid fa-arrow-right"></i></a>
                                 </div>
                                 <div class="owner-card-body" id="upcomingEventBody">
                                     <div class="empty-state">
@@ -290,8 +298,8 @@
                                         </div>
                                     </div>
                                     <div class="owner-checklist">
-                                        <button class="owner-check-item" type="button" role="checkbox" aria-checked="false"
-                                            data-check-id="post-weekly-update">
+                                        <button class="owner-check-item" type="button" role="checkbox"
+                                            aria-checked="false" data-check-id="post-weekly-update">
                                             <div class="owner-check-indicator" aria-hidden="true"></div>
                                             <div class="owner-check-icon" aria-hidden="true">
                                                 <i class="fa-solid fa-bullhorn"></i>
@@ -301,8 +309,8 @@
                                                 <p>Keep members engaged with the latest news.</p>
                                             </div>
                                         </button>
-                                        <button class="owner-check-item" type="button" role="checkbox" aria-checked="false"
-                                            data-check-id="plan-next-event">
+                                        <button class="owner-check-item" type="button" role="checkbox"
+                                            aria-checked="false" data-check-id="plan-next-event">
                                             <div class="owner-check-indicator" aria-hidden="true"></div>
                                             <div class="owner-check-icon" aria-hidden="true">
                                                 <i class="fa-solid fa-calendar-day"></i>
@@ -312,8 +320,8 @@
                                                 <p>Schedule something exciting for your club.</p>
                                             </div>
                                         </button>
-                                        <button class="owner-check-item" type="button" role="checkbox" aria-checked="false"
-                                            data-check-id="review-member-roles">
+                                        <button class="owner-check-item" type="button" role="checkbox"
+                                            aria-checked="false" data-check-id="review-member-roles">
                                             <div class="owner-check-indicator" aria-hidden="true"></div>
                                             <div class="owner-check-icon" aria-hidden="true">
                                                 <i class="fa-solid fa-users-gear"></i>
@@ -333,8 +341,8 @@
                                         <i class="fa-solid fa-trophy"></i>
                                         <h3>Top Members</h3>
                                     </div>
-                                    <a href="#" onclick="switchPage('members'); return false;" class="owner-card-link">View All <i
-                                            class="fa-solid fa-arrow-right"></i></a>
+                                    <a href="#" onclick="switchPage('members'); return false;"
+                                        class="owner-card-link">View All <i class="fa-solid fa-arrow-right"></i></a>
                                 </div>
                                 <div class="owner-card-body" id="topMembersList">
                                     <div class="empty-state">
@@ -683,6 +691,153 @@
                 </div>
             </div>
 
+            <div class="page" id="workshops-page">
+                <!-- Workshop Hero Header -->
+                <div class="ws-hero">
+                    <div class="ws-hero-content">
+                        <div class="ws-hero-text">
+                            <h1><i class="fa-solid fa-chalkboard-user"></i> Workshops</h1>
+                            <p class="ws-hero-subtitle">Create interactive coding sessions for your club members</p>
+                        </div>
+                        <button class="ws-create-btn" onclick="openWorkshopCreateModal()">
+                            <i class="fa-solid fa-plus"></i> New Workshop
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Workshop Cards Grid -->
+                <div id="ownerWorkshopCards" class="ws-cards-grid">
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <p>Loading workshops...</p>
+                    </div>
+                </div>
+
+                <!-- Workshop Detail Overlay -->
+                <div class="ws-detail-overlay" id="ownerWorkshopDetail">
+                    <div class="ws-detail-panel">
+                        <button class="ws-detail-close" onclick="closeWorkshopDetail()"><i
+                                class="fa-solid fa-xmark"></i></button>
+                        <div class="ws-detail-content" id="ownerWorkshopDetailContent" style="display:none;">
+                            <div class="ws-detail-badge-row">
+                                <span class="workshop-status-badge" id="ownerWorkshopStatus">Upcoming</span>
+                            </div>
+                            <h2 class="ws-detail-title" id="ownerWorkshopTitle">Workshop</h2>
+                            <p class="ws-detail-desc" id="ownerWorkshopDescription"></p>
+                            <div class="ws-detail-info-grid">
+                                <div class="ws-info-chip"><i class="fa-regular fa-clock"></i> <span
+                                        id="ownerWorkshopTime">-</span></div>
+                                <div class="ws-info-chip"><i class="fa-regular fa-user"></i> <span
+                                        id="ownerWorkshopInstructor">-</span></div>
+                            </div>
+                            <div class="ws-tools-section">
+                                <h3><i class="fa-solid fa-toolbox"></i> Required Tools</h3>
+                                <div id="ownerWorkshopTools" class="ws-tools-list"></div>
+                            </div>
+                            <div class="ws-detail-actions">
+                                <button class="ws-btn ws-btn-outline" id="ownerWorkshopStartBtn"
+                                    onclick="startWorkshopSession()">
+                                    <i class="fa-solid fa-broadcast-tower"></i> Go Live
+                                </button>
+                                <button class="ws-btn ws-btn-solid" id="ownerWorkshopNextBtn"
+                                    onclick="openWorkshopInterface()" disabled>
+                                    <i class="fa-solid fa-arrow-right"></i> Enter Workshop
+                                </button>
+                            </div>
+                        </div>
+                        <div class="ws-detail-empty" id="wsDetailEmpty">
+                            <i class="fa-solid fa-laptop-code"></i>
+                            <p>Select a workshop to view details</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Workshop Live Interface -->
+                <div class="ws-interface" id="ownerWorkshopInterface" style="display: none;">
+                    <div class="ws-interface-top">
+                        <div class="ws-interface-title-area">
+                            <button class="ws-back-btn" onclick="closeWorkshopInterface()"><i
+                                    class="fa-solid fa-arrow-left"></i></button>
+                            <div>
+                                <h2 id="ownerInterfaceTitle">Live Workshop</h2>
+                                <div class="ws-live-badge"><span class="ws-live-dot"></span> Live Session</div>
+                            </div>
+                        </div>
+                        <div class="ws-interface-toolbar">
+                            <div class="ws-lang-select-wrap">
+                                <i class="fa-solid fa-code"></i>
+                                <select id="ownerLanguageSelect">
+                                    <option value="html">HTML</option>
+                                    <option value="javascript">JavaScript</option>
+                                    <option value="css">CSS</option>
+                                    <option value="python">Python</option>
+                                    <option value="java">Java</option>
+                                    <option value="cpp">C++</option>
+                                    <option value="plaintext">Plain Text</option>
+                                </select>
+                            </div>
+                            <button class="ws-toolbar-btn ws-toolbar-draft" onclick="saveWorkshopCode(false)">
+                                <i class="fa-regular fa-floppy-disk"></i> Save Draft
+                            </button>
+                            <button class="ws-toolbar-btn ws-toolbar-publish" onclick="saveWorkshopCode(true)">
+                                <i class="fa-solid fa-paper-plane"></i> Publish
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ws-interface-body">
+                        <div class="ws-editor-area">
+                            <div class="ws-editor-header">
+                                <span><i class="fa-solid fa-terminal"></i> Code Editor</span>
+                                <span class="ws-editor-hint">Paste your code here — students see it live</span>
+                            </div>
+                            <textarea id="ownerWorkshopEditor"
+                                placeholder="// Paste your full source code here...&#10;// Students will see updates in real time after you publish.&#10;&#10;"></textarea>
+                        </div>
+                        <div class="ws-sidebar">
+                            <div class="ws-sidebar-card ws-sections-card">
+                                <div class="ws-sidebar-card-header">
+                                    <h3><i class="fa-solid fa-layer-group"></i> Sections</h3>
+                                    <button class="ws-chip-btn" onclick="createSectionFromSelection()"><i
+                                            class="fa-solid fa-scissors"></i> Split</button>
+                                </div>
+                                <div class="ws-section-form">
+                                    <input type="text" id="sectionNameInput" placeholder="Section name"
+                                        class="ws-input">
+                                    <div class="ws-section-range">
+                                        <input type="number" id="sectionStartInput" placeholder="From"
+                                            class="ws-input ws-input-sm">
+                                        <span class="ws-range-sep">—</span>
+                                        <input type="number" id="sectionEndInput" placeholder="To"
+                                            class="ws-input ws-input-sm">
+                                    </div>
+                                    <button class="ws-btn ws-btn-solid ws-btn-sm" onclick="createSectionManual()"><i
+                                            class="fa-solid fa-plus"></i> Create</button>
+                                </div>
+                                <div id="ownerSectionsList" class="ws-sections-list"></div>
+                            </div>
+                            <div class="ws-sidebar-card ws-participants-card">
+                                <div class="ws-sidebar-card-header">
+                                    <h3><i class="fa-solid fa-users"></i> Participants</h3>
+                                </div>
+                                <div class="ws-participant-count" id="ownerParticipantsCount">
+                                    <span class="ws-participant-num">0</span> connected
+                                </div>
+                            </div>
+                            <div class="ws-sidebar-card ws-preview-card">
+                                <div class="ws-sidebar-card-header">
+                                    <h3><i class="fa-solid fa-eye"></i> Preview</h3>
+                                    <button class="ws-chip-btn" id="ownerPreviewToggle" onclick="togglePreview()"><i
+                                            class="fa-solid fa-play"></i> Enable</button>
+                                </div>
+                                <div class="ws-preview-container" id="ownerPreviewContainer" style="display: none;">
+                                    <iframe id="ownerPreviewFrame" sandbox="allow-scripts"></iframe>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Settings Page -->
             <div class="page" id="settings-page">
                 <div class="page-header">
@@ -733,6 +888,48 @@
 
     <!-- Notification Toast -->
     <div id="notificationContainer"></div>
+
+    <div class="modal" id="workshopCreateModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3>Create Workshop</h3>
+                <button class="modal-close" onclick="closeWorkshopCreateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="workshopCreateForm">
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" id="workshopTitleInput" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="workshopDescriptionInput" rows="4"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Start Time</label>
+                        <input type="datetime-local" id="workshopStartInput">
+                    </div>
+                    <div class="form-group">
+                        <label>End Time</label>
+                        <input type="datetime-local" id="workshopEndInput">
+                    </div>
+                    <div class="form-group">
+                        <label>Required Tools</label>
+                        <div id="workshopToolsBuilder" class="tools-builder">
+                            <div class="tool-row">
+                                <input type="text" class="tool-name" placeholder="Tool name">
+                                <input type="text" class="tool-version" placeholder="Version">
+                                <input type="url" class="tool-link" placeholder="Download link">
+                                <input type="text" class="tool-icon" placeholder="Icon class (optional)">
+                            </div>
+                        </div>
+                        <button type="button" class="btn-secondary btn-small" onclick="addToolRow()">Add Tool</button>
+                    </div>
+                    <button type="submit" class="btn-primary">Create Workshop</button>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Notifications Modal -->
     <div class="modal" id="notificationsModal">
