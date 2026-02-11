@@ -588,43 +588,52 @@
             </div>
 
             <div class="page" id="workshops-page">
-                <div class="page-header">
-                    <div class="page-title">
-                        <h1><i class="fa-solid fa-chalkboard-user"></i> Workshops</h1>
-                        <p>Join live coding sessions</p>
+                <div class="ws-hero">
+                    <div class="ws-hero-content">
+                        <div class="ws-hero-text">
+                            <h1><i class="fa-solid fa-chalkboard-user"></i> Workshops</h1>
+                            <p class="ws-hero-subtitle">Join live coding sessions</p>
+                        </div>
                     </div>
                 </div>
-                <div class="workshops-layout">
-                    <div class="workshop-list-panel">
-                        <div id="memberWorkshopCards" class="workshop-card-grid">
-                            <div class="loading-spinner">
-                                <div class="spinner"></div>
-                                <p>Loading workshops...</p>
-                            </div>
-                        </div>
+
+                <div id="memberWorkshopCards" class="ws-cards-grid">
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <p>Loading workshops...</p>
                     </div>
-                    <div class="workshop-detail-panel" id="memberWorkshopDetail">
-                        <div class="workshop-detail-empty">
-                            <i class="fa-solid fa-chalkboard-user"></i>
-                            <p>Select a workshop to view details.</p>
-                        </div>
-                        <div class="workshop-detail-content" id="memberWorkshopDetailContent" style="display: none;">
-                            <div class="workshop-detail-header">
-                                <h2 id="memberWorkshopTitle">Workshop</h2>
+                </div>
+
+                <div class="ws-detail-overlay" id="memberWorkshopDetail">
+                    <div class="ws-detail-panel">
+                        <button class="ws-detail-close" onclick="closeMemberWorkshopDetail()"><i
+                                class="fa-solid fa-xmark"></i></button>
+                        <div class="ws-detail-content" id="memberWorkshopDetailContent" style="display:none;">
+                            <div class="ws-detail-badge-row">
                                 <span class="workshop-status-badge" id="memberWorkshopStatus">Upcoming</span>
                             </div>
-                            <p id="memberWorkshopDescription"></p>
-                            <div class="workshop-meta">
-                                <div><i class="fa-solid fa-clock"></i> <span id="memberWorkshopTime">-</span></div>
-                                <div><i class="fa-solid fa-user"></i> <span id="memberWorkshopInstructor">-</span></div>
+                            <h2 class="ws-detail-title" id="memberWorkshopTitle">Workshop</h2>
+                            <p class="ws-detail-desc" id="memberWorkshopDescription"></p>
+                            <div class="ws-detail-info-grid">
+                                <div class="ws-info-chip"><i class="fa-regular fa-clock"></i> <span
+                                        id="memberWorkshopTime">-</span></div>
+                                <div class="ws-info-chip"><i class="fa-regular fa-user"></i> <span
+                                        id="memberWorkshopInstructor">-</span></div>
                             </div>
-                            <div class="workshop-tools">
-                                <h3>Required Tools</h3>
-                                <div id="memberWorkshopTools" class="tools-list"></div>
+                            <div class="ws-tools-section">
+                                <h3><i class="fa-solid fa-toolbox"></i> Required Tools</h3>
+                                <div id="memberWorkshopTools" class="ws-tools-list"></div>
                             </div>
-                            <div class="workshop-detail-actions">
-                                <button class="btn-primary" id="memberWorkshopNextBtn" onclick="openMemberWorkshopInterface()" disabled>Next</button>
+                            <div class="ws-detail-actions">
+                                <button class="ws-btn ws-btn-solid" id="memberWorkshopNextBtn"
+                                    onclick="openMemberWorkshopInterface()" disabled>
+                                    <i class="fa-solid fa-arrow-right"></i> Join Live
+                                </button>
                             </div>
+                        </div>
+                        <div class="ws-detail-empty" id="memberWsDetailEmpty">
+                            <i class="fa-solid fa-laptop-code"></i>
+                            <p>Select a workshop to view details</p>
                         </div>
                     </div>
                 </div>
@@ -636,7 +645,7 @@
                             <div class="live-indicator"><span class="live-dot"></span> Live</div>
                         </div>
                         <div class="workshop-interface-actions">
-                            <span id="memberPreviewStatus">Preview Disabled</span>
+                            <span id="memberPreviewStatus" style="display: none;">Preview Enabled</span>
                         </div>
                     </div>
                     <div class="workshop-interface-body">
@@ -646,7 +655,7 @@
                         <div class="workshop-side-panel">
                             <div class="sections-panel">
                                 <div class="panel-header">
-                                    <h3>Visible Sections</h3>
+                                    <h3>Published Sections</h3>
                                 </div>
                                 <div id="memberSectionsList" class="sections-list"></div>
                             </div>
@@ -654,7 +663,7 @@
                                 <h3>Participants</h3>
                                 <div id="memberParticipantsCount">0 connected</div>
                             </div>
-                            <div class="preview-panel">
+                            <div class="preview-panel" id="memberPreviewPanel" style="display: none;">
                                 <div class="panel-header">
                                     <h3>Preview</h3>
                                 </div>

@@ -70,6 +70,10 @@ async function safeSchemaUpdate() {
         await addIndex('PointHistories', ['clubId']);
         await addIndex('Notifications', ['userId']);
 
+        console.log('\n📦 Adding new columns to WorkshopSessions...');
+        await addColumn('WorkshopSessions', 'status', 'VARCHAR(20)', 'DRAFT');
+        await addColumn('WorkshopSessions', 'isSectionsPublished', 'BOOLEAN', 'false');
+
         console.log('\n✅ Schema update complete!');
 
     } catch (error) {

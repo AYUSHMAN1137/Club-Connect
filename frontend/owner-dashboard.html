@@ -779,8 +779,14 @@
                             <button class="ws-toolbar-btn ws-toolbar-draft" onclick="saveWorkshopCode(false)">
                                 <i class="fa-regular fa-floppy-disk"></i> Save Draft
                             </button>
-                            <button class="ws-toolbar-btn ws-toolbar-publish" onclick="saveWorkshopCode(true)">
-                                <i class="fa-solid fa-paper-plane"></i> Publish
+                            <button class="ws-toolbar-btn ws-toolbar-publish" onclick="publishWorkshopToStudents()">
+                                <i class="fa-solid fa-paper-plane"></i> Publish to Students
+                            </button>
+                            <button class="ws-toolbar-btn" onclick="pauseWorkshopSession()">
+                                <i class="fa-solid fa-pause"></i> Pause
+                            </button>
+                            <button class="ws-toolbar-btn" onclick="endWorkshopSession()">
+                                <i class="fa-solid fa-flag-checkered"></i> End
                             </button>
                         </div>
                     </div>

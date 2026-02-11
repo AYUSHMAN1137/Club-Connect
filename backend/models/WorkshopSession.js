@@ -26,6 +26,16 @@ const WorkshopSession = sequelize.define('WorkshopSession', {
         allowNull: false,
         defaultValue: false
     },
+    status: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'DRAFT'
+    },
+    isSectionsPublished: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    },
     startedAt: {
         type: DataTypes.DATE,
         allowNull: true
