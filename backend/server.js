@@ -19,44 +19,6 @@ const { generateNonce, generateAttendanceToken, verifyAttendanceToken, generateA
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || '*';
 
 db.ClubOwner.sync().catch(() => null);
-Promise.all([
-    db.Workshop.sync({ alter: true }).catch(() => null),
-    db.WorkshopSession.sync({ alter: true }).catch(() => null),
-    db.CodeBundle.sync({ alter: true }).catch(() => null),
-    db.CodeSection.sync({ alter: true }).catch(() => null),
-    db.RealtimeEventLog.sync({ alter: true }).catch(() => null)
-]).catch(() => null);
-
-let workshopSchemaReady = false;
-let workshopSchemaInitPromise = null;
-
-function isMissingTableError(error) {
-    const message = String(error?.message || '').toLowerCase();
-    return (
-        message.includes('no such table') ||
-        (message.includes('relation') && message.includes('does not exist')) ||
-        (message.includes('column') && message.includes('does not exist'))
-    );
-}
-
-async function ensureWorkshopSchema() {
-    if (workshopSchemaReady) return;
-    if (!workshopSchemaInitPromise) {
-        workshopSchemaInitPromise = (async () => {
-            await db.Workshop.sync({ alter: true });
-            await db.WorkshopSession.sync({ alter: true });
-            await db.CodeBundle.sync({ alter: true });
-            await db.CodeSection.sync({ alter: true });
-            await db.RealtimeEventLog.sync({ alter: true });
-            workshopSchemaReady = true;
-        })().catch((error) => {
-            workshopSchemaInitPromise = null;
-            workshopSchemaReady = false;
-            throw error;
-        });
-    }
-    await workshopSchemaInitPromise;
-}
 
 const app = express();
 const server = http.createServer(app);
@@ -2487,7 +2449,6 @@ app.delete('/member/certificate/:id', verifyToken, isMember, async (req, res) =>
 
 app.get('/workshops', verifyToken, async (req, res) => {
     try {
-        await ensureWorkshopSchema();
         const user = await db.findUserById(req.user.id);
         if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
@@ -2544,74 +2505,12 @@ app.get('/workshops', verifyToken, async (req, res) => {
         res.json({ success: true, workshops: payload });
     } catch (error) {
         console.error('Error listing workshops:', error);
-        if (isMissingTableError(error)) {
-            try {
-                await ensureWorkshopSchema();
-                const user = await db.findUserById(req.user.id);
-                if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-                let clubIds = [];
-                if (user.role === 'admin') {
-                    const all = await db.Club.findAll({ attributes: ['id'] });
-                    clubIds = all.map(c => c.id);
-                } else if (user.role === 'owner') {
-                    const ownerClub = await db.findClubByOwnerId(user.id);
-                    if (ownerClub) clubIds = [ownerClub.id];
-                } else {
-                    const clubs = await db.getUserClubs(user.id);
-                    clubIds = clubs.map(c => c.id);
-                }
-
-                if (clubIds.length === 0) {
-                    return res.json({ success: true, workshops: [] });
-                }
-
-                const workshops = await db.Workshop.findAll({
-                    where: { clubId: { [Op.in]: clubIds } },
-                    include: [{ model: db.User, as: 'Instructor', attributes: ['id', 'username'] }],
-                    order: [['startTime', 'ASC']]
-                });
-
-                const payload = [];
-                for (const w of workshops) {
-                    const liveSession = await db.WorkshopSession.findOne({
-                        where: {
-                            workshopId: w.id,
-                            [Op.or]: [
-                                { status: { [Op.in]: ['LIVE', 'PAUSED'] } },
-                                { isLive: true }
-                            ]
-                        },
-                        order: [['createdAt', 'DESC']]
-                    });
-                    const resolvedStatus = resolveWorkshopStatusWithSession(w, liveSession);
-                    payload.push({
-                        id: w.id,
-                        title: w.title,
-                        description: w.description,
-                        startTime: w.startTime,
-                        endTime: w.endTime,
-                        status: resolvedStatus,
-                        requiredTools: w.requiredTools || [],
-                        instructor: w.Instructor ? { id: w.Instructor.id, username: w.Instructor.username } : null,
-                        attendeeCount: 0,
-                        liveSessionId: liveSession ? liveSession.id : null,
-                        sessionStatus: liveSession ? (liveSession.status || (liveSession.isLive ? 'LIVE' : 'DRAFT')) : null
-                    });
-                }
-
-                return res.json({ success: true, workshops: payload });
-            } catch (retryError) {
-                console.error('Workshop retry failed:', retryError);
-            }
-        }
-        res.status(500).json({ success: false, message: error?.message || 'Server error!' });
+        res.status(500).json({ success: false, message: 'Server error!' });
     }
 });
 
 app.get('/workshops/:id', verifyToken, async (req, res) => {
     try {
-        await ensureWorkshopSchema();
         const workshopId = parseInt(req.params.id);
         const workshop = await db.Workshop.findByPk(workshopId, {
             include: [{ model: db.User, as: 'Instructor', attributes: ['id', 'username'] }]
@@ -2664,14 +2563,7 @@ app.get('/workshops/:id', verifyToken, async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching workshop:', error);
-        if (isMissingTableError(error)) {
-            try {
-                await ensureWorkshopSchema();
-            } catch (retryError) {
-                console.error('Workshop schema recovery failed:', retryError);
-            }
-        }
-        res.status(500).json({ success: false, message: error?.message || 'Server error!' });
+        res.status(500).json({ success: false, message: 'Server error!' });
     }
 });
 
@@ -2688,7 +2580,6 @@ app.get('/workshops/:id/tools', verifyToken, async (req, res) => {
 
 app.post('/workshops', verifyToken, isOwner, async (req, res) => {
     try {
-        await ensureWorkshopSchema();
         const { title, description, startTime, endTime, requiredTools } = req.body;
         if (!title) return res.status(400).json({ success: false, message: 'Title is required' });
         const ownerClub = await db.findClubByOwnerId(req.user.id);

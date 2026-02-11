@@ -4169,9 +4169,7 @@ async function loadMemberWorkshops() {
             memberWorkshops = data.workshops || [];
             renderMemberWorkshopCards();
         } else {
-            const msg = data.message || 'Failed to load workshops';
-            if (container) container.innerHTML = `<p class="loading">${escapeHtml(msg)}</p>`;
-            showNotification(msg, 'error');
+            if (container) container.innerHTML = '<p class="loading">No workshops available</p>';
         }
     } catch (error) {
         console.error('Error loading workshops:', error);
@@ -4195,50 +4193,31 @@ function renderMemberWorkshopCards() {
     const container = document.getElementById('memberWorkshopCards');
     if (!container) return;
     if (!memberWorkshops.length) {
-        container.innerHTML = `<div class="ws-empty-state"><i class="fa-solid fa-chalkboard-user"></i><p>No workshops available</p></div>`;
+        container.innerHTML = '<p class="loading">No workshops available</p>';
         return;
     }
     container.innerHTML = memberWorkshops.map(workshop => {
+        const statusClass = `status-${workshop.status}`;
         const status = String(workshop.status || 'upcoming').toLowerCase();
-        const statusClass = `status-${status}`;
         const ctaLabel = status === 'live' ? 'Join Live' : status === 'ended' ? 'View Recording' : 'View Details';
         const start = workshop.startTime ? new Date(workshop.startTime).toLocaleString() : 'TBD';
-        const desc = workshop.description || 'No description';
-        const toolCount = (workshop.requiredTools || []).length;
         return `
-            <div class="workshop-card" id="ws-card-${workshop.id}">
-                <div class="ws-card-top">
-                    <h3 class="ws-card-title">${escapeHtml(workshop.title)}</h3>
-                    <span class="workshop-status-badge ${statusClass}">${escapeHtml(status)}</span>
+            <div class="workshop-card">
+                <div class="workshop-card-title">${escapeHtml(workshop.title)}</div>
+                <div class="workshop-card-meta">
+                    <span><i class="fa-solid fa-clock"></i> ${start}</span>
                 </div>
-                <div class="ws-card-body">
-                    <p class="ws-card-desc">${escapeHtml(desc)}</p>
-                    <div class="ws-card-meta">
-                        <span><i class="fa-regular fa-clock"></i> ${start}</span>
-                        ${toolCount ? `<span><i class="fa-solid fa-toolbox"></i> ${toolCount} tool${toolCount > 1 ? 's' : ''}</span>` : ''}
-                    </div>
-                </div>
-                <div class="ws-card-footer">
-                    <button class="ws-card-open-btn" onclick="handleMemberWorkshopAction(${workshop.id}, '${status}', ${workshop.liveSessionId || 'null'})">
-                        ${ctaLabel} <i class="fa-solid fa-arrow-right"></i>
-                    </button>
+                <div class="workshop-card-footer">
+                    <span class="workshop-status-badge ${statusClass}">${workshop.status}</span>
+                    <button class="btn-secondary btn-small" onclick="handleMemberWorkshopAction(${workshop.id}, '${status}', ${workshop.liveSessionId || 'null'})">${ctaLabel}</button>
                 </div>
             </div>
         `;
     }).join('');
 }
 
-function closeMemberWorkshopDetail() {
-    const overlay = document.getElementById('memberWorkshopDetail');
-    if (overlay) overlay.classList.remove('active');
-    document.querySelectorAll('.workshop-card.ws-card-active').forEach(c => c.classList.remove('ws-card-active'));
-}
-
 async function openMemberWorkshopDetails(workshopId) {
     activeMemberWorkshopId = workshopId;
-    document.querySelectorAll('.workshop-card.ws-card-active').forEach(c => c.classList.remove('ws-card-active'));
-    const activeCard = document.getElementById(`ws-card-${workshopId}`);
-    if (activeCard) activeCard.classList.add('ws-card-active');
     try {
         const response = await fetch(`${API_URL}/workshops/${workshopId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -4249,19 +4228,16 @@ async function openMemberWorkshopDetails(workshopId) {
             return;
         }
         const workshop = data.workshop;
-        const overlay = document.getElementById('memberWorkshopDetail');
         const detail = document.getElementById('memberWorkshopDetailContent');
-        const empty = document.getElementById('memberWsDetailEmpty');
-        if (overlay) overlay.classList.add('active');
+        const empty = document.querySelector('#memberWorkshopDetail .workshop-detail-empty');
         if (detail) detail.style.display = 'block';
         if (empty) empty.style.display = 'none';
         document.getElementById('memberWorkshopTitle').textContent = workshop.title;
         document.getElementById('memberWorkshopDescription').textContent = workshop.description || '';
         const statusBadge = document.getElementById('memberWorkshopStatus');
         if (statusBadge) {
-            const normalizedStatus = String(workshop.status || 'upcoming').toLowerCase();
             statusBadge.textContent = workshop.status;
-            statusBadge.className = `workshop-status-badge status-${normalizedStatus}`;
+            statusBadge.className = `workshop-status-badge status-${workshop.status}`;
         }
         const timeLabel = workshop.startTime ? new Date(workshop.startTime).toLocaleString() : 'TBD';
         document.getElementById('memberWorkshopTime').textContent = timeLabel;
@@ -4269,15 +4245,13 @@ async function openMemberWorkshopDetails(workshopId) {
         const tools = document.getElementById('memberWorkshopTools');
         if (tools) {
             const toolList = (workshop.requiredTools || []).map(tool => `
-                <div class="ws-tool-item">
-                    <div class="ws-tool-icon">
-                        <i class="${escapeHtml(tool.icon || 'fa-solid fa-screwdriver-wrench')}"></i>
+                <div class="tool-item">
+                    <i class="${escapeHtml(tool.icon || 'fa-solid fa-screwdriver-wrench')}"></i>
+                    <div>
+                        <div>${escapeHtml(tool.name)}</div>
+                        <small>${escapeHtml(tool.version || '')}</small>
                     </div>
-                    <div class="ws-tool-info">
-                        <p class="ws-tool-name">${escapeHtml(tool.name)}</p>
-                        <p class="ws-tool-version">${escapeHtml(tool.version || '')}</p>
-                    </div>
-                    ${tool.link ? `<a href="${escapeHtml(tool.link)}" target="_blank" rel="noopener noreferrer" class="ws-tool-link"><i class="fa-solid fa-download"></i> Get</a>` : ''}
+                    ${tool.link ? `<a href="${escapeHtml(tool.link)}" target="_blank" rel="noopener noreferrer">Get</a>` : ''}
                 </div>
             `).join('');
             tools.innerHTML = toolList || '<p class="loading">No tools listed</p>';
@@ -4287,7 +4261,7 @@ async function openMemberWorkshopDetails(workshopId) {
         const nextBtn = document.getElementById('memberWorkshopNextBtn');
         if (nextBtn) {
             nextBtn.disabled = !activeMemberSessionId;
-            nextBtn.innerHTML = activeMemberSessionId ? '<i class="fa-solid fa-arrow-right"></i> Join Live' : '<i class="fa-regular fa-clock"></i> Not Live';
+            nextBtn.textContent = activeMemberSessionId ? 'Join Live' : 'Not Live';
         }
     } catch (error) {
         console.error('Error loading workshop details:', error);
@@ -4300,7 +4274,6 @@ async function openMemberWorkshopInterface() {
         showNotification('Workshop is not live yet', 'error');
         return;
     }
-    closeMemberWorkshopDetail();
     const container = document.getElementById('memberWorkshopInterface');
     if (container) container.style.display = 'block';
     const title = document.getElementById('memberInterfaceTitle');

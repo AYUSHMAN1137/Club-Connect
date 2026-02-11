@@ -588,52 +588,43 @@
             </div>
 
             <div class="page" id="workshops-page">
-                <div class="ws-hero">
-                    <div class="ws-hero-content">
-                        <div class="ws-hero-text">
-                            <h1><i class="fa-solid fa-chalkboard-user"></i> Workshops</h1>
-                            <p class="ws-hero-subtitle">Join live coding sessions</p>
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1><i class="fa-solid fa-chalkboard-user"></i> Workshops</h1>
+                        <p>Join live coding sessions</p>
+                    </div>
+                </div>
+                <div class="workshops-layout">
+                    <div class="workshop-list-panel">
+                        <div id="memberWorkshopCards" class="workshop-card-grid">
+                            <div class="loading-spinner">
+                                <div class="spinner"></div>
+                                <p>Loading workshops...</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                <div id="memberWorkshopCards" class="ws-cards-grid">
-                    <div class="loading-spinner">
-                        <div class="spinner"></div>
-                        <p>Loading workshops...</p>
-                    </div>
-                </div>
-
-                <div class="ws-detail-overlay" id="memberWorkshopDetail">
-                    <div class="ws-detail-panel">
-                        <button class="ws-detail-close" onclick="closeMemberWorkshopDetail()"><i
-                                class="fa-solid fa-xmark"></i></button>
-                        <div class="ws-detail-content" id="memberWorkshopDetailContent" style="display:none;">
-                            <div class="ws-detail-badge-row">
+                    <div class="workshop-detail-panel" id="memberWorkshopDetail">
+                        <div class="workshop-detail-empty">
+                            <i class="fa-solid fa-chalkboard-user"></i>
+                            <p>Select a workshop to view details.</p>
+                        </div>
+                        <div class="workshop-detail-content" id="memberWorkshopDetailContent" style="display: none;">
+                            <div class="workshop-detail-header">
+                                <h2 id="memberWorkshopTitle">Workshop</h2>
                                 <span class="workshop-status-badge" id="memberWorkshopStatus">Upcoming</span>
                             </div>
-                            <h2 class="ws-detail-title" id="memberWorkshopTitle">Workshop</h2>
-                            <p class="ws-detail-desc" id="memberWorkshopDescription"></p>
-                            <div class="ws-detail-info-grid">
-                                <div class="ws-info-chip"><i class="fa-regular fa-clock"></i> <span
-                                        id="memberWorkshopTime">-</span></div>
-                                <div class="ws-info-chip"><i class="fa-regular fa-user"></i> <span
-                                        id="memberWorkshopInstructor">-</span></div>
+                            <p id="memberWorkshopDescription"></p>
+                            <div class="workshop-meta">
+                                <div><i class="fa-solid fa-clock"></i> <span id="memberWorkshopTime">-</span></div>
+                                <div><i class="fa-solid fa-user"></i> <span id="memberWorkshopInstructor">-</span></div>
                             </div>
-                            <div class="ws-tools-section">
-                                <h3><i class="fa-solid fa-toolbox"></i> Required Tools</h3>
-                                <div id="memberWorkshopTools" class="ws-tools-list"></div>
+                            <div class="workshop-tools">
+                                <h3>Required Tools</h3>
+                                <div id="memberWorkshopTools" class="tools-list"></div>
                             </div>
-                            <div class="ws-detail-actions">
-                                <button class="ws-btn ws-btn-solid" id="memberWorkshopNextBtn"
-                                    onclick="openMemberWorkshopInterface()" disabled>
-                                    <i class="fa-solid fa-arrow-right"></i> Join Live
-                                </button>
+                            <div class="workshop-detail-actions">
+                                <button class="btn-primary" id="memberWorkshopNextBtn" onclick="openMemberWorkshopInterface()" disabled>Join Live</button>
                             </div>
-                        </div>
-                        <div class="ws-detail-empty" id="memberWsDetailEmpty">
-                            <i class="fa-solid fa-laptop-code"></i>
-                            <p>Select a workshop to view details</p>
                         </div>
                     </div>
                 </div>

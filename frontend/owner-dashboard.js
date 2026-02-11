@@ -3877,9 +3877,7 @@ async function loadOwnerWorkshops() {
             ownerWorkshops = data.workshops || [];
             renderOwnerWorkshopCards();
         } else {
-            const msg = data.message || 'Failed to load workshops';
-            if (container) container.innerHTML = `<p class="loading">${escapeHtml(msg)}</p>`;
-            showNotification(msg, 'error');
+            if (container) container.innerHTML = '<p class="loading">No workshops available</p>';
         }
     } catch (error) {
         console.error('Error loading workshops:', error);
