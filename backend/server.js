@@ -119,6 +119,37 @@ function getBaseUrl(req) {
     return process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
 }
 
+function normalizeTools(tools) {
+    if (!Array.isArray(tools)) return [];
+    return tools.map(tool => ({
+        name: String(tool.name || '').trim(),
+        version: String(tool.version || '').trim(),
+        link: String(tool.link || '').trim(),
+        icon: String(tool.icon || '').trim()
+    })).filter(tool => tool.name);
+}
+
+function resolveWorkshopStatus(workshop) {
+    const status = workshop.status || 'upcoming';
+    if (status === 'live' || status === 'ended') return status;
+    const now = new Date();
+    const start = workshop.startTime ? new Date(workshop.startTime) : null;
+    const end = workshop.endTime ? new Date(workshop.endTime) : null;
+    if (start && now < start) return 'upcoming';
+    if (start && end && now >= start && now < end) return 'live';
+    if (end && now >= end) return 'ended';
+    if (start && !end && now >= start) return 'live';
+    return 'upcoming';
+}
+
+function sliceCodeByLines(rawCode, startLine, endLine) {
+    if (!rawCode) return '';
+    const lines = rawCode.split(/\r?\n/);
+    const start = Math.max(1, parseInt(startLine));
+    const end = Math.max(start, parseInt(endLine));
+    return lines.slice(start - 1, end).join('\n');
+}
+
 async function createSqlNotification(userId, { title, message, type = 'system' }) {
     const notification = await db.Notification.create({
         userId,
@@ -811,16 +842,40 @@ app.post('/owner/create-event', verifyToken, isOwner, async (req, res) => {
             return res.status(404).json({ success: false, message: 'Club not found!' });
         }
 
+        const normalizedTitle = String(title).trim();
+        const normalizedVenue = String(venue).trim();
+        const normalizedDescription = description != null ? String(description).trim() : '';
+        const cutoff = new Date(Date.now() - 15000);
+        const existingEvent = await db.Event.findOne({
+            where: {
+                clubId: ownerClub.id,
+                title: normalizedTitle,
+                date,
+                venue: normalizedVenue,
+                createdAt: { [Op.gte]: cutoff }
+            },
+            order: [['createdAt', 'DESC']]
+        });
+
+        if (existingEvent) {
+            return res.json({
+                success: true,
+                message: 'Event already created!',
+                event: existingEvent,
+                duplicate: true
+            });
+        }
+
         // Generate QR code
-        const qrData = JSON.stringify({ clubId: ownerClub.id, title, date });
+        const qrData = JSON.stringify({ clubId: ownerClub.id, title: normalizedTitle, date });
         const qrCode = await QRCode.toDataURL(qrData);
 
         // Create event using SQL
         const newEvent = await db.createEvent({
-            title,
+            title: normalizedTitle,
             date,
-            venue,
-            description: description || '',
+            venue: normalizedVenue,
+            description: normalizedDescription,
             qrCode,
             clubId: ownerClub.id
         });
@@ -979,10 +1034,32 @@ app.post('/owner/send-announcement', verifyToken, isOwner, async (req, res) => {
 
         console.log(`✅ Owner club found: ${ownerClub.name} (ID: ${ownerClub.id})`);
 
+        const normalizedTitle = String(title || 'Announcement').trim();
+        const normalizedMessage = String(message).trim();
+        const cutoff = new Date(Date.now() - 15000);
+        const existingAnnouncement = await db.Announcement.findOne({
+            where: {
+                clubId: ownerClub.id,
+                title: normalizedTitle,
+                message: normalizedMessage,
+                createdAt: { [Op.gte]: cutoff }
+            },
+            order: [['createdAt', 'DESC']]
+        });
+
+        if (existingAnnouncement) {
+            return res.json({
+                success: true,
+                message: 'Announcement already sent!',
+                announcement: existingAnnouncement,
+                duplicate: true
+            });
+        }
+
         const newAnnouncement = await db.Announcement.create({
             clubId: ownerClub.id,
-            title: title || 'Announcement',
-            message,
+            title: normalizedTitle,
+            message: normalizedMessage,
             date: new Date(),
             createdById: req.user.id  // Use FK instead of username string
         });
@@ -1021,7 +1098,22 @@ app.post('/owner/polls', verifyToken, isOwner, async (req, res) => {
         }
         const ownerClub = await db.findClubByOwnerId(req.user.id);
         if (!ownerClub) return res.status(404).json({ success: false, message: 'Club not found!' });
-        const poll = await db.createPoll(ownerClub.id, req.user.id, question, options, endDate || null);
+        const normalizedQuestion = String(question).trim();
+        const cutoff = new Date(Date.now() - 15000);
+        const existingPoll = await db.Poll.findOne({
+            where: {
+                clubId: ownerClub.id,
+                createdById: req.user.id,
+                question: normalizedQuestion,
+                createdAt: { [Op.gte]: cutoff }
+            },
+            order: [['createdAt', 'DESC']]
+        });
+        if (existingPoll) {
+            const fullExisting = await db.getPollById(existingPoll.id, { includeVoteCounts: true });
+            return res.status(200).json({ success: true, message: 'Poll already created!', poll: fullExisting, duplicate: true });
+        }
+        const poll = await db.createPoll(ownerClub.id, req.user.id, normalizedQuestion, options, endDate || null);
         const full = await db.getPollById(poll.id, { includeVoteCounts: true });
         res.status(201).json({ success: true, message: 'Poll created!', poll: full });
     } catch (error) {
@@ -1076,7 +1168,25 @@ app.post('/owner/project-ideas', verifyToken, isOwner, async (req, res) => {
         const { title, description } = req.body;
         const ownerClub = await db.findClubByOwnerId(req.user.id);
         if (!ownerClub) return res.status(404).json({ success: false, message: 'Club not found!' });
-        const idea = await db.createProjectIdea(ownerClub.id, { title, description });
+        const normalizedTitle = String(title || '').trim();
+        const normalizedDescription = description != null ? String(description).trim() : '';
+        if (!normalizedTitle) {
+            return res.status(400).json({ success: false, message: 'Project idea title required!' });
+        }
+        const cutoff = new Date(Date.now() - 15000);
+        const existingIdea = await db.ProjectIdea.findOne({
+            where: {
+                clubId: ownerClub.id,
+                title: normalizedTitle,
+                description: normalizedDescription || null,
+                createdAt: { [Op.gte]: cutoff }
+            },
+            order: [['createdAt', 'DESC']]
+        });
+        if (existingIdea) {
+            return res.status(200).json({ success: true, message: 'Project idea already created!', projectIdea: existingIdea, duplicate: true });
+        }
+        const idea = await db.createProjectIdea(ownerClub.id, { title: normalizedTitle, description: normalizedDescription });
         res.status(201).json({ success: true, message: 'Project idea created!', projectIdea: idea });
     } catch (error) {
         console.error('Error creating project idea:', error);
@@ -2308,10 +2418,545 @@ app.delete('/member/certificate/:id', verifyToken, isMember, async (req, res) =>
     }
 });
 
+app.get('/workshops', verifyToken, async (req, res) => {
+    try {
+        const user = await db.findUserById(req.user.id);
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        let clubIds = [];
+        if (user.role === 'admin') {
+            const all = await db.Club.findAll({ attributes: ['id'] });
+            clubIds = all.map(c => c.id);
+        } else if (user.role === 'owner') {
+            const ownerClub = await db.findClubByOwnerId(user.id);
+            if (ownerClub) clubIds = [ownerClub.id];
+        } else {
+            const clubs = await db.getUserClubs(user.id);
+            clubIds = clubs.map(c => c.id);
+        }
+
+        if (clubIds.length === 0) {
+            return res.json({ success: true, workshops: [] });
+        }
+
+        const workshops = await db.Workshop.findAll({
+            where: { clubId: { [Op.in]: clubIds } },
+            include: [{ model: db.User, as: 'Instructor', attributes: ['id', 'username'] }],
+            order: [['startTime', 'ASC']]
+        });
+
+        const payload = [];
+        for (const w of workshops) {
+            const liveSession = await db.WorkshopSession.findOne({
+                where: { workshopId: w.id, isLive: true },
+                order: [['createdAt', 'DESC']]
+            });
+            payload.push({
+                id: w.id,
+                title: w.title,
+                description: w.description,
+                startTime: w.startTime,
+                endTime: w.endTime,
+                status: resolveWorkshopStatus(w),
+                requiredTools: w.requiredTools || [],
+                instructor: w.Instructor ? { id: w.Instructor.id, username: w.Instructor.username } : null,
+                attendeeCount: 0,
+                liveSessionId: liveSession ? liveSession.id : null
+            });
+        }
+
+        res.json({ success: true, workshops: payload });
+    } catch (error) {
+        console.error('Error listing workshops:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.get('/workshops/:id', verifyToken, async (req, res) => {
+    try {
+        const workshopId = parseInt(req.params.id);
+        const workshop = await db.Workshop.findByPk(workshopId, {
+            include: [{ model: db.User, as: 'Instructor', attributes: ['id', 'username'] }]
+        });
+        if (!workshop) return res.status(404).json({ success: false, message: 'Workshop not found' });
+
+        const user = await db.findUserById(req.user.id);
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        let hasAccess = false;
+        if (user.role === 'admin') {
+            hasAccess = true;
+        } else if (user.role === 'owner') {
+            const ownerClub = await db.findClubByOwnerId(user.id);
+            hasAccess = ownerClub && ownerClub.id === workshop.clubId;
+        } else {
+            const membership = await db.getMembership(user.id, workshop.clubId);
+            hasAccess = !!membership;
+        }
+        if (!hasAccess) return res.status(403).json({ success: false, message: 'Access denied' });
+
+        const liveSession = await db.WorkshopSession.findOne({
+            where: { workshopId: workshop.id, isLive: true },
+            order: [['createdAt', 'DESC']]
+        });
+
+        res.json({
+            success: true,
+            workshop: {
+                id: workshop.id,
+                title: workshop.title,
+                description: workshop.description,
+                startTime: workshop.startTime,
+                endTime: workshop.endTime,
+                status: resolveWorkshopStatus(workshop),
+                requiredTools: workshop.requiredTools || [],
+                instructor: workshop.Instructor ? { id: workshop.Instructor.id, username: workshop.Instructor.username } : null,
+                clubId: workshop.clubId,
+                liveSessionId: liveSession ? liveSession.id : null,
+                isLive: !!liveSession
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching workshop:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.get('/workshops/:id/tools', verifyToken, async (req, res) => {
+    try {
+        const workshop = await db.Workshop.findByPk(parseInt(req.params.id));
+        if (!workshop) return res.status(404).json({ success: false, message: 'Workshop not found' });
+        res.json({ success: true, tools: workshop.requiredTools || [] });
+    } catch (error) {
+        console.error('Error loading tools:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.post('/workshops', verifyToken, isOwner, async (req, res) => {
+    try {
+        const { title, description, startTime, endTime, requiredTools } = req.body;
+        if (!title) return res.status(400).json({ success: false, message: 'Title is required' });
+        const ownerClub = await db.findClubByOwnerId(req.user.id);
+        if (!ownerClub) return res.status(404).json({ success: false, message: 'Club not found' });
+
+        const parsedStart = startTime ? new Date(startTime) : null;
+        if (startTime && isNaN(parsedStart.getTime())) {
+            return res.status(400).json({ success: false, message: 'Invalid start time' });
+        }
+        const parsedEnd = endTime ? new Date(endTime) : null;
+        if (endTime && isNaN(parsedEnd.getTime())) {
+            return res.status(400).json({ success: false, message: 'Invalid end time' });
+        }
+        if (parsedStart && parsedEnd && parsedEnd < parsedStart) {
+            return res.status(400).json({ success: false, message: 'End time must be after start time' });
+        }
+
+        let toolsPayload = requiredTools;
+        if (typeof requiredTools === 'string') {
+            try {
+                toolsPayload = JSON.parse(requiredTools);
+            } catch (error) {
+                toolsPayload = [];
+            }
+        }
+
+        const workshop = await db.Workshop.create({
+            title: String(title).trim(),
+            description: String(description || '').trim(),
+            instructorId: req.user.id,
+            clubId: ownerClub.id,
+            startTime: parsedStart,
+            endTime: parsedEnd,
+            status: 'upcoming',
+            requiredTools: normalizeTools(toolsPayload)
+        });
+
+        res.json({ success: true, workshop });
+    } catch (error) {
+        console.error('Error creating workshop:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error!',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+app.post('/workshops/:id/session/start', verifyToken, isOwner, async (req, res) => {
+    try {
+        const workshopId = parseInt(req.params.id);
+        const workshop = await db.Workshop.findByPk(workshopId);
+        if (!workshop) return res.status(404).json({ success: false, message: 'Workshop not found' });
+        const ownerClub = await db.findClubByOwnerId(req.user.id);
+        if (!ownerClub || ownerClub.id !== workshop.clubId) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+
+        const existingLive = await db.WorkshopSession.findOne({
+            where: { workshopId: workshop.id, isLive: true },
+            order: [['createdAt', 'DESC']]
+        });
+        if (existingLive) {
+            return res.json({ success: true, session: existingLive });
+        }
+
+        const session = await db.WorkshopSession.create({
+            workshopId: workshop.id,
+            sessionToken: generateNonce(),
+            isLive: true,
+            startedAt: new Date(),
+            previewEnabled: false
+        });
+
+        await workshop.update({ status: 'live' });
+
+        res.json({ success: true, session });
+    } catch (error) {
+        console.error('Error starting session:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.get('/sessions/:id/state', verifyToken, async (req, res) => {
+    try {
+        const sessionId = parseInt(req.params.id);
+        const session = await db.WorkshopSession.findByPk(sessionId, {
+            include: [{ model: db.Workshop }]
+        });
+        if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
+
+        const user = await db.findUserById(req.user.id);
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        let hasAccess = false;
+        if (user.role === 'admin') {
+            hasAccess = true;
+        } else if (user.role === 'owner') {
+            const ownerClub = await db.findClubByOwnerId(user.id);
+            hasAccess = ownerClub && ownerClub.id === session.Workshop.clubId;
+        } else {
+            const membership = await db.getMembership(user.id, session.Workshop.clubId);
+            hasAccess = !!membership;
+        }
+        if (!hasAccess) return res.status(403).json({ success: false, message: 'Access denied' });
+
+        const latestBundle = await db.CodeBundle.findOne({
+            where: { sessionId: session.id },
+            order: [['versionNumber', 'DESC']]
+        });
+
+        const sections = await db.CodeSection.findAll({
+            where: { sessionId: session.id },
+            order: [['orderIndex', 'ASC']]
+        });
+
+        res.json({
+            success: true,
+            session: {
+                id: session.id,
+                workshopId: session.workshopId,
+                isLive: session.isLive,
+                previewEnabled: session.previewEnabled,
+                sessionToken: session.sessionToken
+            },
+            bundle: latestBundle,
+            sections
+        });
+    } catch (error) {
+        console.error('Error loading session state:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.post('/sessions/:id/code/save', verifyToken, isOwner, async (req, res) => {
+    try {
+        const sessionId = parseInt(req.params.id);
+        const { rawCode, language, publish } = req.body;
+        if (typeof rawCode !== 'string') {
+            return res.status(400).json({ success: false, message: 'rawCode is required' });
+        }
+        const session = await db.WorkshopSession.findByPk(sessionId, {
+            include: [{ model: db.Workshop }]
+        });
+        if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
+        const ownerClub = await db.findClubByOwnerId(req.user.id);
+        if (!ownerClub || ownerClub.id !== session.Workshop.clubId) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+
+        const latestBundle = await db.CodeBundle.findOne({
+            where: { sessionId: session.id },
+            order: [['versionNumber', 'DESC']]
+        });
+        const nextVersion = latestBundle ? latestBundle.versionNumber + 1 : 1;
+
+        const bundle = await db.CodeBundle.create({
+            sessionId: session.id,
+            authorId: req.user.id,
+            language: String(language || 'plaintext'),
+            rawCode,
+            savedAt: new Date(),
+            versionNumber: nextVersion,
+            isPublished: publish !== false
+        });
+
+        const sections = await db.CodeSection.findAll({
+            where: { sessionId: session.id },
+            order: [['orderIndex', 'ASC']]
+        });
+
+        const updatedSections = [];
+        for (const section of sections) {
+            const content = sliceCodeByLines(rawCode, section.startLine, section.endLine);
+            await section.update({
+                content,
+                codeBundleId: bundle.id
+            });
+            updatedSections.push(section);
+        }
+
+        await db.RealtimeEventLog.create({
+            sessionId: session.id,
+            eventType: 'code_update',
+            actorId: req.user.id,
+            payload: { bundleId: bundle.id, version: bundle.versionNumber, isPublished: bundle.isPublished }
+        });
+
+        io.to(`workshop-session-${session.id}`).emit('instructor_saved_code', {
+            bundle_id: bundle.id,
+            version: bundle.versionNumber,
+            raw_code: bundle.rawCode,
+            language: bundle.language,
+            is_published: bundle.isPublished,
+            author_id: req.user.id,
+            timestamp: bundle.savedAt
+        });
+
+        if (updatedSections.length > 0) {
+            io.to(`workshop-session-${session.id}`).emit('instructor_section_update', {
+                sections: updatedSections.map(s => ({
+                    id: s.id,
+                    start: s.startLine,
+                    end: s.endLine,
+                    content: s.content,
+                    visible: s.visible,
+                    order: s.orderIndex,
+                    name: s.name,
+                    language: s.language
+                }))
+            });
+        }
+
+        res.json({ success: true, bundle, sections: updatedSections });
+    } catch (error) {
+        console.error('Error saving code:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.post('/sessions/:id/sections', verifyToken, isOwner, async (req, res) => {
+    try {
+        const sessionId = parseInt(req.params.id);
+        const { sections = [], removeIds = [] } = req.body;
+        const session = await db.WorkshopSession.findByPk(sessionId, {
+            include: [{ model: db.Workshop }]
+        });
+        if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
+        const ownerClub = await db.findClubByOwnerId(req.user.id);
+        if (!ownerClub || ownerClub.id !== session.Workshop.clubId) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+
+        const latestBundle = await db.CodeBundle.findOne({
+            where: { sessionId: session.id },
+            order: [['versionNumber', 'DESC']]
+        });
+        const rawCode = latestBundle ? latestBundle.rawCode : '';
+
+        if (removeIds.length > 0) {
+            await db.CodeSection.destroy({ where: { id: { [Op.in]: removeIds }, sessionId: session.id } });
+        }
+
+        const existing = await db.CodeSection.findAll({ where: { sessionId: session.id } });
+        const candidateRanges = [];
+        for (const item of existing) {
+            if (removeIds.includes(item.id)) continue;
+            candidateRanges.push({ id: item.id, start: item.startLine, end: item.endLine });
+        }
+        for (const section of sections) {
+            const start = parseInt(section.startLine);
+            const end = parseInt(section.endLine);
+            if (!start || !end || start > end) {
+                return res.status(400).json({ success: false, message: 'Invalid section range' });
+            }
+            candidateRanges.push({ id: section.id || null, start, end });
+        }
+        for (let i = 0; i < candidateRanges.length; i++) {
+            for (let j = i + 1; j < candidateRanges.length; j++) {
+                const a = candidateRanges[i];
+                const b = candidateRanges[j];
+                if (a.id && b.id && a.id === b.id) continue;
+                if (a.start <= b.end && b.start <= a.end) {
+                    return res.status(400).json({ success: false, message: 'Overlapping sections are not allowed' });
+                }
+            }
+        }
+
+        const updatedSections = [];
+        for (const section of sections) {
+            const content = sliceCodeByLines(rawCode, section.startLine, section.endLine);
+            if (section.id) {
+                const existingSection = await db.CodeSection.findOne({ where: { id: section.id, sessionId: session.id } });
+                if (!existingSection) continue;
+                await existingSection.update({
+                    name: String(section.name || existingSection.name),
+                    startLine: parseInt(section.startLine),
+                    endLine: parseInt(section.endLine),
+                    language: String(section.language || existingSection.language || 'plaintext'),
+                    visible: section.visible !== undefined ? !!section.visible : existingSection.visible,
+                    orderIndex: section.orderIndex !== undefined ? parseInt(section.orderIndex) : existingSection.orderIndex,
+                    content,
+                    codeBundleId: latestBundle ? latestBundle.id : existingSection.codeBundleId
+                });
+                updatedSections.push(existingSection);
+            } else {
+                const created = await db.CodeSection.create({
+                    sessionId: session.id,
+                    codeBundleId: latestBundle ? latestBundle.id : null,
+                    name: String(section.name || `Section ${existing.length + updatedSections.length + 1}`),
+                    startLine: parseInt(section.startLine),
+                    endLine: parseInt(section.endLine),
+                    language: String(section.language || 'plaintext'),
+                    visible: !!section.visible,
+                    orderIndex: section.orderIndex !== undefined ? parseInt(section.orderIndex) : existing.length + updatedSections.length,
+                    content
+                });
+                updatedSections.push(created);
+            }
+        }
+
+        await db.RealtimeEventLog.create({
+            sessionId: session.id,
+            eventType: 'section_update',
+            actorId: req.user.id,
+            payload: { sectionCount: updatedSections.length }
+        });
+
+        io.to(`workshop-session-${session.id}`).emit('instructor_section_update', {
+            sections: updatedSections.map(s => ({
+                id: s.id,
+                start: s.startLine,
+                end: s.endLine,
+                content: s.content,
+                visible: s.visible,
+                order: s.orderIndex,
+                name: s.name,
+                language: s.language
+            }))
+        });
+
+        res.json({ success: true, sections: updatedSections });
+    } catch (error) {
+        console.error('Error updating sections:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.post('/sessions/:id/publish-sections', verifyToken, isOwner, async (req, res) => {
+    try {
+        const sessionId = parseInt(req.params.id);
+        const { visibleSectionIds = [], order = [] } = req.body;
+        const session = await db.WorkshopSession.findByPk(sessionId, {
+            include: [{ model: db.Workshop }]
+        });
+        if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
+        const ownerClub = await db.findClubByOwnerId(req.user.id);
+        if (!ownerClub || ownerClub.id !== session.Workshop.clubId) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+
+        const sections = await db.CodeSection.findAll({ where: { sessionId: session.id } });
+        const visibleSet = new Set(visibleSectionIds.map(id => parseInt(id)));
+
+        for (const section of sections) {
+            const nextVisible = visibleSet.has(section.id);
+            const nextOrderIndex = order.length ? order.indexOf(section.id) : section.orderIndex;
+            await section.update({
+                visible: nextVisible,
+                orderIndex: nextOrderIndex >= 0 ? nextOrderIndex : section.orderIndex
+            });
+        }
+
+        await db.RealtimeEventLog.create({
+            sessionId: session.id,
+            eventType: 'section_publish',
+            actorId: req.user.id,
+            payload: { visibleSectionIds }
+        });
+
+        io.to(`workshop-session-${session.id}`).emit('publish_sections', {
+            visible_section_ids: visibleSectionIds
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error publishing sections:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.post('/sessions/:id/preview', verifyToken, isOwner, async (req, res) => {
+    try {
+        const sessionId = parseInt(req.params.id);
+        const { enabled } = req.body;
+        const session = await db.WorkshopSession.findByPk(sessionId, {
+            include: [{ model: db.Workshop }]
+        });
+        if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
+        const ownerClub = await db.findClubByOwnerId(req.user.id);
+        if (!ownerClub || ownerClub.id !== session.Workshop.clubId) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+
+        await session.update({ previewEnabled: !!enabled });
+
+        await db.RealtimeEventLog.create({
+            sessionId: session.id,
+            eventType: 'preview_command',
+            actorId: req.user.id,
+            payload: { enabled: !!enabled }
+        });
+
+        io.to(`workshop-session-${session.id}`).emit('preview_command', {
+            enabled: !!enabled
+        });
+
+        res.json({ success: true, previewEnabled: session.previewEnabled });
+    } catch (error) {
+        console.error('Error updating preview:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
 // ========== SOCKET.IO SETUP ==========
+const workshopParticipants = new Map();
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
+    let decoded = null;
+    const authToken = socket.handshake.auth && socket.handshake.auth.token;
+    if (authToken) {
+        try {
+            decoded = jwt.verify(authToken, JWT_SECRET);
+        } catch (error) {
+            decoded = null;
+        }
+    }
+    if (decoded) {
+        socket.data.userId = decoded.id;
+        socket.data.role = decoded.role;
+    }
 
     socket.on('join-club', (clubId) => {
         socket.join(`club-${clubId}`);
@@ -2323,8 +2968,39 @@ io.on('connection', (socket) => {
         console.log(`Socket ${socket.id} joined user-${userId}`);
     });
 
+    socket.on('join-workshop-session', (sessionId) => {
+        const parsed = parseInt(sessionId);
+        if (!parsed) return;
+        socket.join(`workshop-session-${parsed}`);
+        socket.data.workshopSessionId = parsed;
+        if (!workshopParticipants.has(parsed)) {
+            workshopParticipants.set(parsed, new Set());
+        }
+        workshopParticipants.get(parsed).add(socket.id);
+        const count = workshopParticipants.get(parsed).size;
+        io.to(`workshop-session-${parsed}`).emit('participant_joined', {
+            session_id: parsed,
+            count,
+            user_id: socket.data.userId || null,
+            role: socket.data.role || null
+        });
+    });
+
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
+        const sessionId = socket.data.workshopSessionId;
+        if (sessionId && workshopParticipants.has(sessionId)) {
+            const set = workshopParticipants.get(sessionId);
+            set.delete(socket.id);
+            const count = set.size;
+            io.to(`workshop-session-${sessionId}`).emit('participant_left', {
+                session_id: sessionId,
+                count,
+                user_id: socket.data.userId || null,
+                role: socket.data.role || null
+            });
+            if (count === 0) workshopParticipants.delete(sessionId);
+        }
     });
 });
 

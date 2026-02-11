@@ -254,6 +254,13 @@ let currentUserId = null;
 let currentClubId = null; // Stores the logged-in owner's club ID
 let allLoadedMembers = [];
 window.allLoadedMembers = allLoadedMembers;
+let ownerWorkshops = [];
+let activeWorkshopId = null;
+let activeWorkshopSessionId = null;
+let activeWorkshopSections = [];
+let activeWorkshopBundle = null;
+let workshopPreviewEnabled = false;
+let workshopSocketBound = false;
 
 // Get token from localStorage
 const token = localStorage.getItem('token');
@@ -550,6 +557,9 @@ function switchPage(pageName, options = {}) {
                 break;
             case 'events':
                 loadEvents();
+                break;
+            case 'workshops':
+                loadOwnerWorkshops();
                 break;
             case 'announcements':
                 loadAnnouncements();
@@ -1503,9 +1513,30 @@ function hideCreateEventForm() {
     document.getElementById('eventForm').reset();
 }
 
+function setFormSubmittingState(form, isSubmitting, label) {
+    if (!form) return;
+    form.dataset.submitting = isSubmitting ? 'true' : 'false';
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (!submitBtn) return;
+    if (isSubmitting) {
+        submitBtn.dataset.originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        if (label) submitBtn.innerHTML = label;
+    } else {
+        submitBtn.disabled = false;
+        if (submitBtn.dataset.originalText) {
+            submitBtn.innerHTML = submitBtn.dataset.originalText;
+            delete submitBtn.dataset.originalText;
+        }
+    }
+}
+
 // Create Event
 document.getElementById('eventForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.currentTarget;
+    if (form.dataset.submitting === 'true') return;
+    setFormSubmittingState(form, true, 'Creating...');
 
     const title = document.getElementById('eventTitle').value;
     const date = document.getElementById('eventDate').value;
@@ -1535,6 +1566,8 @@ document.getElementById('eventForm').addEventListener('submit', async (e) => {
     } catch (error) {
         console.error('Error creating event:', error);
         showNotification('Failed to create event', 'error');
+    } finally {
+        setFormSubmittingState(form, false);
     }
 });
 
@@ -1596,6 +1629,9 @@ async function loadAnnouncements() {
 // Send Announcement
 document.getElementById('announcementForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.currentTarget;
+    if (form.dataset.submitting === 'true') return;
+    setFormSubmittingState(form, true, 'Sending...');
 
     const title = document.getElementById('announcementTitle').value || 'Announcement';
     const message = document.getElementById('announcementMessage').value;
@@ -1622,6 +1658,8 @@ document.getElementById('announcementForm').addEventListener('submit', async (e)
     } catch (error) {
         console.error('Error sending announcement:', error);
         showNotification('Failed to send announcement', 'error');
+    } finally {
+        setFormSubmittingState(form, false);
     }
 });
 
@@ -1854,8 +1892,17 @@ document.getElementById('pollEndDateToggle')?.addEventListener('change', (event)
 
 document.getElementById('pollForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const form = e.currentTarget;
+    if (form.dataset.submitting === 'true') return;
     const isValid = validatePollForm(true);
     if (!isValid) return;
+    form.dataset.submitting = 'true';
+    const createBtn = document.getElementById('pollCreateBtn');
+    if (createBtn) {
+        createBtn.dataset.originalText = createBtn.innerHTML;
+        createBtn.innerHTML = 'Creating...';
+        createBtn.disabled = true;
+    }
     const question = document.getElementById('pollQuestion').value?.trim();
     const options = getFilledPollOptions();
     const endDateToggle = document.getElementById('pollEndDateToggle')?.checked;
@@ -1894,6 +1941,13 @@ document.getElementById('pollForm')?.addEventListener('submit', async (e) => {
     } catch (error) {
         console.error('Error creating poll:', error);
         showNotification('Failed to create poll', 'error');
+    } finally {
+        form.dataset.submitting = 'false';
+        if (createBtn && createBtn.dataset.originalText) {
+            createBtn.innerHTML = createBtn.dataset.originalText;
+            delete createBtn.dataset.originalText;
+        }
+        updatePollFormState();
     }
 });
 
@@ -2011,10 +2065,13 @@ async function loadProjectIdeasList() {
     }
 }
 
+let projectIdeaSubmitting = false;
 function showAddProjectIdeaForm() {
+    if (projectIdeaSubmitting) return;
     const title = prompt('Project idea title:');
     if (title == null || !title.trim()) return;
     const description = prompt('Short description (optional):') || '';
+    projectIdeaSubmitting = true;
     (async () => {
         try {
             const response = await fetch(`${getApiUrl()}/owner/project-ideas`, {
@@ -2029,6 +2086,8 @@ function showAddProjectIdeaForm() {
             } else showNotification(data.message || 'Failed', 'error');
         } catch (e) {
             showNotification('Failed to add', 'error');
+        } finally {
+            projectIdeaSubmitting = false;
         }
     })();
 }
@@ -2889,7 +2948,11 @@ if (document.readyState === 'loading') {
 
 // ========== SOCKET.IO ==========
 function initSocketIO() {
-    socket = io(getApiUrl());
+    socket = io(getApiUrl(), {
+        auth: {
+            token: token
+        }
+    });
 
     socket.on('connect', () => {
         console.log('Connected to server');
@@ -2922,6 +2985,8 @@ function initSocketIO() {
             loadAttendanceData(data.eventId);
         }
     });
+
+    bindWorkshopSocketHandlers();
 }
 
 // Tooltips are initialized via utils.js
@@ -3694,6 +3759,574 @@ async function getClubId() {
     }
 }
 
+function openWorkshopCreateModal() {
+    const modal = document.getElementById('workshopCreateModal');
+    if (modal) modal.classList.add('active');
+    const form = document.getElementById('workshopCreateForm');
+    if (form && !form.hasAttribute('data-listener-added')) {
+        form.setAttribute('data-listener-added', 'true');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await createWorkshop();
+        });
+    }
+}
+
+function closeWorkshopCreateModal() {
+    const modal = document.getElementById('workshopCreateModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function addToolRow() {
+    const container = document.getElementById('workshopToolsBuilder');
+    if (!container) return;
+    const row = document.createElement('div');
+    row.className = 'tool-row';
+    row.innerHTML = `
+        <input type="text" class="tool-name" placeholder="Tool name">
+        <input type="text" class="tool-version" placeholder="Version">
+        <input type="url" class="tool-link" placeholder="Download link">
+        <input type="text" class="tool-icon" placeholder="Icon class (optional)">
+    `;
+    container.appendChild(row);
+}
+
+function collectToolRows() {
+    const rows = document.querySelectorAll('#workshopToolsBuilder .tool-row');
+    const tools = [];
+    rows.forEach(row => {
+        const name = row.querySelector('.tool-name')?.value?.trim();
+        const version = row.querySelector('.tool-version')?.value?.trim();
+        const link = row.querySelector('.tool-link')?.value?.trim();
+        const icon = row.querySelector('.tool-icon')?.value?.trim();
+        if (name) {
+            tools.push({ name, version, link, icon });
+        }
+    });
+    return tools;
+}
+
+async function createWorkshop() {
+    const title = document.getElementById('workshopTitleInput')?.value?.trim();
+    const description = document.getElementById('workshopDescriptionInput')?.value?.trim();
+    const startTime = document.getElementById('workshopStartInput')?.value;
+    const endTime = document.getElementById('workshopEndInput')?.value;
+    if (!title) {
+        showNotification('Workshop title is required', 'error');
+        return;
+    }
+    const parsedStart = startTime ? new Date(startTime) : null;
+    if (startTime && isNaN(parsedStart.getTime())) {
+        showNotification('Invalid start time', 'error');
+        return;
+    }
+    const parsedEnd = endTime ? new Date(endTime) : null;
+    if (endTime && isNaN(parsedEnd.getTime())) {
+        showNotification('Invalid end time', 'error');
+        return;
+    }
+    if (parsedStart && parsedEnd && parsedEnd < parsedStart) {
+        showNotification('End time must be after start time', 'error');
+        return;
+    }
+    try {
+        const response = await fetch(`${getApiUrl()}/workshops`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title,
+                description,
+                startTime: parsedStart ? parsedStart.toISOString() : null,
+                endTime: parsedEnd ? parsedEnd.toISOString() : null,
+                requiredTools: collectToolRows()
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Workshop created', 'success');
+            closeWorkshopCreateModal();
+            loadOwnerWorkshops();
+        } else {
+            showNotification(data.message || 'Failed to create workshop', 'error');
+        }
+    } catch (error) {
+        console.error('Error creating workshop:', error);
+        showNotification('Failed to create workshop', 'error');
+    }
+}
+
+async function loadOwnerWorkshops() {
+    const container = document.getElementById('ownerWorkshopCards');
+    if (container) {
+        container.innerHTML = `
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Loading workshops...</p>
+            </div>
+        `;
+    }
+    try {
+        const response = await fetch(`${getApiUrl()}/workshops`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            ownerWorkshops = data.workshops || [];
+            renderOwnerWorkshopCards();
+        } else {
+            if (container) container.innerHTML = '<p class="loading">No workshops available</p>';
+        }
+    } catch (error) {
+        console.error('Error loading workshops:', error);
+        if (container) container.innerHTML = '<p class="loading">Failed to load workshops</p>';
+    }
+}
+
+function renderOwnerWorkshopCards() {
+    const container = document.getElementById('ownerWorkshopCards');
+    if (!container) return;
+    if (!ownerWorkshops.length) {
+        container.innerHTML = `<div class="ws-empty-state"><i class="fa-solid fa-chalkboard-user"></i><p>No workshops yet — create your first one!</p></div>`;
+        return;
+    }
+    container.innerHTML = ownerWorkshops.map(workshop => {
+        const statusClass = `status-${workshop.status}`;
+        const start = workshop.startTime ? new Date(workshop.startTime).toLocaleString() : 'TBD';
+        const desc = workshop.description || 'No description';
+        const toolCount = (workshop.requiredTools || []).length;
+        return `
+            <div class="workshop-card" id="ws-card-${workshop.id}" onclick="openWorkshopDetails(${workshop.id})">
+                <div class="ws-card-top">
+                    <h3 class="ws-card-title">${escapeHtml(workshop.title)}</h3>
+                    <span class="workshop-status-badge ${statusClass}">${workshop.status}</span>
+                </div>
+                <div class="ws-card-body">
+                    <p class="ws-card-desc">${escapeHtml(desc)}</p>
+                    <div class="ws-card-meta">
+                        <span><i class="fa-regular fa-clock"></i> ${start}</span>
+                        ${toolCount ? `<span><i class="fa-solid fa-toolbox"></i> ${toolCount} tool${toolCount > 1 ? 's' : ''}</span>` : ''}
+                    </div>
+                </div>
+                <div class="ws-card-footer">
+                    <span class="workshop-status-badge ${statusClass}">${workshop.status}</span>
+                    <button class="ws-card-open-btn" onclick="event.stopPropagation(); openWorkshopDetails(${workshop.id})">
+                        Open <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function closeWorkshopDetail() {
+    const overlay = document.getElementById('ownerWorkshopDetail');
+    if (overlay) overlay.classList.remove('active');
+    document.querySelectorAll('.workshop-card.ws-card-active').forEach(c => c.classList.remove('ws-card-active'));
+}
+
+function closeWorkshopInterface() {
+    const iface = document.getElementById('ownerWorkshopInterface');
+    if (iface) iface.style.display = 'none';
+}
+
+async function openWorkshopDetails(workshopId) {
+    activeWorkshopId = workshopId;
+    // highlight the active card
+    document.querySelectorAll('.workshop-card.ws-card-active').forEach(c => c.classList.remove('ws-card-active'));
+    const activeCard = document.getElementById(`ws-card-${workshopId}`);
+    if (activeCard) activeCard.classList.add('ws-card-active');
+
+    try {
+        const response = await fetch(`${getApiUrl()}/workshops/${workshopId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (!data.success) {
+            showNotification(data.message || 'Failed to load workshop', 'error');
+            return;
+        }
+        const workshop = data.workshop;
+        const overlay = document.getElementById('ownerWorkshopDetail');
+        const detail = document.getElementById('ownerWorkshopDetailContent');
+        const empty = document.getElementById('wsDetailEmpty');
+        if (overlay) overlay.classList.add('active');
+        if (detail) detail.style.display = 'block';
+        if (empty) empty.style.display = 'none';
+        document.getElementById('ownerWorkshopTitle').textContent = workshop.title;
+        document.getElementById('ownerWorkshopDescription').textContent = workshop.description || '';
+        const statusBadge = document.getElementById('ownerWorkshopStatus');
+        if (statusBadge) {
+            statusBadge.textContent = workshop.status;
+            statusBadge.className = `workshop-status-badge status-${workshop.status}`;
+        }
+        const timeLabel = workshop.startTime ? new Date(workshop.startTime).toLocaleString() : 'TBD';
+        document.getElementById('ownerWorkshopTime').textContent = timeLabel;
+        document.getElementById('ownerWorkshopInstructor').textContent = workshop.instructor ? workshop.instructor.username : 'Owner';
+        const tools = document.getElementById('ownerWorkshopTools');
+        if (tools) {
+            const toolList = (workshop.requiredTools || []).map(tool => `
+                <div class="ws-tool-item">
+                    <div class="ws-tool-icon">
+                        <i class="${escapeHtml(tool.icon || 'fa-solid fa-screwdriver-wrench')}"></i>
+                    </div>
+                    <div class="ws-tool-info">
+                        <p class="ws-tool-name">${escapeHtml(tool.name)}</p>
+                        <p class="ws-tool-version">${escapeHtml(tool.version || '')}</p>
+                    </div>
+                    ${tool.link ? `<a href="${escapeHtml(tool.link)}" target="_blank" rel="noopener noreferrer" class="ws-tool-link"><i class="fa-solid fa-download"></i> Get</a>` : ''}
+                </div>
+            `).join('');
+            tools.innerHTML = toolList || '<p style="color:var(--text-3);font-size:13px;text-align:center;padding:16px;">No tools listed</p>';
+        }
+
+        activeWorkshopSessionId = workshop.liveSessionId || null;
+        const nextBtn = document.getElementById('ownerWorkshopNextBtn');
+        const startBtn = document.getElementById('ownerWorkshopStartBtn');
+        if (nextBtn) nextBtn.disabled = !activeWorkshopSessionId;
+        if (startBtn) startBtn.disabled = !!activeWorkshopSessionId;
+    } catch (error) {
+        console.error('Error loading workshop details:', error);
+        showNotification('Failed to load workshop', 'error');
+    }
+}
+
+async function startWorkshopSession() {
+    if (!activeWorkshopId) return;
+    try {
+        const response = await fetch(`${getApiUrl()}/workshops/${activeWorkshopId}/session/start`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            activeWorkshopSessionId = data.session.id;
+            const nextBtn = document.getElementById('ownerWorkshopNextBtn');
+            const startBtn = document.getElementById('ownerWorkshopStartBtn');
+            if (nextBtn) nextBtn.disabled = false;
+            if (startBtn) startBtn.disabled = true;
+            showNotification('Workshop is live', 'success');
+        } else {
+            showNotification(data.message || 'Failed to start session', 'error');
+        }
+    } catch (error) {
+        console.error('Error starting session:', error);
+        showNotification('Failed to start session', 'error');
+    }
+}
+
+async function openWorkshopInterface() {
+    if (!activeWorkshopId) return;
+    if (!activeWorkshopSessionId) {
+        await startWorkshopSession();
+    }
+    if (!activeWorkshopSessionId) return;
+    // close the detail overlay
+    closeWorkshopDetail();
+    const container = document.getElementById('ownerWorkshopInterface');
+    if (container) container.style.display = 'block';
+    const title = document.getElementById('ownerInterfaceTitle');
+    if (title) {
+        const workshop = ownerWorkshops.find(w => w.id === activeWorkshopId);
+        title.textContent = workshop ? workshop.title : 'Live Workshop';
+    }
+    await loadWorkshopSessionState(activeWorkshopSessionId);
+    if (socket) {
+        socket.emit('join-workshop-session', activeWorkshopSessionId);
+    }
+    bindWorkshopSocketHandlers();
+}
+
+async function loadWorkshopSessionState(sessionId) {
+    try {
+        const response = await fetch(`${getApiUrl()}/sessions/${sessionId}/state`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (!data.success) {
+            showNotification(data.message || 'Failed to load session', 'error');
+            return;
+        }
+        activeWorkshopBundle = data.bundle || null;
+        activeWorkshopSections = data.sections || [];
+        const editor = document.getElementById('ownerWorkshopEditor');
+        if (editor) editor.value = activeWorkshopBundle ? activeWorkshopBundle.rawCode : '';
+        workshopPreviewEnabled = !!data.session.previewEnabled;
+        updatePreviewToggle();
+        renderOwnerSections(activeWorkshopSections);
+        if (workshopPreviewEnabled) updatePreviewFrame();
+    } catch (error) {
+        console.error('Error loading session state:', error);
+        showNotification('Failed to load session', 'error');
+    }
+}
+
+function renderOwnerSections(sections) {
+    const list = document.getElementById('ownerSectionsList');
+    if (!list) return;
+    const sorted = [...sections].sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+    activeWorkshopSections = sorted;
+    if (!sorted.length) {
+        list.innerHTML = '';
+        return;
+    }
+    list.innerHTML = sorted.map(section => `
+        <div class="section-item">
+            <div>
+                <strong>${escapeHtml(section.name)}</strong>
+                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Lines ${section.startLine}–${section.endLine}</div>
+            </div>
+            <div class="section-actions">
+                <input type="checkbox" ${section.visible ? 'checked' : ''} onchange="toggleSectionVisibility(${section.id}, this.checked)">
+                <button class="ws-chip-btn" onclick="moveSection(${section.id}, -1)">↑</button>
+                <button class="ws-chip-btn" onclick="moveSection(${section.id}, 1)">↓</button>
+                <button class="ws-chip-btn" onclick="deleteSection(${section.id})">✕</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function saveWorkshopCode(publish) {
+    if (!activeWorkshopSessionId) return;
+    const editor = document.getElementById('ownerWorkshopEditor');
+    const language = document.getElementById('ownerLanguageSelect')?.value || 'plaintext';
+    if (!editor) return;
+    const rawCode = editor.value || '';
+    try {
+        const response = await fetch(`${getApiUrl()}/sessions/${activeWorkshopSessionId}/code/save`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ rawCode, language, publish })
+        });
+        const data = await response.json();
+        if (data.success) {
+            activeWorkshopBundle = data.bundle;
+            activeWorkshopSections = data.sections || activeWorkshopSections;
+            renderOwnerSections(activeWorkshopSections);
+            if (publish) updatePreviewFrame();
+            showNotification(publish ? 'Saved and published' : 'Draft saved', 'success');
+        } else {
+            showNotification(data.message || 'Failed to save code', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving code:', error);
+        showNotification('Failed to save code', 'error');
+    }
+}
+
+function createSectionFromSelection() {
+    const editor = document.getElementById('ownerWorkshopEditor');
+    if (!editor) return;
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    if (start === end) {
+        showNotification('Select a range in the editor', 'error');
+        return;
+    }
+    const startLine = editor.value.slice(0, start).split(/\r?\n/).length;
+    const endLine = editor.value.slice(0, end).split(/\r?\n/).length;
+    document.getElementById('sectionStartInput').value = startLine;
+    document.getElementById('sectionEndInput').value = endLine;
+    document.getElementById('sectionNameInput').value = `Section ${activeWorkshopSections.length + 1}`;
+}
+
+async function createSectionManual() {
+    const name = document.getElementById('sectionNameInput')?.value?.trim() || `Section ${activeWorkshopSections.length + 1}`;
+    const startLine = parseInt(document.getElementById('sectionStartInput')?.value);
+    const endLine = parseInt(document.getElementById('sectionEndInput')?.value);
+    if (!startLine || !endLine) {
+        showNotification('Provide start and end line', 'error');
+        return;
+    }
+    await updateSections([{ name, startLine, endLine, visible: true, orderIndex: activeWorkshopSections.length }], []);
+}
+
+async function updateSections(sections, removeIds) {
+    if (!activeWorkshopSessionId) return;
+    try {
+        const response = await fetch(`${getApiUrl()}/sessions/${activeWorkshopSessionId}/sections`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ sections, removeIds })
+        });
+        const data = await response.json();
+        if (data.success) {
+            activeWorkshopSections = data.sections || [];
+            renderOwnerSections(activeWorkshopSections);
+        } else {
+            showNotification(data.message || 'Failed to update sections', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating sections:', error);
+        showNotification('Failed to update sections', 'error');
+    }
+}
+
+async function deleteSection(sectionId) {
+    await updateSections([], [sectionId]);
+}
+
+async function toggleSectionVisibility(sectionId, visible) {
+    const visibleIds = activeWorkshopSections.filter(s => s.id === sectionId ? visible : s.visible).map(s => s.id);
+    const order = activeWorkshopSections.map(s => s.id);
+    await publishSections(visibleIds, order);
+}
+
+async function moveSection(sectionId, direction) {
+    const index = activeWorkshopSections.findIndex(s => s.id === sectionId);
+    if (index < 0) return;
+    const swapIndex = index + direction;
+    if (swapIndex < 0 || swapIndex >= activeWorkshopSections.length) return;
+    const reordered = [...activeWorkshopSections];
+    const temp = reordered[index];
+    reordered[index] = reordered[swapIndex];
+    reordered[swapIndex] = temp;
+    const order = reordered.map(s => s.id);
+    const visibleIds = reordered.filter(s => s.visible).map(s => s.id);
+    await publishSections(visibleIds, order);
+}
+
+async function publishSections(visibleSectionIds, order) {
+    if (!activeWorkshopSessionId) return;
+    try {
+        const response = await fetch(`${getApiUrl()}/sessions/${activeWorkshopSessionId}/publish-sections`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ visibleSectionIds, order })
+        });
+        const data = await response.json();
+        if (!data.success) {
+            showNotification(data.message || 'Failed to publish sections', 'error');
+        } else {
+            activeWorkshopSections = activeWorkshopSections.map(s => ({
+                ...s,
+                visible: visibleSectionIds.includes(s.id),
+                orderIndex: order.length ? order.indexOf(s.id) : s.orderIndex
+            })).sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+            renderOwnerSections(activeWorkshopSections);
+        }
+    } catch (error) {
+        console.error('Error publishing sections:', error);
+        showNotification('Failed to publish sections', 'error');
+    }
+}
+
+function updatePreviewToggle() {
+    const toggleBtn = document.getElementById('ownerPreviewToggle');
+    const container = document.getElementById('ownerPreviewContainer');
+    if (toggleBtn) toggleBtn.textContent = workshopPreviewEnabled ? 'Disable Preview' : 'Enable Preview';
+    if (container) container.style.display = workshopPreviewEnabled ? 'block' : 'none';
+}
+
+async function togglePreview() {
+    if (!activeWorkshopSessionId) return;
+    try {
+        const response = await fetch(`${getApiUrl()}/sessions/${activeWorkshopSessionId}/preview`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ enabled: !workshopPreviewEnabled })
+        });
+        const data = await response.json();
+        if (data.success) {
+            workshopPreviewEnabled = data.previewEnabled;
+            updatePreviewToggle();
+            if (workshopPreviewEnabled) updatePreviewFrame();
+        } else {
+            showNotification(data.message || 'Failed to update preview', 'error');
+        }
+    } catch (error) {
+        console.error('Error toggling preview:', error);
+        showNotification('Failed to update preview', 'error');
+    }
+}
+
+function updatePreviewFrame() {
+    const frame = document.getElementById('ownerPreviewFrame');
+    if (!frame || !activeWorkshopBundle) return;
+    const rawCode = activeWorkshopBundle.rawCode || '';
+    if (activeWorkshopBundle.language === 'html') {
+        frame.srcdoc = rawCode;
+    } else {
+        const escaped = rawCode.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        frame.srcdoc = `<pre style="font-family: monospace; padding: 16px; white-space: pre-wrap;">${escaped}</pre>`;
+    }
+}
+
+function bindWorkshopSocketHandlers() {
+    if (!socket || workshopSocketBound) return;
+    workshopSocketBound = true;
+
+    socket.on('participant_joined', (payload) => {
+        if (!activeWorkshopSessionId || payload.session_id !== activeWorkshopSessionId) return;
+        const countEl = document.getElementById('ownerParticipantsCount');
+        if (countEl) countEl.textContent = `${payload.count} connected`;
+    });
+
+    socket.on('participant_left', (payload) => {
+        if (!activeWorkshopSessionId || payload.session_id !== activeWorkshopSessionId) return;
+        const countEl = document.getElementById('ownerParticipantsCount');
+        if (countEl) countEl.textContent = `${payload.count} connected`;
+    });
+
+    socket.on('instructor_saved_code', (payload) => {
+        if (!activeWorkshopSessionId || payload.is_published === false) return;
+        activeWorkshopBundle = {
+            id: payload.bundle_id,
+            rawCode: payload.raw_code,
+            language: payload.language,
+            versionNumber: payload.version
+        };
+        const editor = document.getElementById('ownerWorkshopEditor');
+        if (editor) editor.value = payload.raw_code || '';
+        if (workshopPreviewEnabled) updatePreviewFrame();
+    });
+
+    socket.on('instructor_section_update', (payload) => {
+        if (!payload || !payload.sections) return;
+        activeWorkshopSections = payload.sections.map(section => ({
+            id: section.id,
+            startLine: section.start,
+            endLine: section.end,
+            content: section.content,
+            visible: section.visible,
+            orderIndex: section.order,
+            name: section.name,
+            language: section.language
+        }));
+        renderOwnerSections(activeWorkshopSections);
+    });
+
+    socket.on('publish_sections', (payload) => {
+        if (!payload || !payload.visible_section_ids) return;
+        activeWorkshopSections = activeWorkshopSections.map(section => ({
+            ...section,
+            visible: payload.visible_section_ids.includes(section.id)
+        }));
+        renderOwnerSections(activeWorkshopSections);
+    });
+
+    socket.on('preview_command', (payload) => {
+        if (!payload) return;
+        workshopPreviewEnabled = !!payload.enabled;
+        updatePreviewToggle();
+        if (workshopPreviewEnabled) updatePreviewFrame();
+    });
+}
+
 // ========== EXPOSE FUNCTIONS TO WINDOW FOR ONCLICK HANDLERS ==========
 // This ensures onclick attributes in HTML can find these functions
 // Note: switchPage and addMemberByStudentId are already exposed above
@@ -3736,6 +4369,19 @@ window.markNotificationRead = markNotificationRead;
 window.loadNotifications = loadNotifications;
 window.clearSearch = clearSearch;
 window.searchMembers = searchMembers;
+window.openWorkshopCreateModal = openWorkshopCreateModal;
+window.closeWorkshopCreateModal = closeWorkshopCreateModal;
+window.addToolRow = addToolRow;
+window.openWorkshopDetails = openWorkshopDetails;
+window.startWorkshopSession = startWorkshopSession;
+window.openWorkshopInterface = openWorkshopInterface;
+window.saveWorkshopCode = saveWorkshopCode;
+window.createSectionFromSelection = createSectionFromSelection;
+window.createSectionManual = createSectionManual;
+window.toggleSectionVisibility = toggleSectionVisibility;
+window.moveSection = moveSection;
+window.deleteSection = deleteSection;
+window.togglePreview = togglePreview;
 
 // ========== QR ATTENDANCE SESSION SYSTEM ==========
 let qrSessionId = null;

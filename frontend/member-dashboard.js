@@ -3,6 +3,13 @@ const API_URL = window.API_URL || 'http://localhost:4000';
 
 // Get token from localStorage
 const token = localStorage.getItem('token');
+let memberWorkshops = [];
+let activeMemberWorkshopId = null;
+let activeMemberSessionId = null;
+let activeMemberBundle = null;
+let activeMemberSections = [];
+let memberPreviewEnabled = false;
+let memberWorkshopSocketBound = false;
 
 // Check authentication
 if (!token) {
@@ -407,6 +414,9 @@ function switchPage(pageName, options = {}) {
             break;
         case 'events':
             loadEvents();
+            break;
+        case 'workshops':
+            loadMemberWorkshops();
             break;
         case 'attendance':
             loadAttendance();
@@ -4137,6 +4147,260 @@ function submitManualCode() {
     }
 }
 
+async function loadMemberWorkshops() {
+    const container = document.getElementById('memberWorkshopCards');
+    if (container) {
+        container.innerHTML = `
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Loading workshops...</p>
+            </div>
+        `;
+    }
+    try {
+        const response = await fetch(`${API_URL}/workshops`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            memberWorkshops = data.workshops || [];
+            renderMemberWorkshopCards();
+        } else {
+            if (container) container.innerHTML = '<p class="loading">No workshops available</p>';
+        }
+    } catch (error) {
+        console.error('Error loading workshops:', error);
+        if (container) container.innerHTML = '<p class="loading">Failed to load workshops</p>';
+    }
+}
+
+function renderMemberWorkshopCards() {
+    const container = document.getElementById('memberWorkshopCards');
+    if (!container) return;
+    if (!memberWorkshops.length) {
+        container.innerHTML = '<p class="loading">No workshops available</p>';
+        return;
+    }
+    container.innerHTML = memberWorkshops.map(workshop => {
+        const statusClass = `status-${workshop.status}`;
+        const start = workshop.startTime ? new Date(workshop.startTime).toLocaleString() : 'TBD';
+        return `
+            <div class="workshop-card">
+                <div class="workshop-card-title">${escapeHtml(workshop.title)}</div>
+                <div class="workshop-card-meta">
+                    <span><i class="fa-solid fa-clock"></i> ${start}</span>
+                </div>
+                <div class="workshop-card-footer">
+                    <span class="workshop-status-badge ${statusClass}">${workshop.status}</span>
+                    <button class="btn-secondary btn-small" onclick="openMemberWorkshopDetails(${workshop.id})">Open</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function openMemberWorkshopDetails(workshopId) {
+    activeMemberWorkshopId = workshopId;
+    try {
+        const response = await fetch(`${API_URL}/workshops/${workshopId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (!data.success) {
+            showNotification(data.message || 'Failed to load workshop', 'error');
+            return;
+        }
+        const workshop = data.workshop;
+        const detail = document.getElementById('memberWorkshopDetailContent');
+        const empty = document.querySelector('#memberWorkshopDetail .workshop-detail-empty');
+        if (detail) detail.style.display = 'block';
+        if (empty) empty.style.display = 'none';
+        document.getElementById('memberWorkshopTitle').textContent = workshop.title;
+        document.getElementById('memberWorkshopDescription').textContent = workshop.description || '';
+        const statusBadge = document.getElementById('memberWorkshopStatus');
+        if (statusBadge) {
+            statusBadge.textContent = workshop.status;
+            statusBadge.className = `workshop-status-badge status-${workshop.status}`;
+        }
+        const timeLabel = workshop.startTime ? new Date(workshop.startTime).toLocaleString() : 'TBD';
+        document.getElementById('memberWorkshopTime').textContent = timeLabel;
+        document.getElementById('memberWorkshopInstructor').textContent = workshop.instructor ? workshop.instructor.username : 'Instructor';
+        const tools = document.getElementById('memberWorkshopTools');
+        if (tools) {
+            const toolList = (workshop.requiredTools || []).map(tool => `
+                <div class="tool-item">
+                    <i class="${escapeHtml(tool.icon || 'fa-solid fa-screwdriver-wrench')}"></i>
+                    <div>
+                        <div>${escapeHtml(tool.name)}</div>
+                        <small>${escapeHtml(tool.version || '')}</small>
+                    </div>
+                    ${tool.link ? `<a href="${escapeHtml(tool.link)}" target="_blank" rel="noopener noreferrer">Get</a>` : ''}
+                </div>
+            `).join('');
+            tools.innerHTML = toolList || '<p class="loading">No tools listed</p>';
+        }
+        activeMemberSessionId = workshop.liveSessionId || null;
+        const nextBtn = document.getElementById('memberWorkshopNextBtn');
+        if (nextBtn) nextBtn.disabled = !activeMemberSessionId;
+    } catch (error) {
+        console.error('Error loading workshop details:', error);
+        showNotification('Failed to load workshop', 'error');
+    }
+}
+
+async function openMemberWorkshopInterface() {
+    if (!activeMemberWorkshopId || !activeMemberSessionId) {
+        showNotification('Workshop is not live yet', 'error');
+        return;
+    }
+    const container = document.getElementById('memberWorkshopInterface');
+    if (container) container.style.display = 'block';
+    const title = document.getElementById('memberInterfaceTitle');
+    if (title) {
+        const workshop = memberWorkshops.find(w => w.id === activeMemberWorkshopId);
+        title.textContent = workshop ? workshop.title : 'Live Workshop';
+    }
+    await loadMemberWorkshopSessionState(activeMemberSessionId);
+    initializeSocket();
+    if (socket) {
+        socket.emit('join-workshop-session', activeMemberSessionId);
+    }
+    bindMemberWorkshopSocketHandlers();
+}
+
+async function loadMemberWorkshopSessionState(sessionId) {
+    try {
+        const response = await fetch(`${API_URL}/sessions/${sessionId}/state`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (!data.success) {
+            showNotification(data.message || 'Failed to load session', 'error');
+            return;
+        }
+        activeMemberBundle = data.bundle || null;
+        activeMemberSections = data.sections || [];
+        memberPreviewEnabled = !!data.session.previewEnabled;
+        renderMemberSections();
+        updateMemberViewer();
+        updateMemberPreviewStatus();
+        if (memberPreviewEnabled) updateMemberPreviewFrame();
+    } catch (error) {
+        console.error('Error loading session state:', error);
+        showNotification('Failed to load session', 'error');
+    }
+}
+
+function renderMemberSections() {
+    const list = document.getElementById('memberSectionsList');
+    if (!list) return;
+    const visibleSections = activeMemberSections.filter(s => s.visible).sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+    if (!visibleSections.length) {
+        list.innerHTML = '<p class="loading">Waiting for instructor...</p>';
+        return;
+    }
+    list.innerHTML = visibleSections.map(section => `
+        <div class="section-item">
+            <div>
+                <strong>${escapeHtml(section.name || 'Section')}</strong>
+                <div class="workshop-card-meta">Lines ${section.startLine}-${section.endLine}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateMemberViewer() {
+    const viewer = document.getElementById('memberCodeViewer');
+    if (!viewer) return;
+    const visibleSections = activeMemberSections.filter(s => s.visible).sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+    if (visibleSections.length) {
+        viewer.textContent = visibleSections.map(s => s.content || '').join('\n\n');
+        return;
+    }
+    viewer.textContent = activeMemberBundle ? activeMemberBundle.rawCode || '' : 'Waiting for instructor...';
+}
+
+function updateMemberPreviewStatus() {
+    const status = document.getElementById('memberPreviewStatus');
+    const container = document.getElementById('memberPreviewContainer');
+    if (status) status.textContent = memberPreviewEnabled ? 'Preview Enabled' : 'Preview Disabled';
+    if (container) container.style.display = memberPreviewEnabled ? 'block' : 'none';
+}
+
+function updateMemberPreviewFrame() {
+    const frame = document.getElementById('memberPreviewFrame');
+    if (!frame || !activeMemberBundle) return;
+    const rawCode = activeMemberBundle.rawCode || '';
+    if (activeMemberBundle.language === 'html') {
+        frame.srcdoc = rawCode;
+    } else {
+        const escaped = rawCode.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        frame.srcdoc = `<pre style="font-family: monospace; padding: 16px; white-space: pre-wrap;">${escaped}</pre>`;
+    }
+}
+
+function bindMemberWorkshopSocketHandlers() {
+    if (!socket || memberWorkshopSocketBound) return;
+    memberWorkshopSocketBound = true;
+
+    socket.on('participant_joined', (payload) => {
+        if (!activeMemberSessionId || payload.session_id !== activeMemberSessionId) return;
+        const countEl = document.getElementById('memberParticipantsCount');
+        if (countEl) countEl.textContent = `${payload.count} connected`;
+    });
+
+    socket.on('participant_left', (payload) => {
+        if (!activeMemberSessionId || payload.session_id !== activeMemberSessionId) return;
+        const countEl = document.getElementById('memberParticipantsCount');
+        if (countEl) countEl.textContent = `${payload.count} connected`;
+    });
+
+    socket.on('instructor_saved_code', (payload) => {
+        if (!activeMemberSessionId || payload.is_published === false) return;
+        activeMemberBundle = {
+            id: payload.bundle_id,
+            rawCode: payload.raw_code,
+            language: payload.language,
+            versionNumber: payload.version
+        };
+        updateMemberViewer();
+        if (memberPreviewEnabled) updateMemberPreviewFrame();
+    });
+
+    socket.on('instructor_section_update', (payload) => {
+        if (!payload || !payload.sections) return;
+        activeMemberSections = payload.sections.map(section => ({
+            id: section.id,
+            startLine: section.start,
+            endLine: section.end,
+            content: section.content,
+            visible: section.visible,
+            orderIndex: section.order,
+            name: section.name,
+            language: section.language
+        }));
+        renderMemberSections();
+        updateMemberViewer();
+    });
+
+    socket.on('publish_sections', (payload) => {
+        if (!payload || !payload.visible_section_ids) return;
+        activeMemberSections = activeMemberSections.map(section => ({
+            ...section,
+            visible: payload.visible_section_ids.includes(section.id)
+        }));
+        renderMemberSections();
+        updateMemberViewer();
+    });
+
+    socket.on('preview_command', (payload) => {
+        if (!payload) return;
+        memberPreviewEnabled = !!payload.enabled;
+        updateMemberPreviewStatus();
+        if (memberPreviewEnabled) updateMemberPreviewFrame();
+    });
+}
+
 console.log('✅ Member Dashboard JS fully loaded');
 
 // ========== SETTINGS PAGE ==========
@@ -4368,6 +4632,8 @@ function initializeSocket() {
         socket.on('message-sent', (message) => {
             console.log('✅ Message sent confirmation:', message);
         });
+
+        bindMemberWorkshopSocketHandlers();
     }
 }
 
