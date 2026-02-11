@@ -6012,6 +6012,12 @@ body.dark-mode .profile-empty-state i {
     border: 1px solid #a7f3d0;
 }
 
+.workshop-status-badge.status-paused {
+    background: linear-gradient(135deg, #fff7ed, #ffedd5);
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+}
+
 .workshop-status-badge.status-ended {
     background: linear-gradient(135deg, #f9fafb, #f3f4f6);
     color: #6b7280;

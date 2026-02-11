@@ -3885,6 +3885,16 @@ async function loadOwnerWorkshops() {
     }
 }
 
+function handleOwnerWorkshopAction(workshopId, status, liveSessionId) {
+    activeWorkshopId = workshopId;
+    activeWorkshopSessionId = liveSessionId || null;
+    if (status === 'live' && liveSessionId) {
+        openWorkshopInterface();
+        return;
+    }
+    openWorkshopDetails(workshopId);
+}
+
 function renderOwnerWorkshopCards() {
     const container = document.getElementById('ownerWorkshopCards');
     if (!container) return;
@@ -3894,11 +3904,13 @@ function renderOwnerWorkshopCards() {
     }
     container.innerHTML = ownerWorkshops.map(workshop => {
         const statusClass = `status-${workshop.status}`;
+        const status = String(workshop.status || 'upcoming').toLowerCase();
+        const ctaLabel = status === 'live' ? 'Enter Workshop' : status === 'ended' ? 'View Recording' : 'View Details';
         const start = workshop.startTime ? new Date(workshop.startTime).toLocaleString() : 'TBD';
         const desc = workshop.description || 'No description';
         const toolCount = (workshop.requiredTools || []).length;
         return `
-            <div class="workshop-card" id="ws-card-${workshop.id}" onclick="openWorkshopDetails(${workshop.id})">
+            <div class="workshop-card" id="ws-card-${workshop.id}">
                 <div class="ws-card-top">
                     <h3 class="ws-card-title">${escapeHtml(workshop.title)}</h3>
                     <span class="workshop-status-badge ${statusClass}">${workshop.status}</span>
@@ -3911,9 +3923,8 @@ function renderOwnerWorkshopCards() {
                     </div>
                 </div>
                 <div class="ws-card-footer">
-                    <span class="workshop-status-badge ${statusClass}">${workshop.status}</span>
-                    <button class="ws-card-open-btn" onclick="event.stopPropagation(); openWorkshopDetails(${workshop.id})">
-                        Open <i class="fa-solid fa-arrow-right"></i>
+                    <button class="ws-card-open-btn" onclick="handleOwnerWorkshopAction(${workshop.id}, '${status}', ${workshop.liveSessionId || 'null'})">
+                        ${ctaLabel} <i class="fa-solid fa-arrow-right"></i>
                     </button>
                 </div>
             </div>
@@ -3986,7 +3997,11 @@ async function openWorkshopDetails(workshopId) {
         const nextBtn = document.getElementById('ownerWorkshopNextBtn');
         const startBtn = document.getElementById('ownerWorkshopStartBtn');
         if (nextBtn) nextBtn.disabled = !activeWorkshopSessionId;
-        if (startBtn) startBtn.disabled = !!activeWorkshopSessionId;
+        if (startBtn) {
+            const isPaused = String(workshop.status || '').toLowerCase() === 'paused';
+            startBtn.disabled = !!activeWorkshopSessionId && !isPaused;
+            startBtn.innerHTML = isPaused ? '<i class="fa-solid fa-broadcast-tower"></i> Resume' : '<i class="fa-solid fa-broadcast-tower"></i> Go Live';
+        }
     } catch (error) {
         console.error('Error loading workshop details:', error);
         showNotification('Failed to load workshop', 'error');
@@ -4039,6 +4054,14 @@ async function openWorkshopInterface() {
     bindWorkshopSocketHandlers();
 }
 
+function updateOwnerSessionBadge(status) {
+    const badge = document.querySelector('.ws-live-badge');
+    if (!badge) return;
+    const normalized = String(status || 'LIVE').toUpperCase();
+    const label = normalized === 'PAUSED' ? 'Session Paused' : normalized === 'ENDED' ? 'Session Ended' : 'Live Session';
+    badge.innerHTML = `<span class="ws-live-dot"></span> ${label}`;
+}
+
 async function loadWorkshopSessionState(sessionId) {
     try {
         const response = await fetch(`${getApiUrl()}/sessions/${sessionId}/state`, {
@@ -4054,6 +4077,7 @@ async function loadWorkshopSessionState(sessionId) {
         const editor = document.getElementById('ownerWorkshopEditor');
         if (editor) editor.value = activeWorkshopBundle ? activeWorkshopBundle.rawCode : '';
         workshopPreviewEnabled = !!data.session.previewEnabled;
+        updateOwnerSessionBadge(data.session.status);
         updatePreviewToggle();
         renderOwnerSections(activeWorkshopSections);
         if (workshopPreviewEnabled) updatePreviewFrame();
@@ -4109,7 +4133,8 @@ async function saveWorkshopCode(publish) {
             activeWorkshopSections = data.sections || activeWorkshopSections;
             renderOwnerSections(activeWorkshopSections);
             if (publish) updatePreviewFrame();
-            showNotification(publish ? 'Saved and published' : 'Draft saved', 'success');
+            if (!publish) showNotification('Draft saved', 'success');
+            return data;
         } else {
             showNotification(data.message || 'Failed to save code', 'error');
         }
@@ -4117,6 +4142,18 @@ async function saveWorkshopCode(publish) {
         console.error('Error saving code:', error);
         showNotification('Failed to save code', 'error');
     }
+}
+
+async function publishWorkshopToStudents() {
+    if (!activeWorkshopSessionId) return;
+    const saved = await saveWorkshopCode(true);
+    if (!saved) return;
+    if (activeWorkshopSections.length) {
+        const order = activeWorkshopSections.map(s => s.id);
+        const visibleIds = activeWorkshopSections.filter(s => s.visible).map(s => s.id);
+        await publishSections(visibleIds, order);
+    }
+    showNotification('Published to students', 'success');
 }
 
 function createSectionFromSelection() {
@@ -4175,9 +4212,11 @@ async function deleteSection(sectionId) {
 }
 
 async function toggleSectionVisibility(sectionId, visible) {
-    const visibleIds = activeWorkshopSections.filter(s => s.id === sectionId ? visible : s.visible).map(s => s.id);
-    const order = activeWorkshopSections.map(s => s.id);
-    await publishSections(visibleIds, order);
+    activeWorkshopSections = activeWorkshopSections.map(section => ({
+        ...section,
+        visible: section.id === sectionId ? visible : section.visible
+    }));
+    renderOwnerSections(activeWorkshopSections);
 }
 
 async function moveSection(sectionId, direction) {
@@ -4189,9 +4228,11 @@ async function moveSection(sectionId, direction) {
     const temp = reordered[index];
     reordered[index] = reordered[swapIndex];
     reordered[swapIndex] = temp;
-    const order = reordered.map(s => s.id);
-    const visibleIds = reordered.filter(s => s.visible).map(s => s.id);
-    await publishSections(visibleIds, order);
+    activeWorkshopSections = reordered.map((section, idx) => ({
+        ...section,
+        orderIndex: idx
+    }));
+    renderOwnerSections(activeWorkshopSections);
 }
 
 async function publishSections(visibleSectionIds, order) {
@@ -4254,6 +4295,50 @@ async function togglePreview() {
     }
 }
 
+async function pauseWorkshopSession() {
+    if (!activeWorkshopSessionId) return;
+    try {
+        const response = await fetch(`${getApiUrl()}/sessions/${activeWorkshopSessionId}/pause`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            updateOwnerSessionBadge('PAUSED');
+            showNotification('Session paused', 'info');
+        } else {
+            showNotification(data.message || 'Failed to pause session', 'error');
+        }
+    } catch (error) {
+        console.error('Error pausing session:', error);
+        showNotification('Failed to pause session', 'error');
+    }
+}
+
+async function endWorkshopSession() {
+    if (!activeWorkshopSessionId) return;
+    try {
+        const response = await fetch(`${getApiUrl()}/sessions/${activeWorkshopSessionId}/end`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            updateOwnerSessionBadge('ENDED');
+            showNotification('Session ended', 'success');
+        } else {
+            showNotification(data.message || 'Failed to end session', 'error');
+        }
+    } catch (error) {
+        console.error('Error ending session:', error);
+        showNotification('Failed to end session', 'error');
+    }
+}
+
 function updatePreviewFrame() {
     const frame = document.getElementById('ownerPreviewFrame');
     if (!frame || !activeWorkshopBundle) return;
@@ -4270,60 +4355,88 @@ function bindWorkshopSocketHandlers() {
     if (!socket || workshopSocketBound) return;
     workshopSocketBound = true;
 
-    socket.on('participant_joined', (payload) => {
-        if (!activeWorkshopSessionId || payload.session_id !== activeWorkshopSessionId) return;
+    socket.on('PARTICIPANT_COUNT_UPDATED', (payload) => {
+        if (!activeWorkshopSessionId) return;
+        if (payload.session_id && payload.session_id !== activeWorkshopSessionId) return;
         const countEl = document.getElementById('ownerParticipantsCount');
         if (countEl) countEl.textContent = `${payload.count} connected`;
     });
 
-    socket.on('participant_left', (payload) => {
-        if (!activeWorkshopSessionId || payload.session_id !== activeWorkshopSessionId) return;
-        const countEl = document.getElementById('ownerParticipantsCount');
-        if (countEl) countEl.textContent = `${payload.count} connected`;
-    });
-
-    socket.on('instructor_saved_code', (payload) => {
-        if (!activeWorkshopSessionId || payload.is_published === false) return;
+    socket.on('CODE_UPDATED', (payload) => {
+        if (!activeWorkshopSessionId || !payload) return;
+        if (payload.session_id && payload.session_id !== activeWorkshopSessionId) return;
         activeWorkshopBundle = {
             id: payload.bundle_id,
             rawCode: payload.raw_code,
             language: payload.language,
             versionNumber: payload.version
         };
+        if (payload.sections) {
+            activeWorkshopSections = payload.sections.map(section => ({
+                id: section.id,
+                startLine: section.start,
+                endLine: section.end,
+                content: section.content,
+                visible: section.visible,
+                orderIndex: section.order,
+                name: section.name,
+                language: section.language
+            }));
+            renderOwnerSections(activeWorkshopSections);
+        }
         const editor = document.getElementById('ownerWorkshopEditor');
         if (editor) editor.value = payload.raw_code || '';
         if (workshopPreviewEnabled) updatePreviewFrame();
+        if (payload.author_id && typeof currentUserId !== 'undefined' && payload.author_id !== currentUserId) {
+            showNotification('Code updated', 'info');
+        }
     });
 
-    socket.on('instructor_section_update', (payload) => {
-        if (!payload || !payload.sections) return;
-        activeWorkshopSections = payload.sections.map(section => ({
-            id: section.id,
-            startLine: section.start,
-            endLine: section.end,
-            content: section.content,
-            visible: section.visible,
-            orderIndex: section.order,
-            name: section.name,
-            language: section.language
-        }));
-        renderOwnerSections(activeWorkshopSections);
-    });
-
-    socket.on('publish_sections', (payload) => {
+    socket.on('SECTIONS_PUBLISHED', (payload) => {
         if (!payload || !payload.visible_section_ids) return;
-        activeWorkshopSections = activeWorkshopSections.map(section => ({
-            ...section,
-            visible: payload.visible_section_ids.includes(section.id)
-        }));
+        if (payload.session_id && payload.session_id !== activeWorkshopSessionId) return;
+        if (payload.sections && payload.sections.length) {
+            activeWorkshopSections = payload.sections.map(section => ({
+                id: section.id,
+                startLine: section.start,
+                endLine: section.end,
+                content: section.content,
+                visible: section.visible,
+                orderIndex: section.order,
+                name: section.name,
+                language: section.language
+            }));
+        } else {
+            activeWorkshopSections = activeWorkshopSections.map(section => ({
+                ...section,
+                visible: payload.visible_section_ids.includes(section.id)
+            }));
+        }
         renderOwnerSections(activeWorkshopSections);
+        showNotification('Sections published', 'success');
     });
 
-    socket.on('preview_command', (payload) => {
+    socket.on('PREVIEW_TOGGLED', (payload) => {
         if (!payload) return;
+        if (payload.session_id && payload.session_id !== activeWorkshopSessionId) return;
         workshopPreviewEnabled = !!payload.enabled;
         updatePreviewToggle();
         if (workshopPreviewEnabled) updatePreviewFrame();
+        showNotification(workshopPreviewEnabled ? 'Preview enabled' : 'Preview disabled', 'info');
+    });
+
+    socket.on('SESSION_STARTED', (payload) => {
+        if (!payload) return;
+        if (payload.session_id && payload.session_id !== activeWorkshopSessionId) return;
+        updateOwnerSessionBadge('LIVE');
+        showNotification('Session started', 'success');
+    });
+
+    socket.on('SESSION_ENDED', (payload) => {
+        if (!payload) return;
+        if (payload.session_id && payload.session_id !== activeWorkshopSessionId) return;
+        updateOwnerSessionBadge('ENDED');
+        showNotification('Session ended', 'info');
     });
 }
 
@@ -4372,16 +4485,20 @@ window.searchMembers = searchMembers;
 window.openWorkshopCreateModal = openWorkshopCreateModal;
 window.closeWorkshopCreateModal = closeWorkshopCreateModal;
 window.addToolRow = addToolRow;
+window.handleOwnerWorkshopAction = handleOwnerWorkshopAction;
 window.openWorkshopDetails = openWorkshopDetails;
 window.startWorkshopSession = startWorkshopSession;
 window.openWorkshopInterface = openWorkshopInterface;
 window.saveWorkshopCode = saveWorkshopCode;
+window.publishWorkshopToStudents = publishWorkshopToStudents;
 window.createSectionFromSelection = createSectionFromSelection;
 window.createSectionManual = createSectionManual;
 window.toggleSectionVisibility = toggleSectionVisibility;
 window.moveSection = moveSection;
 window.deleteSection = deleteSection;
 window.togglePreview = togglePreview;
+window.pauseWorkshopSession = pauseWorkshopSession;
+window.endWorkshopSession = endWorkshopSession;
 
 // ========== QR ATTENDANCE SESSION SYSTEM ==========
 let qrSessionId = null;

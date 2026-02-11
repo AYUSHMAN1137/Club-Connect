@@ -9,6 +9,9 @@ let activeMemberSessionId = null;
 let activeMemberBundle = null;
 let activeMemberSections = [];
 let memberPreviewEnabled = false;
+let memberSectionsPublished = false;
+let memberSessionStatus = 'DRAFT';
+let memberHasSections = false;
 let memberWorkshopSocketBound = false;
 
 // Check authentication
@@ -4174,33 +4177,66 @@ async function loadMemberWorkshops() {
     }
 }
 
+function handleMemberWorkshopAction(workshopId, status, liveSessionId) {
+    const normalized = String(status || 'upcoming').toLowerCase();
+    if (normalized === 'live' && liveSessionId) {
+        activeMemberWorkshopId = workshopId;
+        activeMemberSessionId = liveSessionId;
+        memberSessionStatus = 'LIVE';
+        openMemberWorkshopInterface();
+        return;
+    }
+    openMemberWorkshopDetails(workshopId);
+}
+
 function renderMemberWorkshopCards() {
     const container = document.getElementById('memberWorkshopCards');
     if (!container) return;
     if (!memberWorkshops.length) {
-        container.innerHTML = '<p class="loading">No workshops available</p>';
+        container.innerHTML = `<div class="ws-empty-state"><i class="fa-solid fa-chalkboard-user"></i><p>No workshops available</p></div>`;
         return;
     }
     container.innerHTML = memberWorkshops.map(workshop => {
-        const statusClass = `status-${workshop.status}`;
+        const status = String(workshop.status || 'upcoming').toLowerCase();
+        const statusClass = `status-${status}`;
+        const ctaLabel = status === 'live' ? 'Join Live' : status === 'ended' ? 'View Recording' : 'View Details';
         const start = workshop.startTime ? new Date(workshop.startTime).toLocaleString() : 'TBD';
+        const desc = workshop.description || 'No description';
+        const toolCount = (workshop.requiredTools || []).length;
         return `
-            <div class="workshop-card">
-                <div class="workshop-card-title">${escapeHtml(workshop.title)}</div>
-                <div class="workshop-card-meta">
-                    <span><i class="fa-solid fa-clock"></i> ${start}</span>
+            <div class="workshop-card" id="ws-card-${workshop.id}">
+                <div class="ws-card-top">
+                    <h3 class="ws-card-title">${escapeHtml(workshop.title)}</h3>
+                    <span class="workshop-status-badge ${statusClass}">${escapeHtml(status)}</span>
                 </div>
-                <div class="workshop-card-footer">
-                    <span class="workshop-status-badge ${statusClass}">${workshop.status}</span>
-                    <button class="btn-secondary btn-small" onclick="openMemberWorkshopDetails(${workshop.id})">Open</button>
+                <div class="ws-card-body">
+                    <p class="ws-card-desc">${escapeHtml(desc)}</p>
+                    <div class="ws-card-meta">
+                        <span><i class="fa-regular fa-clock"></i> ${start}</span>
+                        ${toolCount ? `<span><i class="fa-solid fa-toolbox"></i> ${toolCount} tool${toolCount > 1 ? 's' : ''}</span>` : ''}
+                    </div>
+                </div>
+                <div class="ws-card-footer">
+                    <button class="ws-card-open-btn" onclick="handleMemberWorkshopAction(${workshop.id}, '${status}', ${workshop.liveSessionId || 'null'})">
+                        ${ctaLabel} <i class="fa-solid fa-arrow-right"></i>
+                    </button>
                 </div>
             </div>
         `;
     }).join('');
 }
 
+function closeMemberWorkshopDetail() {
+    const overlay = document.getElementById('memberWorkshopDetail');
+    if (overlay) overlay.classList.remove('active');
+    document.querySelectorAll('.workshop-card.ws-card-active').forEach(c => c.classList.remove('ws-card-active'));
+}
+
 async function openMemberWorkshopDetails(workshopId) {
     activeMemberWorkshopId = workshopId;
+    document.querySelectorAll('.workshop-card.ws-card-active').forEach(c => c.classList.remove('ws-card-active'));
+    const activeCard = document.getElementById(`ws-card-${workshopId}`);
+    if (activeCard) activeCard.classList.add('ws-card-active');
     try {
         const response = await fetch(`${API_URL}/workshops/${workshopId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -4211,16 +4247,19 @@ async function openMemberWorkshopDetails(workshopId) {
             return;
         }
         const workshop = data.workshop;
+        const overlay = document.getElementById('memberWorkshopDetail');
         const detail = document.getElementById('memberWorkshopDetailContent');
-        const empty = document.querySelector('#memberWorkshopDetail .workshop-detail-empty');
+        const empty = document.getElementById('memberWsDetailEmpty');
+        if (overlay) overlay.classList.add('active');
         if (detail) detail.style.display = 'block';
         if (empty) empty.style.display = 'none';
         document.getElementById('memberWorkshopTitle').textContent = workshop.title;
         document.getElementById('memberWorkshopDescription').textContent = workshop.description || '';
         const statusBadge = document.getElementById('memberWorkshopStatus');
         if (statusBadge) {
+            const normalizedStatus = String(workshop.status || 'upcoming').toLowerCase();
             statusBadge.textContent = workshop.status;
-            statusBadge.className = `workshop-status-badge status-${workshop.status}`;
+            statusBadge.className = `workshop-status-badge status-${normalizedStatus}`;
         }
         const timeLabel = workshop.startTime ? new Date(workshop.startTime).toLocaleString() : 'TBD';
         document.getElementById('memberWorkshopTime').textContent = timeLabel;
@@ -4228,20 +4267,26 @@ async function openMemberWorkshopDetails(workshopId) {
         const tools = document.getElementById('memberWorkshopTools');
         if (tools) {
             const toolList = (workshop.requiredTools || []).map(tool => `
-                <div class="tool-item">
-                    <i class="${escapeHtml(tool.icon || 'fa-solid fa-screwdriver-wrench')}"></i>
-                    <div>
-                        <div>${escapeHtml(tool.name)}</div>
-                        <small>${escapeHtml(tool.version || '')}</small>
+                <div class="ws-tool-item">
+                    <div class="ws-tool-icon">
+                        <i class="${escapeHtml(tool.icon || 'fa-solid fa-screwdriver-wrench')}"></i>
                     </div>
-                    ${tool.link ? `<a href="${escapeHtml(tool.link)}" target="_blank" rel="noopener noreferrer">Get</a>` : ''}
+                    <div class="ws-tool-info">
+                        <p class="ws-tool-name">${escapeHtml(tool.name)}</p>
+                        <p class="ws-tool-version">${escapeHtml(tool.version || '')}</p>
+                    </div>
+                    ${tool.link ? `<a href="${escapeHtml(tool.link)}" target="_blank" rel="noopener noreferrer" class="ws-tool-link"><i class="fa-solid fa-download"></i> Get</a>` : ''}
                 </div>
             `).join('');
             tools.innerHTML = toolList || '<p class="loading">No tools listed</p>';
         }
-        activeMemberSessionId = workshop.liveSessionId || null;
+        memberSessionStatus = String(workshop.status || 'upcoming').toUpperCase();
+        activeMemberSessionId = workshop.status === 'live' ? (workshop.liveSessionId || null) : null;
         const nextBtn = document.getElementById('memberWorkshopNextBtn');
-        if (nextBtn) nextBtn.disabled = !activeMemberSessionId;
+        if (nextBtn) {
+            nextBtn.disabled = !activeMemberSessionId;
+            nextBtn.innerHTML = activeMemberSessionId ? '<i class="fa-solid fa-arrow-right"></i> Join Live' : '<i class="fa-regular fa-clock"></i> Not Live';
+        }
     } catch (error) {
         console.error('Error loading workshop details:', error);
         showNotification('Failed to load workshop', 'error');
@@ -4249,10 +4294,11 @@ async function openMemberWorkshopDetails(workshopId) {
 }
 
 async function openMemberWorkshopInterface() {
-    if (!activeMemberWorkshopId || !activeMemberSessionId) {
+    if (!activeMemberWorkshopId || !activeMemberSessionId || memberSessionStatus !== 'LIVE') {
         showNotification('Workshop is not live yet', 'error');
         return;
     }
+    closeMemberWorkshopDetail();
     const container = document.getElementById('memberWorkshopInterface');
     if (container) container.style.display = 'block';
     const title = document.getElementById('memberInterfaceTitle');
@@ -4268,6 +4314,14 @@ async function openMemberWorkshopInterface() {
     bindMemberWorkshopSocketHandlers();
 }
 
+function updateMemberSessionStatus(status) {
+    const badge = document.querySelector('#memberWorkshopInterface .live-indicator');
+    if (!badge) return;
+    const normalized = String(status || 'LIVE').toUpperCase();
+    const label = normalized === 'PAUSED' ? 'Paused' : normalized === 'ENDED' ? 'Ended' : 'Live';
+    badge.innerHTML = `<span class="live-dot"></span> ${label}`;
+}
+
 async function loadMemberWorkshopSessionState(sessionId) {
     try {
         const response = await fetch(`${API_URL}/sessions/${sessionId}/state`, {
@@ -4278,9 +4332,13 @@ async function loadMemberWorkshopSessionState(sessionId) {
             showNotification(data.message || 'Failed to load session', 'error');
             return;
         }
-        activeMemberBundle = data.bundle || null;
+        activeMemberBundle = data.bundle ? { ...data.bundle, isPublished: true } : null;
         activeMemberSections = data.sections || [];
         memberPreviewEnabled = !!data.session.previewEnabled;
+        memberSectionsPublished = !!data.session.isSectionsPublished;
+        memberHasSections = !!data.session.hasSections;
+        memberSessionStatus = String(data.session.status || 'LIVE').toUpperCase();
+        updateMemberSessionStatus(memberSessionStatus);
         renderMemberSections();
         updateMemberViewer();
         updateMemberPreviewStatus();
@@ -4296,14 +4354,13 @@ function renderMemberSections() {
     if (!list) return;
     const visibleSections = activeMemberSections.filter(s => s.visible).sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
     if (!visibleSections.length) {
-        list.innerHTML = '<p class="loading">Waiting for instructor...</p>';
+        list.innerHTML = memberHasSections ? (memberSectionsPublished ? '<p class="loading">No published sections yet</p>' : '<p class="loading">Waiting for instructor to publish...</p>') : '<p class="loading">No sections defined</p>';
         return;
     }
     list.innerHTML = visibleSections.map(section => `
         <div class="section-item">
             <div>
                 <strong>${escapeHtml(section.name || 'Section')}</strong>
-                <div class="workshop-card-meta">Lines ${section.startLine}-${section.endLine}</div>
             </div>
         </div>
     `).join('');
@@ -4313,17 +4370,26 @@ function updateMemberViewer() {
     const viewer = document.getElementById('memberCodeViewer');
     if (!viewer) return;
     const visibleSections = activeMemberSections.filter(s => s.visible).sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
-    if (visibleSections.length) {
+    if (memberHasSections && visibleSections.length && memberSectionsPublished) {
         viewer.textContent = visibleSections.map(s => s.content || '').join('\n\n');
         return;
     }
-    viewer.textContent = activeMemberBundle ? activeMemberBundle.rawCode || '' : 'Waiting for instructor...';
+    if (!memberHasSections && activeMemberBundle && activeMemberBundle.isPublished) {
+        viewer.textContent = activeMemberBundle.rawCode || '';
+        return;
+    }
+    viewer.textContent = 'Waiting for instructor to publish...';
 }
 
 function updateMemberPreviewStatus() {
     const status = document.getElementById('memberPreviewStatus');
     const container = document.getElementById('memberPreviewContainer');
-    if (status) status.textContent = memberPreviewEnabled ? 'Preview Enabled' : 'Preview Disabled';
+    const panel = document.getElementById('memberPreviewPanel');
+    if (status) {
+        status.textContent = 'Preview Enabled';
+        status.style.display = memberPreviewEnabled ? 'inline-flex' : 'none';
+    }
+    if (panel) panel.style.display = memberPreviewEnabled ? 'block' : 'none';
     if (container) container.style.display = memberPreviewEnabled ? 'block' : 'none';
 }
 
@@ -4343,61 +4409,90 @@ function bindMemberWorkshopSocketHandlers() {
     if (!socket || memberWorkshopSocketBound) return;
     memberWorkshopSocketBound = true;
 
-    socket.on('participant_joined', (payload) => {
-        if (!activeMemberSessionId || payload.session_id !== activeMemberSessionId) return;
+    socket.on('PARTICIPANT_COUNT_UPDATED', (payload) => {
+        if (!activeMemberSessionId) return;
+        if (payload.session_id && payload.session_id !== activeMemberSessionId) return;
         const countEl = document.getElementById('memberParticipantsCount');
         if (countEl) countEl.textContent = `${payload.count} connected`;
     });
 
-    socket.on('participant_left', (payload) => {
-        if (!activeMemberSessionId || payload.session_id !== activeMemberSessionId) return;
-        const countEl = document.getElementById('memberParticipantsCount');
-        if (countEl) countEl.textContent = `${payload.count} connected`;
-    });
-
-    socket.on('instructor_saved_code', (payload) => {
-        if (!activeMemberSessionId || payload.is_published === false) return;
+    socket.on('CODE_UPDATED', (payload) => {
+        if (!activeMemberSessionId || !payload || payload.is_published === false) return;
+        if (payload.session_id && payload.session_id !== activeMemberSessionId) return;
         activeMemberBundle = {
             id: payload.bundle_id,
             rawCode: payload.raw_code,
             language: payload.language,
-            versionNumber: payload.version
+            versionNumber: payload.version,
+            isPublished: true
         };
+        if (payload.sections) {
+            activeMemberSections = payload.sections.map(section => ({
+                id: section.id,
+                startLine: section.start,
+                endLine: section.end,
+                content: section.content,
+                visible: section.visible,
+                orderIndex: section.order,
+                name: section.name,
+                language: section.language
+            }));
+            renderMemberSections();
+        }
         updateMemberViewer();
         if (memberPreviewEnabled) updateMemberPreviewFrame();
+        showNotification('Instructor updated code', 'info');
     });
 
-    socket.on('instructor_section_update', (payload) => {
-        if (!payload || !payload.sections) return;
-        activeMemberSections = payload.sections.map(section => ({
-            id: section.id,
-            startLine: section.start,
-            endLine: section.end,
-            content: section.content,
-            visible: section.visible,
-            orderIndex: section.order,
-            name: section.name,
-            language: section.language
-        }));
-        renderMemberSections();
-        updateMemberViewer();
-    });
-
-    socket.on('publish_sections', (payload) => {
+    socket.on('SECTIONS_PUBLISHED', (payload) => {
         if (!payload || !payload.visible_section_ids) return;
-        activeMemberSections = activeMemberSections.map(section => ({
-            ...section,
-            visible: payload.visible_section_ids.includes(section.id)
-        }));
+        if (payload.session_id && payload.session_id !== activeMemberSessionId) return;
+        memberSectionsPublished = true;
+        if (payload.sections && payload.sections.length) {
+            activeMemberSections = payload.sections.map(section => ({
+                id: section.id,
+                startLine: section.start,
+                endLine: section.end,
+                content: section.content,
+                visible: section.visible,
+                orderIndex: section.order,
+                name: section.name,
+                language: section.language
+            }));
+        } else {
+            activeMemberSections = activeMemberSections.map(section => ({
+                ...section,
+                visible: payload.visible_section_ids.includes(section.id)
+            }));
+        }
         renderMemberSections();
         updateMemberViewer();
+        showNotification('New sections published', 'success');
     });
 
-    socket.on('preview_command', (payload) => {
+    socket.on('PREVIEW_TOGGLED', (payload) => {
         if (!payload) return;
+        if (payload.session_id && payload.session_id !== activeMemberSessionId) return;
         memberPreviewEnabled = !!payload.enabled;
         updateMemberPreviewStatus();
         if (memberPreviewEnabled) updateMemberPreviewFrame();
+        showNotification(memberPreviewEnabled ? 'Preview enabled' : 'Preview disabled', 'info');
+    });
+
+    socket.on('SESSION_STARTED', (payload) => {
+        if (!payload) return;
+        if (payload.session_id && payload.session_id !== activeMemberSessionId) return;
+        memberSessionStatus = 'LIVE';
+        updateMemberSessionStatus('LIVE');
+        showNotification('Session started', 'success');
+    });
+
+    socket.on('SESSION_ENDED', (payload) => {
+        if (!payload) return;
+        if (payload.session_id && payload.session_id !== activeMemberSessionId) return;
+        memberSessionStatus = 'ENDED';
+        updateMemberSessionStatus('ENDED');
+        showNotification('Session ended', 'info');
     });
 }
 

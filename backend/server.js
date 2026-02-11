@@ -131,7 +131,7 @@ function normalizeTools(tools) {
 
 function resolveWorkshopStatus(workshop) {
     const status = workshop.status || 'upcoming';
-    if (status === 'live' || status === 'ended') return status;
+    if (status === 'live' || status === 'ended' || status === 'paused') return status;
     const now = new Date();
     const start = workshop.startTime ? new Date(workshop.startTime) : null;
     const end = workshop.endTime ? new Date(workshop.endTime) : null;
@@ -140,6 +140,35 @@ function resolveWorkshopStatus(workshop) {
     if (end && now >= end) return 'ended';
     if (start && !end && now >= start) return 'live';
     return 'upcoming';
+}
+
+function resolveWorkshopStatusWithSession(workshop, session) {
+    if (session) {
+        const normalized = String(session.status || '').toUpperCase();
+        if (normalized === 'LIVE') return 'live';
+        if (normalized === 'PAUSED') return 'paused';
+        if (normalized === 'ENDED') return 'ended';
+    }
+    return resolveWorkshopStatus(workshop);
+}
+
+const workshopEventSchemas = {
+    SESSION_STARTED: ['session_id', 'workshop_id'],
+    SESSION_ENDED: ['session_id', 'workshop_id'],
+    CODE_UPDATED: ['session_id', 'bundle_id', 'raw_code', 'language', 'is_published'],
+    SECTIONS_PUBLISHED: ['session_id', 'visible_section_ids'],
+    PREVIEW_TOGGLED: ['session_id', 'enabled'],
+    PARTICIPANT_COUNT_UPDATED: ['session_id', 'count']
+};
+
+function emitWorkshopEvent(sessionId, eventType, payload) {
+    const required = workshopEventSchemas[eventType] || [];
+    const missing = required.filter(key => payload[key] === undefined || payload[key] === null);
+    if (missing.length) {
+        console.error('Invalid workshop event payload', eventType, missing);
+        return;
+    }
+    io.to(`workshop-session-${sessionId}`).emit(eventType, payload);
 }
 
 function sliceCodeByLines(rawCode, startLine, endLine) {
@@ -2448,20 +2477,28 @@ app.get('/workshops', verifyToken, async (req, res) => {
         const payload = [];
         for (const w of workshops) {
             const liveSession = await db.WorkshopSession.findOne({
-                where: { workshopId: w.id, isLive: true },
+                where: {
+                    workshopId: w.id,
+                    [Op.or]: [
+                        { status: { [Op.in]: ['LIVE', 'PAUSED'] } },
+                        { isLive: true }
+                    ]
+                },
                 order: [['createdAt', 'DESC']]
             });
+            const resolvedStatus = resolveWorkshopStatusWithSession(w, liveSession);
             payload.push({
                 id: w.id,
                 title: w.title,
                 description: w.description,
                 startTime: w.startTime,
                 endTime: w.endTime,
-                status: resolveWorkshopStatus(w),
+                status: resolvedStatus,
                 requiredTools: w.requiredTools || [],
                 instructor: w.Instructor ? { id: w.Instructor.id, username: w.Instructor.username } : null,
                 attendeeCount: 0,
-                liveSessionId: liveSession ? liveSession.id : null
+                liveSessionId: liveSession ? liveSession.id : null,
+                sessionStatus: liveSession ? (liveSession.status || (liveSession.isLive ? 'LIVE' : 'DRAFT')) : null
             });
         }
 
@@ -2496,9 +2533,16 @@ app.get('/workshops/:id', verifyToken, async (req, res) => {
         if (!hasAccess) return res.status(403).json({ success: false, message: 'Access denied' });
 
         const liveSession = await db.WorkshopSession.findOne({
-            where: { workshopId: workshop.id, isLive: true },
+            where: {
+                workshopId: workshop.id,
+                [Op.or]: [
+                    { status: { [Op.in]: ['LIVE', 'PAUSED'] } },
+                    { isLive: true }
+                ]
+            },
             order: [['createdAt', 'DESC']]
         });
+        const resolvedStatus = resolveWorkshopStatusWithSession(workshop, liveSession);
 
         res.json({
             success: true,
@@ -2508,12 +2552,13 @@ app.get('/workshops/:id', verifyToken, async (req, res) => {
                 description: workshop.description,
                 startTime: workshop.startTime,
                 endTime: workshop.endTime,
-                status: resolveWorkshopStatus(workshop),
+                status: resolvedStatus,
                 requiredTools: workshop.requiredTools || [],
                 instructor: workshop.Instructor ? { id: workshop.Instructor.id, username: workshop.Instructor.username } : null,
                 clubId: workshop.clubId,
                 liveSessionId: liveSession ? liveSession.id : null,
-                isLive: !!liveSession
+                sessionStatus: liveSession ? (liveSession.status || (liveSession.isLive ? 'LIVE' : 'DRAFT')) : null,
+                isLive: resolvedStatus === 'live'
             }
         });
     } catch (error) {
@@ -2594,10 +2639,28 @@ app.post('/workshops/:id/session/start', verifyToken, isOwner, async (req, res) 
         }
 
         const existingLive = await db.WorkshopSession.findOne({
-            where: { workshopId: workshop.id, isLive: true },
+            where: {
+                workshopId: workshop.id,
+                [Op.or]: [
+                    { status: { [Op.in]: ['LIVE', 'PAUSED'] } },
+                    { isLive: true }
+                ]
+            },
             order: [['createdAt', 'DESC']]
         });
         if (existingLive) {
+            if (existingLive.status === 'PAUSED' || existingLive.isLive === false) {
+                await existingLive.update({
+                    status: 'LIVE',
+                    isLive: true,
+                    startedAt: existingLive.startedAt || new Date()
+                });
+                await workshop.update({ status: 'live' });
+                emitWorkshopEvent(existingLive.id, 'SESSION_STARTED', {
+                    session_id: existingLive.id,
+                    workshop_id: workshop.id
+                });
+            }
             return res.json({ success: true, session: existingLive });
         }
 
@@ -2605,15 +2668,78 @@ app.post('/workshops/:id/session/start', verifyToken, isOwner, async (req, res) 
             workshopId: workshop.id,
             sessionToken: generateNonce(),
             isLive: true,
+            status: 'LIVE',
             startedAt: new Date(),
-            previewEnabled: false
+            previewEnabled: false,
+            isSectionsPublished: false
         });
 
         await workshop.update({ status: 'live' });
 
+        emitWorkshopEvent(session.id, 'SESSION_STARTED', {
+            session_id: session.id,
+            workshop_id: workshop.id
+        });
+
         res.json({ success: true, session });
     } catch (error) {
         console.error('Error starting session:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.post('/sessions/:id/pause', verifyToken, isOwner, async (req, res) => {
+    try {
+        const sessionId = parseInt(req.params.id);
+        const session = await db.WorkshopSession.findByPk(sessionId, {
+            include: [{ model: db.Workshop }]
+        });
+        if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
+        const ownerClub = await db.findClubByOwnerId(req.user.id);
+        if (!ownerClub || ownerClub.id !== session.Workshop.clubId) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+
+        await session.update({
+            status: 'PAUSED',
+            isLive: false
+        });
+        await session.Workshop.update({ status: 'paused' });
+
+        res.json({ success: true, session });
+    } catch (error) {
+        console.error('Error pausing session:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.post('/sessions/:id/end', verifyToken, isOwner, async (req, res) => {
+    try {
+        const sessionId = parseInt(req.params.id);
+        const session = await db.WorkshopSession.findByPk(sessionId, {
+            include: [{ model: db.Workshop }]
+        });
+        if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
+        const ownerClub = await db.findClubByOwnerId(req.user.id);
+        if (!ownerClub || ownerClub.id !== session.Workshop.clubId) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+
+        await session.update({
+            status: 'ENDED',
+            isLive: false,
+            endedAt: new Date()
+        });
+        await session.Workshop.update({ status: 'ended' });
+
+        emitWorkshopEvent(session.id, 'SESSION_ENDED', {
+            session_id: session.id,
+            workshop_id: session.Workshop.id
+        });
+
+        res.json({ success: true, session });
+    } catch (error) {
+        console.error('Error ending session:', error);
         res.status(500).json({ success: false, message: 'Server error!' });
     }
 });
@@ -2641,13 +2767,24 @@ app.get('/sessions/:id/state', verifyToken, async (req, res) => {
         }
         if (!hasAccess) return res.status(403).json({ success: false, message: 'Access denied' });
 
+        const isMember = user.role === 'member';
         const latestBundle = await db.CodeBundle.findOne({
-            where: { sessionId: session.id },
+            where: {
+                sessionId: session.id,
+                ...(isMember ? { isPublished: true } : {})
+            },
             order: [['versionNumber', 'DESC']]
         });
 
+        const totalSectionsCount = await db.CodeSection.count({
+            where: { sessionId: session.id }
+        });
+
         const sections = await db.CodeSection.findAll({
-            where: { sessionId: session.id },
+            where: {
+                sessionId: session.id,
+                ...(isMember ? { visible: true } : {})
+            },
             order: [['orderIndex', 'ASC']]
         });
 
@@ -2656,8 +2793,11 @@ app.get('/sessions/:id/state', verifyToken, async (req, res) => {
             session: {
                 id: session.id,
                 workshopId: session.workshopId,
-                isLive: session.isLive,
+                isLive: session.status === 'LIVE' || session.isLive,
+                status: session.status || (session.isLive ? 'LIVE' : 'DRAFT'),
                 previewEnabled: session.previewEnabled,
+                isSectionsPublished: session.isSectionsPublished,
+                hasSections: totalSectionsCount > 0,
                 sessionToken: session.sessionToken
             },
             bundle: latestBundle,
@@ -2718,35 +2858,31 @@ app.post('/sessions/:id/code/save', verifyToken, isOwner, async (req, res) => {
 
         await db.RealtimeEventLog.create({
             sessionId: session.id,
-            eventType: 'code_update',
+            eventType: 'CODE_UPDATED',
             actorId: req.user.id,
             payload: { bundleId: bundle.id, version: bundle.versionNumber, isPublished: bundle.isPublished }
         });
 
-        io.to(`workshop-session-${session.id}`).emit('instructor_saved_code', {
+        emitWorkshopEvent(session.id, 'CODE_UPDATED', {
+            session_id: session.id,
             bundle_id: bundle.id,
             version: bundle.versionNumber,
             raw_code: bundle.rawCode,
             language: bundle.language,
             is_published: bundle.isPublished,
             author_id: req.user.id,
-            timestamp: bundle.savedAt
+            timestamp: bundle.savedAt,
+            sections: updatedSections.map(s => ({
+                id: s.id,
+                start: s.startLine,
+                end: s.endLine,
+                content: s.content,
+                visible: s.visible,
+                order: s.orderIndex,
+                name: s.name,
+                language: s.language
+            }))
         });
-
-        if (updatedSections.length > 0) {
-            io.to(`workshop-session-${session.id}`).emit('instructor_section_update', {
-                sections: updatedSections.map(s => ({
-                    id: s.id,
-                    start: s.startLine,
-                    end: s.endLine,
-                    content: s.content,
-                    visible: s.visible,
-                    order: s.orderIndex,
-                    name: s.name,
-                    language: s.language
-                }))
-            });
-        }
 
         res.json({ success: true, bundle, sections: updatedSections });
     } catch (error) {
@@ -2838,22 +2974,9 @@ app.post('/sessions/:id/sections', verifyToken, isOwner, async (req, res) => {
 
         await db.RealtimeEventLog.create({
             sessionId: session.id,
-            eventType: 'section_update',
+            eventType: 'SECTIONS_UPDATED',
             actorId: req.user.id,
             payload: { sectionCount: updatedSections.length }
-        });
-
-        io.to(`workshop-session-${session.id}`).emit('instructor_section_update', {
-            sections: updatedSections.map(s => ({
-                id: s.id,
-                start: s.startLine,
-                end: s.endLine,
-                content: s.content,
-                visible: s.visible,
-                order: s.orderIndex,
-                name: s.name,
-                language: s.language
-            }))
         });
 
         res.json({ success: true, sections: updatedSections });
@@ -2888,15 +3011,33 @@ app.post('/sessions/:id/publish-sections', verifyToken, isOwner, async (req, res
             });
         }
 
+        await session.update({ isSectionsPublished: true });
+
         await db.RealtimeEventLog.create({
             sessionId: session.id,
-            eventType: 'section_publish',
+            eventType: 'SECTIONS_PUBLISHED',
             actorId: req.user.id,
             payload: { visibleSectionIds }
         });
 
-        io.to(`workshop-session-${session.id}`).emit('publish_sections', {
-            visible_section_ids: visibleSectionIds
+        const visibleSections = sections
+            .filter(section => visibleSet.has(section.id))
+            .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
+            .map(s => ({
+                id: s.id,
+                start: s.startLine,
+                end: s.endLine,
+                content: s.content,
+                visible: s.visible,
+                order: s.orderIndex,
+                name: s.name,
+                language: s.language
+            }));
+
+        emitWorkshopEvent(session.id, 'SECTIONS_PUBLISHED', {
+            session_id: session.id,
+            visible_section_ids: visibleSectionIds,
+            sections: visibleSections
         });
 
         res.json({ success: true });
@@ -2923,12 +3064,13 @@ app.post('/sessions/:id/preview', verifyToken, isOwner, async (req, res) => {
 
         await db.RealtimeEventLog.create({
             sessionId: session.id,
-            eventType: 'preview_command',
+            eventType: 'PREVIEW_TOGGLED',
             actorId: req.user.id,
             payload: { enabled: !!enabled }
         });
 
-        io.to(`workshop-session-${session.id}`).emit('preview_command', {
+        emitWorkshopEvent(session.id, 'PREVIEW_TOGGLED', {
+            session_id: session.id,
             enabled: !!enabled
         });
 
@@ -2978,7 +3120,7 @@ io.on('connection', (socket) => {
         }
         workshopParticipants.get(parsed).add(socket.id);
         const count = workshopParticipants.get(parsed).size;
-        io.to(`workshop-session-${parsed}`).emit('participant_joined', {
+        emitWorkshopEvent(parsed, 'PARTICIPANT_COUNT_UPDATED', {
             session_id: parsed,
             count,
             user_id: socket.data.userId || null,
@@ -2993,7 +3135,7 @@ io.on('connection', (socket) => {
             const set = workshopParticipants.get(sessionId);
             set.delete(socket.id);
             const count = set.size;
-            io.to(`workshop-session-${sessionId}`).emit('participant_left', {
+            emitWorkshopEvent(sessionId, 'PARTICIPANT_COUNT_UPDATED', {
                 session_id: sessionId,
                 count,
                 user_id: socket.data.userId || null,
