@@ -19,6 +19,13 @@ const { generateNonce, generateAttendanceToken, verifyAttendanceToken, generateA
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || '*';
 
 db.ClubOwner.sync().catch(() => null);
+Promise.all([
+    db.Workshop.sync().catch(() => null),
+    db.WorkshopSession.sync().catch(() => null),
+    db.CodeBundle.sync().catch(() => null),
+    db.CodeSection.sync().catch(() => null),
+    db.RealtimeEventLog.sync().catch(() => null)
+]).catch(() => null);
 
 const app = express();
 const server = http.createServer(app);
