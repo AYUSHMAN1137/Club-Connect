@@ -661,7 +661,12 @@
                         <div class="ws-editor-area ws-viewer-area">
                             <div class="ws-editor-header">
                                 <span><i class="fa-solid fa-terminal"></i> Code</span>
-                                <span class="ws-editor-hint" id="memberCodeHint">Waiting for instructor to publish...</span>
+                                <div class="ws-editor-actions">
+                                    <span class="ws-editor-hint" id="memberCodeHint">Waiting for instructor to publish...</span>
+                                    <button type="button" class="ws-copy-code-btn" onclick="copyMemberCode()">
+                                        <i class="fa-regular fa-copy"></i> Copy
+                                    </button>
+                                </div>
                             </div>
                             <pre id="memberCodeViewer" class="ws-code-pre"></pre>
                         </div>
