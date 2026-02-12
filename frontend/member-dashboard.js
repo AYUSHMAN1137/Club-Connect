@@ -4297,6 +4297,37 @@ function closeMemberWorkshopInterface() {
     if (iface) iface.style.display = 'none';
 }
 
+async function copyMemberCode() {
+    const viewer = document.getElementById('memberCodeViewer');
+    const text = viewer ? String(viewer.textContent || '') : '';
+    if (!text.trim()) {
+        showNotification('Nothing to copy', 'error');
+        return;
+    }
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text);
+            showNotification('Copied to clipboard', 'success');
+            return;
+        }
+    } catch (e) {
+    }
+    try {
+        const el = document.createElement('textarea');
+        el.value = text;
+        el.setAttribute('readonly', 'true');
+        el.style.position = 'fixed';
+        el.style.left = '-9999px';
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        showNotification('Copied to clipboard', 'success');
+    } catch (e) {
+        showNotification('Copy failed', 'error');
+    }
+}
+
 async function openMemberWorkshopInterface() {
     if (!activeMemberWorkshopId || !activeMemberSessionId || memberSessionStatus !== 'LIVE') {
         showNotification('Workshop is not live yet', 'error');
@@ -4317,6 +4348,8 @@ async function openMemberWorkshopInterface() {
     }
     bindMemberWorkshopSocketHandlers();
 }
+
+window.copyMemberCode = copyMemberCode;
 
 function updateMemberSessionStatus(status) {
     const badge = document.getElementById('memberLiveBadge');

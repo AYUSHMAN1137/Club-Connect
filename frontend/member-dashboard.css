@@ -3502,6 +3502,38 @@ img {
     color: #94a3b8;
 }
 
+.ws-editor-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.ws-copy-code-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(15, 118, 110, 0.1);
+    color: #e2e8f0;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.ws-copy-code-btn:hover {
+    background: rgba(15, 118, 110, 0.18);
+    border-color: rgba(20, 184, 166, 0.45);
+}
+
+.ws-copy-code-btn:active {
+    transform: translateY(1px);
+}
+
 .ws-editor-header i {
     margin-right: 6px;
     color: #14b8a6;
@@ -3511,11 +3543,15 @@ img {
     font-size: 11px;
     font-weight: 400;
     color: #64748b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 38vw;
 }
 
 .ws-viewer-area .ws-code-pre {
     width: 100%;
-    min-height: 500px;
+    height: 520px;
     border: none;
     padding: 20px;
     margin: 0;
@@ -3525,6 +3561,7 @@ img {
     background: #0f172a;
     color: #e2e8f0;
     white-space: pre-wrap;
+    overflow: auto;
 }
 
 .ws-sidebar {
