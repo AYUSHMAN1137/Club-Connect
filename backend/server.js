@@ -4015,6 +4015,11 @@ app.get('/attendance/session/:id/summary', verifyToken, isOwner, async (req, res
             : null;
 
         const memberMap = new Map();
+        const toMillis = (value) => {
+            if (!value) return 0;
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+        };
         const isNewer = (nextTime, currentTime) => {
             if (!currentTime) return !!nextTime;
             if (!nextTime) return false;
