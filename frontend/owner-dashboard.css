@@ -905,6 +905,16 @@ body {
     background: #ffedd5;
 }
 
+.btn-qr--danger {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: rgba(220, 38, 38, 0.25);
+}
+
+.btn-qr--danger:hover {
+    background: #fee2e2;
+}
+
 .btn-qr--muted {
     background: var(--event-muted);
     color: var(--gray-600);
@@ -1066,6 +1076,16 @@ body {
     padding: 8px 12px;
     font-size: 13px;
     border-radius: 10px;
+}
+
+.poll-delete-btn {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid rgba(220, 38, 38, 0.25);
+}
+
+.poll-delete-btn:hover {
+    background: #fee2e2;
 }
 
 .polls-summary {
@@ -2068,6 +2088,17 @@ body {
     margin-bottom: 12px;
 }
 
+.announcement-item-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.announcement-item-body {
+    flex: 1;
+}
+
 .announcement-item h4 {
     color: #1f2937;
     margin-bottom: 5px;
@@ -2082,6 +2113,129 @@ body {
     font-size: 12px;
     color: #9ca3af;
     margin-top: 8px;
+}
+
+.announcement-delete-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: none;
+    background: var(--danger-light);
+    color: var(--danger-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.announcement-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.18);
+    transform: translateY(-1px);
+}
+
+.certificates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.certificate-card {
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    cursor: pointer;
+}
+
+.certificate-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+    border-color: rgba(15, 118, 110, 0.2);
+}
+
+.certificate-preview {
+    height: 180px;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.certificate-preview i {
+    font-size: 54px;
+    color: #ef4444;
+}
+
+.certificate-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.certificate-info {
+    padding: 16px;
+}
+
+.certificate-info h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 10px;
+}
+
+.certificate-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.certificate-meta span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.cert-description {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 10px;
+}
+
+.certificate-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.certificate-delete-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.6);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.certificate-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.9);
 }
 
 /* Analytics */
@@ -4002,6 +4156,16 @@ body.dark-mode .btn-qr--accent {
 
 body.dark-mode .btn-qr--accent:hover {
     background: rgba(251, 191, 36, 0.24);
+}
+
+body.dark-mode .btn-qr--danger {
+    background: rgba(248, 113, 113, 0.16);
+    color: #fca5a5;
+    border-color: rgba(248, 113, 113, 0.3);
+}
+
+body.dark-mode .btn-qr--danger:hover {
+    background: rgba(248, 113, 113, 0.24);
 }
 
 body.dark-mode .btn-qr--muted {
@@ -5976,6 +6140,25 @@ body.dark-mode .profile-empty-state i {
     background: rgba(15, 118, 110, 0.08);
 }
 
+.ws-card-delete-btn {
+    background: #fef2f2;
+    border: 1px solid rgba(220, 38, 38, 0.25);
+    color: #dc2626;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.ws-card-delete-btn:hover {
+    background: #fee2e2;
+}
+
 /* Status Badges */
 .workshop-status-badge {
     padding: 5px 14px;
@@ -6864,6 +7047,63 @@ body.dark-mode .ws-card-open-btn {
 
 body.dark-mode .ws-card-open-btn:hover {
     background: rgba(20, 184, 166, 0.1);
+}
+
+body.dark-mode .ws-card-delete-btn {
+    background: rgba(248, 113, 113, 0.18);
+    color: #fecaca;
+    border-color: rgba(248, 113, 113, 0.35);
+}
+
+body.dark-mode .ws-card-delete-btn:hover {
+    background: rgba(248, 113, 113, 0.28);
+}
+
+body.dark-mode .announcement-delete-btn {
+    background: rgba(248, 113, 113, 0.18);
+    color: #fecaca;
+}
+
+body.dark-mode .announcement-delete-btn:hover {
+    background: rgba(248, 113, 113, 0.28);
+}
+
+body.dark-mode .poll-delete-btn {
+    background: rgba(248, 113, 113, 0.18);
+    color: #fecaca;
+    border-color: rgba(248, 113, 113, 0.35);
+}
+
+body.dark-mode .poll-delete-btn:hover {
+    background: rgba(248, 113, 113, 0.28);
+}
+
+body.dark-mode .certificate-card {
+    background: #0f172a;
+    border-color: #334155;
+    box-shadow: none;
+}
+
+body.dark-mode .certificate-card:hover {
+    border-color: rgba(20, 184, 166, 0.3);
+}
+
+body.dark-mode .certificate-preview {
+    background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+}
+
+body.dark-mode .certificate-info h3 {
+    color: #f1f5f9;
+}
+
+body.dark-mode .certificate-meta span,
+body.dark-mode .cert-description,
+body.dark-mode .certificate-footer {
+    color: #94a3b8;
+}
+
+body.dark-mode .certificate-delete-btn {
+    background: rgba(15, 23, 42, 0.85);
 }
 
 body.dark-mode .ws-detail-panel {

@@ -567,6 +567,9 @@ function switchPage(pageName, options = {}) {
             case 'polls':
                 loadPolls();
                 break;
+            case 'certificates':
+                loadOwnerCertificates();
+                break;
             case 'project-progress':
                 loadProjectProgress();
                 break;
@@ -1475,6 +1478,9 @@ async function loadEvents() {
                         </button>
                         <button class="btn-qr btn-qr--accent" onclick="showGalleryUpload(${event.id}, '${event.title.replace(/'/g, "\\'")}')">
                             <i class="fa-solid fa-images"></i> Gallery
+                        </button>
+                        <button class="btn-qr btn-qr--danger" onclick="deleteEventOwner(${event.id}, '${event.title.replace(/'/g, "\\'")}')">
+                            <i class="fa-solid fa-trash"></i> Delete
                         </button>` : `
                         <button class="btn-qr btn-qr--primary" onclick="startQRAttendance(${event.id}, '${event.title.replace(/'/g, "\\'")}')">
                             <i class="fa-solid fa-qrcode"></i> QR Attendance
@@ -1484,6 +1490,9 @@ async function loadEvents() {
                         </button>
                         <button class="btn-qr btn-qr--accent" onclick="showGalleryUpload(${event.id}, '${event.title.replace(/'/g, "\\'")}')">
                             <i class="fa-solid fa-images"></i> Gallery
+                        </button>
+                        <button class="btn-qr btn-qr--danger" onclick="deleteEventOwner(${event.id}, '${event.title.replace(/'/g, "\\'")}')">
+                            <i class="fa-solid fa-trash"></i> Delete
                         </button>`}
                     </div>
                 </div>`;
@@ -1500,6 +1509,28 @@ async function loadEvents() {
         }
     } finally {
         eventsLoadInFlight = false;
+    }
+}
+
+async function deleteEventOwner(eventId, eventTitle) {
+    const label = eventTitle || 'this event';
+    if (!confirm(`Delete ${label}? Attendance, gallery photos, and certificates will be removed.`)) return;
+    try {
+        const response = await fetch(`${getApiUrl()}/owner/events/${eventId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Event deleted!', 'success');
+            loadEvents();
+            loadDashboardStats();
+        } else {
+            showNotification(data.message || 'Failed to delete event', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting event:', error);
+        showNotification('Failed to delete event', 'error');
     }
 }
 
@@ -1611,8 +1642,15 @@ async function loadAnnouncements() {
 
             list.innerHTML = data.announcements.map(announcement => `
                 <div class="announcement-item">
-                    <h4>${announcement.title}</h4>
-                    <p>${announcement.message}</p>
+                    <div class="announcement-item-header">
+                        <div class="announcement-item-body">
+                            <h4>${announcement.title}</h4>
+                            <p>${announcement.message}</p>
+                        </div>
+                        <button class="announcement-delete-btn" onclick="deleteAnnouncementOwner(${announcement.id}, '${String(announcement.title || 'Announcement').replace(/'/g, "\\'")}')">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
                     <div class="date">
                         <i class="fa-solid fa-clock"></i>
                         ${new Date(announcement.date).toLocaleString()}
@@ -1623,6 +1661,27 @@ async function loadAnnouncements() {
     } catch (error) {
         console.error('Error loading announcements:', error);
         showNotification('Failed to load announcements', 'error');
+    }
+}
+
+async function deleteAnnouncementOwner(announcementId, title) {
+    const label = title || 'this announcement';
+    if (!confirm(`Delete ${label}? This announcement will be removed.`)) return;
+    try {
+        const response = await fetch(`${getApiUrl()}/owner/announcements/${announcementId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Announcement deleted!', 'success');
+            loadAnnouncements();
+        } else {
+            showNotification(data.message || 'Failed to delete announcement', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting announcement:', error);
+        showNotification('Failed to delete announcement', 'error');
     }
 }
 
@@ -1802,11 +1861,13 @@ async function loadPolls() {
             }).join('');
             const statusBadge = poll.status === 'closed' ? '<span class="poll-status poll-status--closed">Closed</span>' : '<span class="poll-status poll-status--active">Active</span>';
             const closeBtn = poll.status === 'active' ? `<button type="button" class="btn-secondary btn-sm poll-close-btn" onclick="closePollOwner(${poll.id})">Close Poll</button>` : '';
+            const safeQuestion = String(poll.question || 'Poll').replace(/'/g, "\\'");
+            const deleteBtn = `<button type="button" class="btn-secondary btn-sm poll-delete-btn" onclick="deletePollOwner(${poll.id}, '${safeQuestion}')"><i class="fa-solid fa-trash"></i> Delete</button>`;
             return `
                 <div class="poll-card">
                     <div class="poll-card-header">
                         <h4 class="poll-title">${escapeHtml(poll.question)}</h4>
-                        <div class="poll-badges">${statusBadge}${closeBtn}</div>
+                        <div class="poll-badges">${statusBadge}${closeBtn}${deleteBtn}</div>
                     </div>
                     <div class="poll-card-meta">
                         <span class="poll-chip"><i class="fa-solid fa-chart-simple"></i> ${total} votes</span>
@@ -1851,6 +1912,27 @@ async function closePollOwner(pollId) {
     } catch (error) {
         console.error('Error closing poll:', error);
         showNotification('Failed to close poll', 'error');
+    }
+}
+
+async function deletePollOwner(pollId, pollTitle) {
+    const label = pollTitle || 'this poll';
+    if (!confirm(`Delete ${label}? Votes will be removed.`)) return;
+    try {
+        const response = await fetch(`${getApiUrl()}/owner/polls/${pollId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Poll deleted!', 'success');
+            loadPolls();
+        } else {
+            showNotification(data.message || 'Failed to delete poll', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting poll:', error);
+        showNotification('Failed to delete poll', 'error');
     }
 }
 
@@ -1952,6 +2034,106 @@ document.getElementById('pollForm')?.addEventListener('submit', async (e) => {
 });
 
 renderPollOptions();
+
+async function loadOwnerCertificates() {
+    const grid = document.getElementById('ownerCertificatesGrid');
+    if (!grid) return;
+    grid.innerHTML = '<p class="loading">Loading certificates...</p>';
+    try {
+        const response = await fetch(`${getApiUrl()}/owner/certificates`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (!data.success) {
+            grid.innerHTML = '<p class="loading">Failed to load certificates.</p>';
+            return;
+        }
+        const certificates = data.certificates || [];
+        if (!certificates.length) {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <i class="fa-solid fa-certificate"></i>
+                    <p>No certificates uploaded yet</p>
+                </div>
+            `;
+            return;
+        }
+        grid.innerHTML = certificates.map(cert => {
+            const title = escapeHtml(cert.title || 'Certificate');
+            const memberName = escapeHtml(cert.member?.username || 'Member');
+            const eventTitle = cert.event?.title ? escapeHtml(cert.event.title) : '';
+            const description = cert.description ? escapeHtml(cert.description) : '';
+            const uploadedAt = new Date(cert.uploadedAt).toLocaleDateString();
+            const issueDate = cert.issueDate ? new Date(cert.issueDate).toLocaleDateString() : '';
+            const fileType = (cert.fileType || '').toLowerCase();
+            return `
+                <div class="certificate-card" data-title="${title}" data-file="${cert.filepath}" data-type="${fileType}">
+                    <button class="certificate-delete-btn" data-cert-id="${cert.id}" data-cert-title="${title}">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                    <div class="certificate-preview">
+                        ${fileType === 'pdf'
+                    ? `<i class="fa-solid fa-file-pdf"></i>`
+                    : `<img src="${cert.filepath}" alt="${title}">`
+                }
+                    </div>
+                    <div class="certificate-info">
+                        <h3>${title}</h3>
+                        <div class="certificate-meta">
+                            <span><i class="fa-solid fa-user"></i> ${memberName}</span>
+                            ${eventTitle ? `<span><i class="fa-solid fa-calendar"></i> ${eventTitle}</span>` : ''}
+                            ${issueDate ? `<span><i class="fa-solid fa-calendar-day"></i> Issued: ${issueDate}</span>` : ''}
+                        </div>
+                        ${description ? `<p class="cert-description">${description}</p>` : ''}
+                        <div class="certificate-footer">
+                            <span>Uploaded ${uploadedAt}</span>
+                            <span>Tap to view</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        grid.querySelectorAll('.certificate-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const fileUrl = card.getAttribute('data-file') || '';
+                if (fileUrl) window.open(fileUrl, '_blank', 'noopener');
+            });
+        });
+        grid.querySelectorAll('.certificate-delete-btn').forEach(btn => {
+            btn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const certId = btn.getAttribute('data-cert-id');
+                const certTitle = btn.getAttribute('data-cert-title') || '';
+                if (certId) deleteOwnerCertificate(certId, certTitle);
+            });
+        });
+    } catch (error) {
+        console.error('Error loading certificates:', error);
+        grid.innerHTML = '<p class="loading">Failed to load certificates.</p>';
+        showNotification('Failed to load certificates', 'error');
+    }
+}
+
+async function deleteOwnerCertificate(certId, title) {
+    const label = title || 'this certificate';
+    if (!confirm(`Delete ${label}? The file will be removed.`)) return;
+    try {
+        const response = await fetch(`${getApiUrl()}/owner/certificates/${certId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Certificate deleted!', 'success');
+            loadOwnerCertificates();
+        } else {
+            showNotification(data.message || 'Failed to delete certificate', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting certificate:', error);
+        showNotification('Failed to delete certificate', 'error');
+    }
+}
 
 // ========== PROJECT PROGRESS ==========
 async function loadProjectProgress() {
@@ -3909,6 +4091,7 @@ function renderOwnerWorkshopCards() {
         const start = workshop.startTime ? new Date(workshop.startTime).toLocaleString() : 'TBD';
         const desc = workshop.description || 'No description';
         const toolCount = (workshop.requiredTools || []).length;
+        const safeTitle = String(workshop.title || 'Workshop').replace(/'/g, "\\'");
         return `
             <div class="workshop-card" id="ws-card-${workshop.id}">
                 <div class="ws-card-top">
@@ -3926,10 +4109,34 @@ function renderOwnerWorkshopCards() {
                     <button class="ws-card-open-btn" onclick="handleOwnerWorkshopAction(${workshop.id}, '${status}', ${workshop.liveSessionId || 'null'})">
                         ${ctaLabel} <i class="fa-solid fa-arrow-right"></i>
                     </button>
+                    <button class="ws-card-delete-btn" onclick="deleteOwnerWorkshop(${workshop.id}, '${safeTitle}')">
+                        <i class="fa-solid fa-trash"></i> Delete
+                    </button>
                 </div>
             </div>
         `;
     }).join('');
+}
+
+async function deleteOwnerWorkshop(workshopId, title) {
+    const label = title || 'this workshop';
+    if (!confirm(`Delete ${label}? Sessions and resources will be removed.`)) return;
+    try {
+        const response = await fetch(`${getApiUrl()}/workshops/${workshopId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Workshop deleted!', 'success');
+            loadOwnerWorkshops();
+        } else {
+            showNotification(data.message || 'Failed to delete workshop', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting workshop:', error);
+        showNotification('Failed to delete workshop', 'error');
+    }
 }
 
 function closeWorkshopDetail() {

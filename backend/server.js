@@ -310,7 +310,13 @@ app.get('/health', async (req, res) => {
         const dbMode = rawUrl
             ? (/localhost|127\.0\.0\.1/i.test(rawUrl) ? 'env_local_url' : 'env_remote_url')
             : 'default_local';
-        res.json({ ok: true, db: { connected: true, mode: dbMode } });
+        let host = null;
+        try {
+            host = rawUrl ? new URL(rawUrl).hostname : null;
+        } catch {
+            host = null;
+        }
+        res.json({ ok: true, db: { connected: true, mode: dbMode, host } });
     } catch (error) {
         res.status(500).json({ ok: false, db: { connected: false }, error: 'db_auth_failed' });
     }
@@ -630,6 +636,59 @@ async function deleteMemberWithRelations(userId, transaction) {
     await db.CodeBundle.destroy({ where: { authorId: userId }, transaction: t });
     await db.RealtimeEventLog.destroy({ where: { actorId: userId }, transaction: t });
     await db.User.destroy({ where: { id: userId }, transaction: t });
+}
+
+function safeUnlink(filePath) {
+    try {
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+    } catch (error) {
+        console.error('Error deleting file:', error);
+    }
+}
+
+async function deleteEventWithRelations(eventId, transaction) {
+    const t = transaction;
+    const photos = await db.GalleryPhoto.findAll({ where: { eventId }, transaction: t });
+    const certificates = await db.MemberCertificate.findAll({ where: { eventId }, transaction: t });
+    photos.forEach(photo => {
+        if (photo.filename) {
+            safeUnlink(path.join(uploadsDir, photo.filename));
+        }
+    });
+    certificates.forEach(cert => {
+        if (cert.filename) {
+            safeUnlink(path.join(certificatesDir, cert.filename));
+        }
+    });
+    await db.AttendanceRecord.destroy({ where: { eventId }, transaction: t });
+    await db.AttendanceSession.destroy({ where: { eventId }, transaction: t });
+    await db.Attendance.destroy({ where: { eventId }, transaction: t });
+    await db.EventRSVP.destroy({ where: { eventId }, transaction: t });
+    await db.GalleryPhoto.destroy({ where: { eventId }, transaction: t });
+    await db.MemberCertificate.destroy({ where: { eventId }, transaction: t });
+    await db.Event.destroy({ where: { id: eventId }, transaction: t });
+}
+
+async function deletePollWithRelations(pollId, transaction) {
+    const t = transaction;
+    await db.PollVote.destroy({ where: { pollId }, transaction: t });
+    await db.PollOption.destroy({ where: { pollId }, transaction: t });
+    await db.Poll.destroy({ where: { id: pollId }, transaction: t });
+}
+
+async function deleteWorkshopWithRelations(workshopId, transaction) {
+    const t = transaction;
+    const sessions = await db.WorkshopSession.findAll({ where: { workshopId }, attributes: ['id'], transaction: t });
+    const sessionIds = sessions.map(s => s.id);
+    if (sessionIds.length > 0) {
+        await db.CodeSection.destroy({ where: { sessionId: { [Op.in]: sessionIds } }, transaction: t });
+        await db.RealtimeEventLog.destroy({ where: { sessionId: { [Op.in]: sessionIds } }, transaction: t });
+        await db.CodeBundle.destroy({ where: { sessionId: { [Op.in]: sessionIds } }, transaction: t });
+        await db.WorkshopSession.destroy({ where: { id: { [Op.in]: sessionIds } }, transaction: t });
+    }
+    await db.Workshop.destroy({ where: { id: workshopId }, transaction: t });
 }
 
 // Create owner
@@ -1182,6 +1241,38 @@ app.get('/owner/event/:id', verifyToken, isAdminOrModerator, async (req, res) =>
     }
 });
 
+app.delete('/owner/events/:id', verifyToken, isOwner, async (req, res) => {
+    try {
+        const eventId = parseInt(req.params.id, 10);
+        if (!eventId) {
+            return res.status(400).json({ success: false, message: 'Event ID required!' });
+        }
+        const ownerClub = await db.findClubByOwnerId(req.user.id);
+        if (!ownerClub) {
+            return res.status(404).json({ success: false, message: 'Club not found!' });
+        }
+        const event = await db.findEventById(eventId);
+        if (!event) {
+            return res.status(404).json({ success: false, message: 'Event not found!' });
+        }
+        if (event.clubId !== ownerClub.id) {
+            return res.status(403).json({ success: false, message: 'Access denied!' });
+        }
+        const t = await db.sequelize.transaction();
+        try {
+            await deleteEventWithRelations(eventId, t);
+            await t.commit();
+            res.json({ success: true, message: 'Event deleted!' });
+        } catch (error) {
+            await t.rollback();
+            throw error;
+        }
+    } catch (error) {
+        console.error('Error deleting event:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
 app.get('/owner/event/:id/attendance-export', verifyToken, isAdminOrModerator, async (req, res) => {
     try {
         const user = await db.findUserById(req.user.id);
@@ -1237,6 +1328,17 @@ app.get('/owner/event/:id/attendance-export', verifyToken, isAdminOrModerator, a
             const date = new Date(value);
             return Number.isNaN(date.getTime()) ? '' : date.toISOString();
         };
+        const toTime12h = (value) => {
+            if (!value) return '';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+            return date.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+        };
         const isNewer = (nextTime, currentTime) => {
             if (!currentTime) return !!nextTime;
             if (!nextTime) return false;
@@ -1290,19 +1392,14 @@ app.get('/owner/event/:id/attendance-export', verifyToken, isAdminOrModerator, a
             `Club: ${club.name || ''}`,
             `Event: ${event.title || ''}`,
             `Date: ${event.date || ''}`,
-            `Exported At: ${new Date().toISOString()}`,
+            `Exported At: ${toTime12h(new Date())}`,
             `Total Present: ${members.length}`
         ];
-        const columns = ['Name', 'Student ID', 'Email', 'Time', 'Status'];
-        const lateThreshold = event.startTime
-            ? new Date(new Date(event.startTime).getTime() + 5 * 60000)
-            : null;
+        const columns = ['Name', 'Student ID', 'Email', 'Time'];
 
         const dataLines = members.map(m => {
-            const time = toIso(m.checkedInAt);
-            const isLate = lateThreshold && m.checkedInAt ? new Date(m.checkedInAt) > lateThreshold : false;
-            const status = lateThreshold ? (isLate ? 'Late' : 'On Time') : '';
-            return [m.username || '', m.studentId || '', m.email || '', time, status].map(escape).join(',');
+            const time = toTime12h(m.checkedInAt);
+            return [m.username || '', m.studentId || '', m.email || '', time].map(escape).join(',');
         });
 
         const csvBody = [
@@ -1378,6 +1475,31 @@ app.get('/owner/announcements', verifyToken, isOwner, async (req, res) => {
         res.json({ success: true, announcements: clubAnnouncements });
     } catch (error) {
         console.error('Error fetching announcements:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.delete('/owner/announcements/:id', verifyToken, isOwner, async (req, res) => {
+    try {
+        const announcementId = parseInt(req.params.id, 10);
+        if (!announcementId) {
+            return res.status(400).json({ success: false, message: 'Announcement ID required!' });
+        }
+        const ownerClub = await db.findClubByOwnerId(req.user.id);
+        if (!ownerClub) {
+            return res.status(404).json({ success: false, message: 'Club not found!' });
+        }
+        const announcement = await db.Announcement.findByPk(announcementId);
+        if (!announcement) {
+            return res.status(404).json({ success: false, message: 'Announcement not found!' });
+        }
+        if (announcement.clubId !== ownerClub.id) {
+            return res.status(403).json({ success: false, message: 'Access denied!' });
+        }
+        await announcement.destroy();
+        res.json({ success: true, message: 'Announcement deleted!' });
+    } catch (error) {
+        console.error('Error deleting announcement:', error);
         res.status(500).json({ success: false, message: 'Server error!' });
     }
 });
@@ -1514,6 +1636,78 @@ app.patch('/owner/polls/:id/close', verifyToken, isOwner, async (req, res) => {
         res.json({ success: true, message: 'Poll closed!', poll: updated });
     } catch (error) {
         console.error('Error closing poll:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.delete('/owner/polls/:id', verifyToken, isOwner, async (req, res) => {
+    try {
+        const pollId = parseInt(req.params.id, 10);
+        if (!pollId) return res.status(400).json({ success: false, message: 'Poll ID required!' });
+        const poll = await db.getPollById(pollId);
+        if (!poll) return res.status(404).json({ success: false, message: 'Poll not found!' });
+        const ownerClub = await db.findClubByOwnerId(req.user.id);
+        if (!ownerClub || poll.clubId !== ownerClub.id) return res.status(403).json({ success: false, message: 'Access denied!' });
+        const t = await db.sequelize.transaction();
+        try {
+            await deletePollWithRelations(pollId, t);
+            await t.commit();
+            res.json({ success: true, message: 'Poll deleted!' });
+        } catch (error) {
+            await t.rollback();
+            throw error;
+        }
+    } catch (error) {
+        console.error('Error deleting poll:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.get('/owner/certificates', verifyToken, isOwner, async (req, res) => {
+    try {
+        const ownerClub = await db.findClubByOwnerId(req.user.id);
+        if (!ownerClub) return res.status(404).json({ success: false, message: 'Club not found!' });
+        const certificates = await db.MemberCertificate.findAll({
+            where: { clubId: ownerClub.id },
+            include: [
+                { model: db.User, attributes: ['id', 'username', 'email'] },
+                { model: db.Event, attributes: ['id', 'title'] }
+            ],
+            order: [['uploadedAt', 'DESC']]
+        });
+        const baseUrl = getBaseUrl(req);
+        res.json({
+            success: true,
+            certificates: certificates.map(c => ({
+                ...c.toJSON(),
+                filepath: `${baseUrl}${c.filepath}`,
+                member: c.User ? { id: c.User.id, username: c.User.username, email: c.User.email } : null,
+                event: c.Event ? { id: c.Event.id, title: c.Event.title } : null
+            }))
+        });
+    } catch (error) {
+        console.error('Error fetching owner certificates:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.delete('/owner/certificates/:id', verifyToken, isOwner, async (req, res) => {
+    try {
+        const certId = parseInt(req.params.id, 10);
+        if (!certId) return res.status(400).json({ success: false, message: 'Certificate ID required!' });
+        const ownerClub = await db.findClubByOwnerId(req.user.id);
+        if (!ownerClub) return res.status(404).json({ success: false, message: 'Club not found!' });
+        const cert = await db.MemberCertificate.findByPk(certId);
+        if (!cert || cert.clubId !== ownerClub.id) {
+            return res.status(404).json({ success: false, message: 'Certificate not found!' });
+        }
+        if (cert.filename) {
+            safeUnlink(path.join(certificatesDir, cert.filename));
+        }
+        await cert.destroy();
+        res.json({ success: true, message: 'Certificate deleted successfully!' });
+    } catch (error) {
+        console.error('Error deleting certificate:', error);
         res.status(500).json({ success: false, message: 'Server error!' });
     }
 });
@@ -2902,6 +3096,31 @@ app.get('/workshops/:id', verifyToken, async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching workshop:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.delete('/workshops/:id', verifyToken, isOwner, async (req, res) => {
+    try {
+        const workshopId = parseInt(req.params.id, 10);
+        if (!workshopId) return res.status(400).json({ success: false, message: 'Workshop ID required!' });
+        const workshop = await db.Workshop.findByPk(workshopId);
+        if (!workshop) return res.status(404).json({ success: false, message: 'Workshop not found' });
+        const ownerClub = await db.findClubByOwnerId(req.user.id);
+        if (!ownerClub || ownerClub.id !== workshop.clubId) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+        const t = await db.sequelize.transaction();
+        try {
+            await deleteWorkshopWithRelations(workshopId, t);
+            await t.commit();
+            res.json({ success: true, message: 'Workshop deleted!' });
+        } catch (error) {
+            await t.rollback();
+            throw error;
+        }
+    } catch (error) {
+        console.error('Error deleting workshop:', error);
         res.status(500).json({ success: false, message: 'Server error!' });
     }
 });
