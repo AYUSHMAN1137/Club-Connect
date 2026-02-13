@@ -8,7 +8,9 @@ const QRCode = require('qrcode');
 const multer = require('multer');
 const { Server } = require('socket.io');
 const http = require('http');
-require('dotenv').config();
+const dotenv = require('dotenv');
+dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
 
@@ -301,6 +303,19 @@ app.get('/', (req, res) => {
     res.json({ message: 'Server is running! 🚀' });
 });
 
+app.get('/health', async (req, res) => {
+    try {
+        await db.sequelize.authenticate();
+        const rawUrl = process.env.DATABASE_URL || '';
+        const dbMode = rawUrl
+            ? (/localhost|127\.0\.0\.1/i.test(rawUrl) ? 'env_local_url' : 'env_remote_url')
+            : 'default_local';
+        res.json({ ok: true, db: { connected: true, mode: dbMode } });
+    } catch (error) {
+        res.status(500).json({ ok: false, db: { connected: false }, error: 'db_auth_failed' });
+    }
+});
+
 // REGISTER Route (only for members) - NOW USING SQL DATABASE
 app.post('/auth/register', authLimiter, async (req, res) => {
     try {
@@ -378,20 +393,26 @@ app.post('/auth/register', authLimiter, async (req, res) => {
 app.post('/auth/login', authLimiter, async (req, res) => {
     try {
         const { username, password } = req.body;
+        const identifier = typeof username === 'string' ? username.trim() : '';
 
         // Validation
-        if (!username || !password) {
+        if (!identifier || !password) {
             return res.status(400).json({
                 success: false,
                 message: 'Username and password are required!'
             });
         }
 
-        // Find user in SQL database (case-insensitive)
-        const user = await db.findUserByUsername(username);
+        let user = await db.findUserByUsername(identifier);
+        if (!user && identifier.includes('@')) {
+            user = await db.findUserByEmail(identifier);
+        }
+        if (!user) {
+            user = await db.findUserByStudentId(identifier);
+        }
 
         if (!user) {
-            console.log(`❌ Login failed: User "${username}" not found`);
+            console.log(`❌ Login failed: User "${identifier}" not found`);
             return res.status(401).json({
                 success: false,
                 message: 'Invalid username or password!'
@@ -400,7 +421,7 @@ app.post('/auth/login', authLimiter, async (req, res) => {
 
         // Check if password field exists
         if (!user.password) {
-            console.log(`❌ Login failed: User "${username}" has no password set`);
+            console.log(`❌ Login failed: User "${identifier}" has no password set`);
             return res.status(401).json({
                 success: false,
                 message: 'Invalid username or password!'
@@ -422,7 +443,7 @@ app.post('/auth/login', authLimiter, async (req, res) => {
                 try {
                     const newHash = await bcrypt.hash(password, 10);
                     await db.updateUser(user.id, { password: newHash });
-                    console.log(`🔐 [SQL] Upgraded password for user "${username}" to hashed storage`);
+                    console.log(`🔐 [SQL] Upgraded password for user "${user.username}" to hashed storage`);
                 } catch (upgradeErr) {
                     console.error('Error upgrading legacy password hash:', upgradeErr);
                 }
@@ -430,7 +451,7 @@ app.post('/auth/login', authLimiter, async (req, res) => {
         }
 
         if (!passwordValid) {
-            console.log(`❌ Login failed: Password mismatch for user "${username}"`);
+            console.log(`❌ Login failed: Password mismatch for user "${user.username}"`);
             return res.status(401).json({
                 success: false,
                 message: 'Invalid username or password!'
@@ -527,6 +548,89 @@ app.get('/auth/me', async (req, res) => {
 });
 
 // ========== ADMIN API ROUTES ==========
+
+async function deleteClubWithRelations(clubId, transaction) {
+    const t = transaction;
+    const events = await db.Event.findAll({ where: { clubId }, attributes: ['id'], transaction: t });
+    const eventIds = events.map(e => e.id);
+    if (eventIds.length > 0) {
+        await db.AttendanceRecord.destroy({ where: { eventId: { [Op.in]: eventIds } }, transaction: t });
+        await db.AttendanceSession.destroy({ where: { eventId: { [Op.in]: eventIds } }, transaction: t });
+        await db.Attendance.destroy({ where: { eventId: { [Op.in]: eventIds } }, transaction: t });
+        await db.EventRSVP.destroy({ where: { eventId: { [Op.in]: eventIds } }, transaction: t });
+        await db.GalleryPhoto.destroy({ where: { eventId: { [Op.in]: eventIds } }, transaction: t });
+        await db.MemberCertificate.destroy({ where: { eventId: { [Op.in]: eventIds } }, transaction: t });
+    }
+
+    const polls = await db.Poll.findAll({ where: { clubId }, attributes: ['id'], transaction: t });
+    const pollIds = polls.map(p => p.id);
+    if (pollIds.length > 0) {
+        await db.PollVote.destroy({ where: { pollId: { [Op.in]: pollIds } }, transaction: t });
+        await db.PollOption.destroy({ where: { pollId: { [Op.in]: pollIds } }, transaction: t });
+        await db.Poll.destroy({ where: { id: { [Op.in]: pollIds } }, transaction: t });
+    }
+
+    const memberProjects = await db.MemberProject.findAll({ where: { clubId }, attributes: ['id'], transaction: t });
+    const memberProjectIds = memberProjects.map(mp => mp.id);
+    if (memberProjectIds.length > 0) {
+        await db.MemberProjectHistory.destroy({ where: { memberProjectId: { [Op.in]: memberProjectIds } }, transaction: t });
+    }
+    await db.MemberProject.destroy({ where: { clubId }, transaction: t });
+    await db.ProjectIdea.destroy({ where: { clubId }, transaction: t });
+
+    const workshops = await db.Workshop.findAll({ where: { clubId }, attributes: ['id'], transaction: t });
+    const workshopIds = workshops.map(w => w.id);
+    if (workshopIds.length > 0) {
+        const sessions = await db.WorkshopSession.findAll({ where: { workshopId: { [Op.in]: workshopIds } }, attributes: ['id'], transaction: t });
+        const sessionIds = sessions.map(s => s.id);
+        if (sessionIds.length > 0) {
+            await db.CodeSection.destroy({ where: { sessionId: { [Op.in]: sessionIds } }, transaction: t });
+            await db.RealtimeEventLog.destroy({ where: { sessionId: { [Op.in]: sessionIds } }, transaction: t });
+            await db.CodeBundle.destroy({ where: { sessionId: { [Op.in]: sessionIds } }, transaction: t });
+            await db.WorkshopSession.destroy({ where: { id: { [Op.in]: sessionIds } }, transaction: t });
+        }
+        await db.Workshop.destroy({ where: { id: { [Op.in]: workshopIds } }, transaction: t });
+    }
+
+    await db.Membership.destroy({ where: { clubId }, transaction: t });
+    await db.PointHistory.destroy({ where: { clubId }, transaction: t });
+    await db.Announcement.destroy({ where: { clubId }, transaction: t });
+    await db.MemberCertificate.destroy({ where: { clubId }, transaction: t });
+    await db.ClubOwner.destroy({ where: { clubId }, transaction: t });
+    await db.Event.destroy({ where: { clubId }, transaction: t });
+    await db.Club.destroy({ where: { id: clubId }, transaction: t });
+}
+
+async function deleteMemberWithRelations(userId, transaction) {
+    const t = transaction;
+    const memberProjects = await db.MemberProject.findAll({ where: { userId }, attributes: ['id'], transaction: t });
+    const memberProjectIds = memberProjects.map(mp => mp.id);
+    if (memberProjectIds.length > 0) {
+        await db.MemberProjectHistory.destroy({ where: { memberProjectId: { [Op.in]: memberProjectIds } }, transaction: t });
+    }
+    await db.MemberProject.destroy({ where: { userId }, transaction: t });
+    await db.Membership.destroy({ where: { userId }, transaction: t });
+    await db.Attendance.destroy({ where: { userId }, transaction: t });
+    await db.EventRSVP.destroy({ where: { userId }, transaction: t });
+    await db.PointHistory.destroy({ where: { userId }, transaction: t });
+    await db.Notification.destroy({ where: { userId }, transaction: t });
+    await db.MemberCertificate.destroy({ where: { memberId: userId }, transaction: t });
+    await db.PollVote.destroy({ where: { userId }, transaction: t });
+    await db.AttendanceRecord.destroy({ where: { memberId: userId }, transaction: t });
+    await db.Message.destroy({
+        where: {
+            [Op.or]: [
+                { senderId: userId },
+                { recipientId: userId }
+            ]
+        },
+        transaction: t
+    });
+    await db.ClubOwner.destroy({ where: { userId }, transaction: t });
+    await db.CodeBundle.destroy({ where: { authorId: userId }, transaction: t });
+    await db.RealtimeEventLog.destroy({ where: { actorId: userId }, transaction: t });
+    await db.User.destroy({ where: { id: userId }, transaction: t });
+}
 
 // Create owner
 app.post('/admin/create-owner', verifyToken, isAdmin, async (req, res) => {
@@ -650,6 +754,18 @@ app.get('/admin/owners', verifyToken, isAdmin, async (req, res) => {
     }
 });
 
+// List members
+app.get('/admin/members', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const users = await db.User.findAll({ where: { role: 'member' } });
+        const members = users.map(u => ({ id: u.id, username: u.username, email: u.email }));
+        return res.json({ success: true, members });
+    } catch (error) {
+        console.error('List members error:', error);
+        return res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
 // List clubs
 app.get('/admin/clubs', verifyToken, isAdmin, async (req, res) => {
     try {
@@ -668,6 +784,86 @@ app.get('/admin/clubs', verifyToken, isAdmin, async (req, res) => {
         return res.json({ success: true, clubs: simplified });
     } catch (error) {
         console.error('List clubs error:', error);
+        return res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.delete('/admin/owners/:id', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const ownerId = parseInt(req.params.id, 10);
+        if (!ownerId) {
+            return res.status(400).json({ success: false, message: 'Owner ID required!' });
+        }
+        const owner = await db.findUserById(ownerId);
+        if (!owner || owner.role !== 'owner') {
+            return res.status(404).json({ success: false, message: 'Owner not found!' });
+        }
+        const t = await db.sequelize.transaction();
+        try {
+            const clubs = await db.Club.findAll({ where: { ownerId }, attributes: ['id'], transaction: t });
+            for (const club of clubs) {
+                await deleteClubWithRelations(club.id, t);
+            }
+            await db.ClubOwner.destroy({ where: { userId: ownerId }, transaction: t });
+            await db.User.destroy({ where: { id: ownerId }, transaction: t });
+            await t.commit();
+            return res.json({ success: true, message: 'Owner deleted' });
+        } catch (error) {
+            await t.rollback();
+            throw error;
+        }
+    } catch (error) {
+        console.error('Delete owner error:', error);
+        return res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.delete('/admin/clubs/:id', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const clubId = parseInt(req.params.id, 10);
+        if (!clubId) {
+            return res.status(400).json({ success: false, message: 'Club ID required!' });
+        }
+        const club = await db.findClubById(clubId);
+        if (!club) {
+            return res.status(404).json({ success: false, message: 'Club not found!' });
+        }
+        const t = await db.sequelize.transaction();
+        try {
+            await deleteClubWithRelations(clubId, t);
+            await t.commit();
+            return res.json({ success: true, message: 'Club deleted' });
+        } catch (error) {
+            await t.rollback();
+            throw error;
+        }
+    } catch (error) {
+        console.error('Delete club error:', error);
+        return res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+app.delete('/admin/members/:id', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const memberId = parseInt(req.params.id, 10);
+        if (!memberId) {
+            return res.status(400).json({ success: false, message: 'Member ID required!' });
+        }
+        const member = await db.findUserById(memberId);
+        if (!member || member.role !== 'member') {
+            return res.status(404).json({ success: false, message: 'Member not found!' });
+        }
+        const t = await db.sequelize.transaction();
+        try {
+            await deleteMemberWithRelations(memberId, t);
+            await t.commit();
+            return res.json({ success: true, message: 'Member deleted' });
+        } catch (error) {
+            await t.rollback();
+            throw error;
+        }
+    } catch (error) {
+        console.error('Delete member error:', error);
         return res.status(500).json({ success: false, message: 'Server error!' });
     }
 });
@@ -4500,16 +4696,11 @@ app.get('/admin/system-stats', verifyToken, async (req, res) => {
 // Start server
 const PORT = process.env.PORT || 4000;
 
-// Ensure SQLite enforces foreign keys, then start server.
+// Connect to PostgreSQL and start server.
 // Schema creation/updates are handled via dedicated migration scripts (see package.json db:* scripts).
 db.sequelize.authenticate()
     .then(async () => {
-        if (db.sequelize.getDialect() === 'sqlite') {
-            await db.sequelize.query('PRAGMA foreign_keys = ON;');
-            console.log('✅ Database connected (foreign keys ON)');
-        } else {
-            console.log('✅ Database connected');
-        }
+        console.log('✅ Database connected (PostgreSQL)');
     })
     .then(async () => {
         await ensureActiveClubColumn();

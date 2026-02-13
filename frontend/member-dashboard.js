@@ -1654,21 +1654,6 @@ async function loadAnnouncements() {
 async function loadMemberPolls() {
     const list = document.getElementById('memberPollsList');
     if (!list) return;
-    if (!list.dataset.pollsEnhanced) {
-        list.addEventListener('change', (e) => {
-            const input = e.target;
-            if (!(input instanceof HTMLInputElement)) return;
-            if (!input.classList.contains('member-poll-option-input')) return;
-            const pollCard = input.closest('.member-poll');
-            if (!pollCard) return;
-            pollCard.querySelectorAll('.member-poll-option.is-selected').forEach((el) => el.classList.remove('is-selected'));
-            const optionLabel = input.closest('.member-poll-option');
-            if (optionLabel) optionLabel.classList.add('is-selected');
-            const submitBtn = pollCard.querySelector('.member-poll-submit');
-            if (submitBtn instanceof HTMLButtonElement) submitBtn.disabled = false;
-        });
-        list.dataset.pollsEnhanced = 'true';
-    }
     list.innerHTML = '<p class="loading">Loading polls...</p>';
     try {
         const response = await fetch(`${API_URL}/member/polls`, {
@@ -1681,12 +1666,7 @@ async function loadMemberPolls() {
         }
         const polls = data.polls || [];
         if (polls.length === 0) {
-            list.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-icon"><i class="fa-solid fa-chart-pie"></i></div>
-                    <h3>No polls yet</h3>
-                    <p>Check back later for new polls.</p>
-                </div>`;
+            list.innerHTML = '<div class="empty-state"><i class="fa-solid fa-chart-pie"></i><p>No polls yet. Check back later!</p></div>';
             return;
         }
         list.innerHTML = polls.map(poll => renderMemberPollCard(poll)).join('');
@@ -1707,70 +1687,48 @@ function renderMemberPollCard(poll) {
     const total = poll.totalVotes || 0;
     const canVote = poll.status === 'active' && poll.userVotedOptionId == null;
     const options = poll.options || [];
-    const isClosed = poll.status === 'closed';
-    const statusText = isClosed ? 'Closed' : 'Active';
-    const statusClass = isClosed ? 'member-poll-status--closed' : 'member-poll-status--active';
-    const optionCount = options.length;
-    const userVoted = poll.userVotedOptionId != null;
-    const userVotedChip = userVoted ? '<span class="member-poll-chip member-poll-chip--success"><i class="fa-solid fa-check"></i> Voted</span>' : '';
 
     if (canVote) {
         const optionsHtml = options.map(opt => `
-            <label class="member-poll-option" data-option-id="${opt.id}">
-                <input class="member-poll-option-input" type="radio" name="poll_${poll.id}" value="${opt.id}">
-                <span class="member-poll-option-text">${escapeHtmlPoll(opt.text)}</span>
+            <label class="poll-option-label" style="display: flex; align-items: center; gap: 10px; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; cursor: pointer;">
+                <input type="radio" name="poll_${poll.id}" value="${opt.id}">
+                <span>${escapeHtmlPoll(opt.text)}</span>
             </label>
         `).join('');
         return `
-            <div class="member-poll-card member-poll" data-poll-id="${poll.id}">
-                <div class="member-poll-header">
-                    <div class="member-poll-title-row">
-                        <h4 class="member-poll-title">${escapeHtmlPoll(poll.question)}</h4>
-                        <span class="member-poll-status ${statusClass}">${statusText}</span>
-                    </div>
-                    <div class="member-poll-meta">
-                        <span class="member-poll-chip"><i class="fa-solid fa-chart-pie"></i> ${total} vote(s)</span>
-                        <span class="member-poll-chip member-poll-chip--muted"><i class="fa-solid fa-list"></i> ${optionCount} options</span>
-                    </div>
-                </div>
-                <div class="member-poll-options" role="radiogroup" aria-label="Poll options">${optionsHtml}</div>
-                <div class="member-poll-actions">
-                    <button type="button" class="btn-primary btn-sm member-poll-submit" onclick="submitMemberVote(${poll.id})" disabled>
-                        <i class="fa-solid fa-check"></i> Submit Vote
-                    </button>
-                </div>
+            <div class="poll-card member-poll" data-poll-id="${poll.id}" style="background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 12px 0;">${escapeHtmlPoll(poll.question)}</h4>
+                <span style="background: #10b981; color: #fff; padding: 2px 8px; border-radius: 6px; font-size: 12px;">Active</span>
+                <div class="poll-options" style="margin: 16px 0;">${optionsHtml}</div>
+                <button type="button" class="btn-primary" onclick="submitMemberVote(${poll.id})">
+                    <i class="fa-solid fa-check"></i> Submit Vote
+                </button>
             </div>`;
     }
 
     const optionsResultsHtml = options.map(opt => {
         const pct = total > 0 ? Math.round((opt.voteCount / total) * 100) : 0;
         const isUserChoice = opt.id === poll.userVotedOptionId;
-        const choiceIcon = isUserChoice ? '<span class="member-poll-choice"><i class="fa-solid fa-check"></i></span>' : '';
         return `
-            <div class="member-poll-result ${isUserChoice ? 'is-user-choice' : ''}">
-                <div class="member-poll-result-top">
-                    <span class="member-poll-result-label">${escapeHtmlPoll(opt.text)} ${choiceIcon}</span>
-                    <span class="member-poll-result-stats">${opt.voteCount} (${pct}%)</span>
+            <div class="poll-option-result" style="margin: 8px 0;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span>${escapeHtmlPoll(opt.text)} ${isUserChoice ? '<i class="fa-solid fa-check" style="color: #10b981;"></i>' : ''}</span>
+                    <span>${opt.voteCount} (${pct}%)</span>
                 </div>
-                <div class="member-poll-result-bar">
-                    <div class="member-poll-result-bar-fill" style="--pct: ${pct}%;"></div>
+                <div style="height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                    <div style="height: 100%; width: ${pct}%; background: ${isUserChoice ? '#10b981' : '#3b82f6'}; border-radius: 4px;"></div>
                 </div>
             </div>`;
     }).join('');
+    const statusBadge = poll.status === 'closed' ? '<span style="background: #6b7280; color: #fff; padding: 2px 8px; border-radius: 6px; font-size: 12px;">Closed</span>' : '<span style="background: #10b981; color: #fff; padding: 2px 8px; border-radius: 6px; font-size: 12px;">Active</span>';
     return `
-        <div class="member-poll-card member-poll" data-poll-id="${poll.id}">
-            <div class="member-poll-header">
-                <div class="member-poll-title-row">
-                    <h4 class="member-poll-title">${escapeHtmlPoll(poll.question)}</h4>
-                    <span class="member-poll-status ${statusClass}">${statusText}</span>
-                </div>
-                <div class="member-poll-meta">
-                    <span class="member-poll-chip"><i class="fa-solid fa-chart-pie"></i> ${total} vote(s)</span>
-                    <span class="member-poll-chip member-poll-chip--muted"><i class="fa-solid fa-list"></i> ${optionCount} options</span>
-                    ${userVotedChip}
-                </div>
+        <div class="poll-card member-poll" data-poll-id="${poll.id}" style="background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h4 style="margin: 0;">${escapeHtmlPoll(poll.question)}</h4>
+                ${statusBadge}
             </div>
-            <div class="member-poll-results">${optionsResultsHtml}</div>
+            <p style="color: #6b7280; font-size: 14px; margin: 0 0 12px 0;"><i class="fa-solid fa-chart-pie"></i> ${total} total vote(s)</p>
+            <div class="poll-results">${optionsResultsHtml}</div>
         </div>`;
 }
 
@@ -1782,12 +1740,6 @@ async function submitMemberVote(pollId) {
         return;
     }
     const optionId = parseInt(radio.value, 10);
-    const submitBtn = container ? container.querySelector('.member-poll-submit') : null;
-    if (submitBtn instanceof HTMLButtonElement) {
-        submitBtn.disabled = true;
-        if (!submitBtn.dataset.originalHtml) submitBtn.dataset.originalHtml = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Submitting...';
-    }
     try {
         const response = await fetch(`${API_URL}/member/polls/${pollId}/vote`, {
             method: 'POST',
@@ -1803,18 +1755,10 @@ async function submitMemberVote(pollId) {
             loadMemberPolls();
         } else {
             showNotification(data.message || 'Could not submit vote', 'error');
-            if (submitBtn instanceof HTMLButtonElement) {
-                submitBtn.disabled = false;
-                if (submitBtn.dataset.originalHtml) submitBtn.innerHTML = submitBtn.dataset.originalHtml;
-            }
         }
     } catch (error) {
         console.error('Error voting:', error);
         showNotification('Failed to submit vote', 'error');
-        if (submitBtn instanceof HTMLButtonElement) {
-            submitBtn.disabled = false;
-            if (submitBtn.dataset.originalHtml) submitBtn.innerHTML = submitBtn.dataset.originalHtml;
-        }
     }
 }
 

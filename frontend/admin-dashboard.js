@@ -45,8 +45,10 @@ function setSelectReady(select) {
 async function fetchOwners() {
     const select = document.getElementById('clubOwnerSelect');
     const addOwnerSelect = document.getElementById('addOwnerSelect');
+    const deleteOwnerSelect = document.getElementById('deleteOwnerSelect');
     setSelectLoading(select, 'Loading owners...');
     setSelectLoading(addOwnerSelect, 'Loading owners...');
+    setSelectLoading(deleteOwnerSelect, 'Loading owners...');
     const res = await fetch(`${API_URL}/admin/owners`, {
         headers: { Authorization: `Bearer ${token}` }
     });
@@ -55,10 +57,14 @@ async function fetchOwners() {
         const list = document.getElementById('ownersList');
         const selectedOwner = select?.value || '';
         const selectedAddOwner = addOwnerSelect?.value || '';
+        const selectedDeleteOwner = deleteOwnerSelect?.value || '';
         list.innerHTML = '';
         select.innerHTML = '<option value="">Select Owner</option>';
         if (addOwnerSelect) {
             addOwnerSelect.innerHTML = '<option value="">Select Owner</option>';
+        }
+        if (deleteOwnerSelect) {
+            deleteOwnerSelect.innerHTML = '<option value="">Select Owner</option>';
         }
         data.owners.forEach(o => {
             const item = document.createElement('div');
@@ -75,6 +81,12 @@ async function fetchOwners() {
                 addOpt.textContent = `${o.username} (#${o.id})`;
                 addOwnerSelect.appendChild(addOpt);
             }
+            if (deleteOwnerSelect) {
+                const delOpt = document.createElement('option');
+                delOpt.value = o.id;
+                delOpt.textContent = `${o.username} (#${o.id})`;
+                deleteOwnerSelect.appendChild(delOpt);
+            }
         });
         if (selectedOwner) {
             select.value = selectedOwner;
@@ -82,16 +94,22 @@ async function fetchOwners() {
         if (addOwnerSelect && selectedAddOwner) {
             addOwnerSelect.value = selectedAddOwner;
         }
+        if (deleteOwnerSelect && selectedDeleteOwner) {
+            deleteOwnerSelect.value = selectedDeleteOwner;
+        }
         setSelectReady(select);
         setSelectReady(addOwnerSelect);
+        setSelectReady(deleteOwnerSelect);
     }
 }
 
 async function fetchClubs() {
     const select = document.getElementById('memberClubSelect');
     const addOwnerClubSelect = document.getElementById('addOwnerClubSelect');
+    const deleteClubSelect = document.getElementById('deleteClubSelect');
     setSelectLoading(select, 'Loading clubs...');
     setSelectLoading(addOwnerClubSelect, 'Loading clubs...');
+    setSelectLoading(deleteClubSelect, 'Loading clubs...');
     const res = await fetch(`${API_URL}/admin/clubs`, {
         headers: { Authorization: `Bearer ${token}` }
     });
@@ -100,10 +118,14 @@ async function fetchClubs() {
         const list = document.getElementById('clubsList');
         const selectedClub = select?.value || '';
         const selectedAddOwnerClub = addOwnerClubSelect?.value || '';
+        const selectedDeleteClub = deleteClubSelect?.value || '';
         list.innerHTML = '';
         select.innerHTML = '<option value="">Select Club</option>';
         if (addOwnerClubSelect) {
             addOwnerClubSelect.innerHTML = '<option value="">Select Club</option>';
+        }
+        if (deleteClubSelect) {
+            deleteClubSelect.innerHTML = '<option value="">Select Club</option>';
         }
         data.clubs.forEach(c => {
             const item = document.createElement('div');
@@ -123,6 +145,12 @@ async function fetchClubs() {
                 addOpt.textContent = `${c.name} (#${c.id})`;
                 addOwnerClubSelect.appendChild(addOpt);
             }
+            if (deleteClubSelect) {
+                const delOpt = document.createElement('option');
+                delOpt.value = c.id;
+                delOpt.textContent = `${c.name} (#${c.id})`;
+                deleteClubSelect.appendChild(delOpt);
+            }
         });
         if (selectedClub) {
             select.value = selectedClub;
@@ -130,8 +158,39 @@ async function fetchClubs() {
         if (addOwnerClubSelect && selectedAddOwnerClub) {
             addOwnerClubSelect.value = selectedAddOwnerClub;
         }
+        if (deleteClubSelect && selectedDeleteClub) {
+            deleteClubSelect.value = selectedDeleteClub;
+        }
         setSelectReady(select);
         setSelectReady(addOwnerClubSelect);
+        setSelectReady(deleteClubSelect);
+    }
+}
+
+async function fetchMembers() {
+    const deleteMemberSelect = document.getElementById('deleteMemberSelect');
+    setSelectLoading(deleteMemberSelect, 'Loading members...');
+    const res = await fetch(`${API_URL}/admin/members`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success) {
+        const selectedDeleteMember = deleteMemberSelect?.value || '';
+        if (deleteMemberSelect) {
+            deleteMemberSelect.innerHTML = '<option value="">Select Member</option>';
+        }
+        data.members.forEach(m => {
+            if (deleteMemberSelect) {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = `${m.username} (#${m.id})`;
+                deleteMemberSelect.appendChild(opt);
+            }
+        });
+        if (deleteMemberSelect && selectedDeleteMember) {
+            deleteMemberSelect.value = selectedDeleteMember;
+        }
+        setSelectReady(deleteMemberSelect);
     }
 }
 
@@ -239,8 +298,75 @@ async function createMember() {
     const data = await res.json();
     if (data.success) {
         notify('Member created');
+        await fetchMembers();
     } else {
         notify(data.message || 'Member create failed', 'error');
+    }
+}
+
+async function deleteOwner() {
+    const ownerId = document.getElementById('deleteOwnerSelect').value;
+    if (!ownerId) {
+        notify('Select an owner to delete', 'error');
+        return;
+    }
+    const ok = window.confirm('Delete this owner and all their clubs and related data?');
+    if (!ok) return;
+    const res = await fetch(`${API_URL}/admin/owners/${ownerId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success) {
+        notify('Owner deleted');
+        await fetchOwners();
+        await fetchClubs();
+        await fetchMembers();
+    } else {
+        notify(data.message || 'Owner delete failed', 'error');
+    }
+}
+
+async function deleteClub() {
+    const clubId = document.getElementById('deleteClubSelect').value;
+    if (!clubId) {
+        notify('Select a club to delete', 'error');
+        return;
+    }
+    const ok = window.confirm('Delete this club and all related data?');
+    if (!ok) return;
+    const res = await fetch(`${API_URL}/admin/clubs/${clubId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success) {
+        notify('Club deleted');
+        await fetchClubs();
+    } else {
+        notify(data.message || 'Club delete failed', 'error');
+    }
+}
+
+async function deleteMember() {
+    const memberId = document.getElementById('deleteMemberSelect').value;
+    if (!memberId) {
+        notify('Select a member to delete', 'error');
+        return;
+    }
+    const ok = window.confirm('Delete this member and all related data?');
+    if (!ok) return;
+    const res = await fetch(`${API_URL}/admin/members/${memberId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data.success) {
+        notify('Member deleted');
+        await fetchMembers();
+        await fetchClubs();
+    } else {
+        notify(data.message || 'Member delete failed', 'error');
     }
 }
 
@@ -253,15 +379,20 @@ document.getElementById('createClubBtn').addEventListener('click', createClub);
 document.getElementById('addOwnerBtn').addEventListener('click', addOwnerToClub);
 document.getElementById('addMemberBtn').addEventListener('click', addMemberToClub);
 document.getElementById('createMemberBtn').addEventListener('click', createMember);
+document.getElementById('deleteOwnerBtn').addEventListener('click', deleteOwner);
+document.getElementById('deleteClubBtn').addEventListener('click', deleteClub);
+document.getElementById('deleteMemberBtn').addEventListener('click', deleteMember);
 
 window.addEventListener('load', async () => {
     await ensureAdmin();
     await fetchOwners();
     await fetchClubs();
+    await fetchMembers();
     const ownerSelect = document.getElementById('clubOwnerSelect');
     const addOwnerSelect = document.getElementById('addOwnerSelect');
     const addOwnerClubSelect = document.getElementById('addOwnerClubSelect');
     const memberClubSelect = document.getElementById('memberClubSelect');
+    const deleteMemberSelect = document.getElementById('deleteMemberSelect');
     if (ownerSelect) {
         ownerSelect.addEventListener('focus', () => {
             if (ownerSelect.options.length <= 1) fetchOwners();
@@ -280,6 +411,11 @@ window.addEventListener('load', async () => {
     if (memberClubSelect) {
         memberClubSelect.addEventListener('focus', () => {
             if (memberClubSelect.options.length <= 1) fetchClubs();
+        });
+    }
+    if (deleteMemberSelect) {
+        deleteMemberSelect.addEventListener('focus', () => {
+            if (deleteMemberSelect.options.length <= 1) fetchMembers();
         });
     }
 });
