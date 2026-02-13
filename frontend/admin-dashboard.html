@@ -30,6 +30,7 @@
         .input { width:100%; background:#0b1220; border:1px solid #1f2937; color:#e5e7eb; padding:10px 12px; border-radius:10px; }
         .btn { display:inline-flex; align-items:center; gap:8px; background:#2563eb; color:#fff; border:none; border-radius:10px; padding:10px 14px; cursor:pointer; }
         .btn.secondary { background:#374151; }
+        .btn.danger { background:#dc2626; }
         .list { margin-top:12px; max-height:220px; overflow:auto; border-top:1px dashed #1f2937; padding-top:10px; }
         .item { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #1f2937; }
         .notice { color:#9ca3af; font-size:13px; }
@@ -116,6 +117,29 @@
                     <input class="input" id="memberPassword" placeholder="Password" type="password" value="123456">
                 </div>
                 <button class="btn" id="createMemberBtn"><i class="fa-solid fa-user-plus"></i> Create Member</button>
+            </div>
+
+            <div class="card">
+                <h2><i class="fa-solid fa-trash"></i> Delete Data</h2>
+                <div class="form-row">
+                    <select class="input" id="deleteOwnerSelect">
+                        <option value="">Select Owner</option>
+                    </select>
+                    <button class="btn danger" id="deleteOwnerBtn"><i class="fa-solid fa-user-xmark"></i> Delete Owner</button>
+                </div>
+                <div class="form-row">
+                    <select class="input" id="deleteClubSelect">
+                        <option value="">Select Club</option>
+                    </select>
+                    <button class="btn danger" id="deleteClubBtn"><i class="fa-solid fa-building-circle-xmark"></i> Delete Club</button>
+                </div>
+                <div class="form-row">
+                    <select class="input" id="deleteMemberSelect">
+                        <option value="">Select Member</option>
+                    </select>
+                    <button class="btn danger" id="deleteMemberBtn"><i class="fa-solid fa-user-minus"></i> Delete Member</button>
+                </div>
+                <div class="notice">Deletes related data in the database</div>
             </div>
         </div>
     </div>

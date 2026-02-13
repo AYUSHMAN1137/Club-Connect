@@ -1,34 +1,34 @@
 const { Sequelize } = require('sequelize');
-const path = require('path');
 
 const databaseUrl = process.env.DATABASE_URL;
+
 let sequelize;
 
 if (databaseUrl) {
-    sequelize = new Sequelize(databaseUrl, {
+    const isLocalPostgres = /localhost|127\.0\.0\.1/i.test(databaseUrl);
+
+    const options = {
         dialect: 'postgres',
-        logging: false,
-        dialectOptions: {
+        logging: false
+    };
+
+    if (!isLocalPostgres) {
+        options.dialectOptions = {
             ssl: {
                 require: true,
                 rejectUnauthorized: false
             }
-        }
-    });
-} else {
-    sequelize = new Sequelize({
-        dialect: 'sqlite',
-        storage: path.join(__dirname, '../database.sqlite'),
-        logging: false
-    });
+        };
+    }
 
-    sequelize.addHook('afterConnect', async (connection) => {
-        await new Promise((resolve, reject) => {
-            connection.run('PRAGMA foreign_keys = ON;', (err) => {
-                if (err) return reject(err);
-                resolve();
-            });
-        });
+    sequelize = new Sequelize(databaseUrl, options);
+} else {
+    // Default: local PostgreSQL (no SQLite fallback)
+    sequelize = new Sequelize('club_connect', 'postgres', 'postgres', {
+        host: 'localhost',
+        port: 5432,
+        dialect: 'postgres',
+        logging: false
     });
 }
 

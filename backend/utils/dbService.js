@@ -1,6 +1,6 @@
 /**
  * 🗄️ DATABASE SERVICE
- * Provides clean functions to interact with SQLite database
+ * Provides clean functions to interact with PostgreSQL database
  * This replaces all JSON file operations
  */
 

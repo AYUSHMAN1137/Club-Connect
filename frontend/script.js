@@ -404,8 +404,8 @@ signInForm.addEventListener('submit', async (e) => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    username: username.value,
-                    password: password.value
+                    username: String(username.value || '').trim(),
+                    password: String(password.value || '')
                 })
             });
 
