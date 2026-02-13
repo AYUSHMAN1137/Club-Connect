@@ -1182,6 +1182,149 @@ app.get('/owner/event/:id', verifyToken, isAdminOrModerator, async (req, res) =>
     }
 });
 
+app.get('/owner/event/:id/attendance-export', verifyToken, isAdminOrModerator, async (req, res) => {
+    try {
+        const user = await db.findUserById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found!' });
+        }
+
+        let club;
+        if (user.role === 'owner') {
+            club = await db.findClubByOwnerId(user.id);
+        } else {
+            const memberships = await db.getUserClubs(user.id);
+            if (!memberships || memberships.length === 0) {
+                return res.status(403).json({ success: false, message: 'Access denied!' });
+            }
+            club = await db.findClubById(memberships[0].id);
+        }
+
+        if (!club) {
+            return res.status(404).json({ success: false, message: 'Club not found!' });
+        }
+
+        const eventId = parseInt(req.params.id);
+        const event = await db.findEventById(eventId);
+        if (!event) {
+            return res.status(404).json({ success: false, message: 'Event not found!' });
+        }
+
+        if (event.clubId !== club.id) {
+            return res.status(403).json({ success: false, message: 'Access denied!' });
+        }
+
+        const attendanceRecords = await db.AttendanceRecord.findAll({
+            where: { eventId },
+            include: [{ model: db.User, as: 'Member', attributes: ['id', 'username', 'email', 'studentId'] }],
+            order: [['checkedInAt', 'ASC']]
+        });
+
+        const attendances = await db.Attendance.findAll({
+            where: { eventId },
+            include: [{ model: db.User, attributes: ['id', 'username', 'email', 'studentId'] }],
+            order: [['timestamp', 'ASC']]
+        });
+
+        const memberMap = new Map();
+        const toMillis = (value) => {
+            if (!value) return 0;
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+        };
+        const toIso = (value) => {
+            if (!value) return '';
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+        };
+        const isNewer = (nextTime, currentTime) => {
+            if (!currentTime) return !!nextTime;
+            if (!nextTime) return false;
+            return new Date(nextTime) > new Date(currentTime);
+        };
+
+        attendanceRecords.forEach((r) => {
+            const member = r.Member || {};
+            const checkedInAt = r.checkedInAt || null;
+            if (!member.id) return;
+            const existing = memberMap.get(member.id);
+            if (!existing || isNewer(checkedInAt, existing.checkedInAt)) {
+                memberMap.set(member.id, {
+                    id: member.id,
+                    username: member.username,
+                    email: member.email,
+                    studentId: member.studentId,
+                    checkedInAt
+                });
+            }
+        });
+
+        attendances.forEach((a) => {
+            const member = a.User || {};
+            const checkedInAt = a.timestamp || null;
+            if (!member.id) return;
+            const existing = memberMap.get(member.id);
+            if (!existing || isNewer(checkedInAt, existing.checkedInAt)) {
+                memberMap.set(member.id, {
+                    id: member.id,
+                    username: member.username,
+                    email: member.email,
+                    studentId: member.studentId,
+                    checkedInAt
+                });
+            }
+        });
+
+        const members = Array.from(memberMap.values()).sort((a, b) => toMillis(a.checkedInAt) - toMillis(b.checkedInAt));
+
+        const escape = (value) => {
+            if (value === null || value === undefined) return '';
+            const text = String(value);
+            if (/[",\n]/.test(text)) {
+                return `"${text.replace(/"/g, '""')}"`;
+            }
+            return text;
+        };
+
+        const headerLines = [
+            `Club: ${club.name || ''}`,
+            `Event: ${event.title || ''}`,
+            `Date: ${event.date || ''}`,
+            `Exported At: ${new Date().toISOString()}`,
+            `Total Present: ${members.length}`
+        ];
+        const columns = ['Name', 'Student ID', 'Email', 'Time', 'Status'];
+        const lateThreshold = event.startTime
+            ? new Date(new Date(event.startTime).getTime() + 5 * 60000)
+            : null;
+
+        const dataLines = members.map(m => {
+            const time = toIso(m.checkedInAt);
+            const isLate = lateThreshold && m.checkedInAt ? new Date(m.checkedInAt) > lateThreshold : false;
+            const status = lateThreshold ? (isLate ? 'Late' : 'On Time') : '';
+            return [m.username || '', m.studentId || '', m.email || '', time, status].map(escape).join(',');
+        });
+
+        const csvBody = [
+            ...headerLines.map(escape),
+            '',
+            columns.map(escape).join(','),
+            ...dataLines
+        ].join('\n');
+
+        const safeTitle = (event.title || 'event').toLowerCase().replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
+        const safeDate = String(event.date || '').replace(/[^0-9\-]/g, '') || 'date';
+        const filename = `attendance_${safeTitle || 'event'}_${safeDate}.csv`;
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send('\ufeff' + csvBody);
+    } catch (error) {
+        console.error('Error exporting attendance:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
 // Generate QR code for event
 app.post('/owner/generate-qr', verifyToken, isOwner, async (req, res) => {
     try {
@@ -3453,7 +3596,7 @@ app.post('/owner/take-attendance', verifyToken, isAdminOrModerator, async (req, 
 // Start attendance session (Owner)
 app.post('/attendance/session/start', verifyToken, isOwner, async (req, res) => {
     try {
-        const { eventId, expiryMinutes = 3 } = req.body;
+        const { eventId, expiryMinutes = 30 } = req.body;
 
         if (!eventId) {
             return res.status(400).json({ success: false, message: 'Event ID required!' });
@@ -3487,6 +3630,7 @@ app.post('/attendance/session/start', verifyToken, isOwner, async (req, res) => 
             const code = generateAttendanceCode();
             existingSession.currentNonce = nonce;
             existingSession.currentCode = code;
+            existingSession.expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
             await existingSession.save();
 
             const token = generateAttendanceToken(existingSession.id, event.id, nonce, 30);
@@ -3576,6 +3720,7 @@ app.get('/attendance/session/:id/token', verifyToken, isOwner, async (req, res) 
         const code = generateAttendanceCode();
         session.currentNonce = nonce;
         session.currentCode = code;
+        session.expiresAt = new Date(Date.now() + 30 * 60 * 1000);
         await session.save();
 
         const token = generateAttendanceToken(session.id, session.eventId, nonce, 30);
@@ -3853,20 +3998,65 @@ app.get('/attendance/session/:id/summary', verifyToken, isOwner, async (req, res
             return res.status(403).json({ success: false, message: 'Access denied!' });
         }
 
-        // Get attendance records with member details
         const records = await db.AttendanceRecord.findAll({
-            where: { sessionId: session.id },
+            where: { eventId: session.eventId },
             include: [{ model: db.User, as: 'Member', attributes: ['id', 'username', 'email', 'studentId'] }],
             order: [['checkedInAt', 'DESC']]
         });
 
-        // Calculate late count
-        let lateCount = 0;
-        if (session.Event.startTime) {
-            const lateThreshold = new Date(session.Event.startTime);
-            lateThreshold.setMinutes(lateThreshold.getMinutes() + 5);
-            lateCount = records.filter(r => new Date(r.checkedInAt) > lateThreshold).length;
-        }
+        const manualAttendances = await db.Attendance.findAll({
+            where: { eventId: session.eventId },
+            include: [{ model: db.User, attributes: ['id', 'username', 'email', 'studentId'] }],
+            order: [['timestamp', 'DESC']]
+        });
+
+        const lateThreshold = session.Event.startTime
+            ? new Date(new Date(session.Event.startTime).getTime() + 5 * 60000)
+            : null;
+
+        const memberMap = new Map();
+        const isNewer = (nextTime, currentTime) => {
+            if (!currentTime) return !!nextTime;
+            if (!nextTime) return false;
+            return new Date(nextTime) > new Date(currentTime);
+        };
+
+        records.forEach((r) => {
+            const member = r.Member || {};
+            const checkedInAt = r.checkedInAt || null;
+            if (!member.id) return;
+            const existing = memberMap.get(member.id);
+            if (!existing || isNewer(checkedInAt, existing.checkedInAt)) {
+                memberMap.set(member.id, {
+                    id: member.id,
+                    username: member.username,
+                    email: member.email,
+                    studentId: member.studentId,
+                    checkedInAt,
+                    isLate: lateThreshold && checkedInAt ? new Date(checkedInAt) > lateThreshold : false
+                });
+            }
+        });
+
+        manualAttendances.forEach((a) => {
+            const member = a.User || {};
+            const checkedInAt = a.timestamp || null;
+            if (!member.id) return;
+            const existing = memberMap.get(member.id);
+            if (!existing || isNewer(checkedInAt, existing.checkedInAt)) {
+                memberMap.set(member.id, {
+                    id: member.id,
+                    username: member.username,
+                    email: member.email,
+                    studentId: member.studentId,
+                    checkedInAt,
+                    isLate: lateThreshold && checkedInAt ? new Date(checkedInAt) > lateThreshold : false
+                });
+            }
+        });
+
+        const members = Array.from(memberMap.values()).sort((a, b) => toMillis(b.checkedInAt) - toMillis(a.checkedInAt));
+        const lateCount = lateThreshold ? members.filter(m => m.checkedInAt && new Date(m.checkedInAt) > lateThreshold).length : 0;
 
         const timeLeft = Math.max(0, Math.floor((new Date(session.expiresAt) - new Date()) / 1000));
 
@@ -3877,18 +4067,11 @@ app.get('/attendance/session/:id/summary', verifyToken, isOwner, async (req, res
                 eventId: session.eventId,
                 eventTitle: session.Event?.title || 'Unknown Event',
                 status: session.status,
-                presentCount: records.length,
+                presentCount: members.length,
                 lateCount,
                 timeLeft,
                 expiresAt: session.expiresAt,
-                members: records.map(r => ({
-                    id: r.Member?.id,
-                    username: r.Member?.username,
-                    studentId: r.Member?.studentId,
-                    checkedInAt: r.checkedInAt,
-                    isLate: session.Event.startTime ?
-                        new Date(r.checkedInAt) > new Date(new Date(session.Event.startTime).getTime() + 5 * 60000) : false
-                }))
+                members
             }
         });
     } catch (error) {

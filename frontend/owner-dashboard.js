@@ -4502,6 +4502,7 @@ window.endWorkshopSession = endWorkshopSession;
 
 // ========== QR ATTENDANCE SESSION SYSTEM ==========
 let qrSessionId = null;
+let qrEventId = null;
 let qrRefreshInterval = null;
 let qrCountdownInterval = null;
 let qrPollingInterval = null;
@@ -4527,6 +4528,7 @@ async function startQRAttendance(eventId, eventTitle) {
 
         if (data.success) {
             qrSessionId = data.session.id;
+            qrEventId = eventId;
 
             // Update UI with event info
             document.getElementById('qrEventTitle').textContent = eventTitle;
@@ -4834,11 +4836,68 @@ async function updateAttendanceList() {
             // Check if session is still active
             if (data.summary.status === 'closed' || data.summary.status === 'expired') {
                 showNotification('Attendance session has ended', 'info');
-                closeQRAttendanceSession();
+                if (qrRefreshInterval) {
+                    clearInterval(qrRefreshInterval);
+                    qrRefreshInterval = null;
+                }
+                if (qrCountdownInterval) {
+                    clearInterval(qrCountdownInterval);
+                    qrCountdownInterval = null;
+                }
+                if (qrPollingInterval) {
+                    clearInterval(qrPollingInterval);
+                    qrPollingInterval = null;
+                }
             }
         }
     } catch (error) {
         console.error('Error updating attendance list:', error);
+    }
+}
+
+async function exportQRAttendance() {
+    if (!qrEventId) {
+        showNotification('No event selected for export', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${getApiUrl()}/owner/event/${qrEventId}/attendance-export`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            let message = 'Failed to export attendance';
+            try {
+                const data = await response.json();
+                if (data && data.message) message = data.message;
+            } catch (e) {
+                message = 'Failed to export attendance';
+            }
+            showNotification(message, 'error');
+            return;
+        }
+
+        const blob = await response.blob();
+        const contentDisposition = response.headers.get('Content-Disposition') || '';
+        const match = contentDisposition.match(/filename="([^"]+)"/);
+        const filename = match ? match[1] : 'attendance_export.csv';
+
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        showNotification('Attendance exported', 'success');
+    } catch (error) {
+        console.error('Error exporting attendance:', error);
+        showNotification('Failed to export attendance', 'error');
     }
 }
 
@@ -4891,6 +4950,7 @@ function closeQRAttendanceSession() {
     }
 
     qrSessionId = null;
+    qrEventId = null;
 
     // Hide modal
     document.getElementById('qrAttendanceModal').classList.remove('active');
@@ -4910,6 +4970,7 @@ function closeQRAttendanceSession() {
 
 // Expose QR attendance functions to window
 window.startQRAttendance = startQRAttendance;
+window.exportQRAttendance = exportQRAttendance;
 window.closeQRAttendanceSession = closeQRAttendanceSession;
 window.endQRAttendanceSession = endQRAttendanceSession;
 
