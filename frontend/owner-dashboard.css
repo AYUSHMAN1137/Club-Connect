@@ -6749,6 +6749,25 @@ body.dark-mode .profile-empty-state i {
     }
 }
 
+@media (max-width: 900px) {
+    .ws-interface-top {
+        padding: 18px 18px;
+    }
+
+    .ws-interface-toolbar {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .ws-toolbar-btn {
+        padding: 10px 16px;
+    }
+
+    .ws-editor-area textarea {
+        min-height: 420px;
+    }
+}
+
 @media (max-width: 768px) {
     .ws-hero {
         padding: 24px 20px;
@@ -6774,6 +6793,39 @@ body.dark-mode .profile-empty-state i {
 
     .tool-row {
         grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .ws-interface-top {
+        padding: 16px;
+    }
+
+    .ws-interface-title-area {
+        flex-wrap: wrap;
+    }
+
+    .ws-interface-title-area h2 {
+        font-size: 18px;
+    }
+
+    .ws-interface-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .ws-lang-select-wrap {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .ws-toolbar-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .ws-editor-area textarea {
+        min-height: 360px;
     }
 }
 
