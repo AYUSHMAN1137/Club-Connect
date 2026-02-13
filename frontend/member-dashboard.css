@@ -3653,6 +3653,35 @@ img {
     }
 }
 
+@media (max-width: 900px) {
+    .ws-interface-top {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .ws-interface-toolbar {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .ws-interface-body {
+        gap: 16px;
+    }
+
+    .ws-editor-hint {
+        max-width: 100%;
+    }
+
+    .ws-editor-area {
+        box-shadow: var(--shadow-lg);
+    }
+
+    .ws-viewer-area .ws-code-pre {
+        height: 420px;
+    }
+}
+
 @media (max-width: 768px) {
     .ws-hero {
         padding: 24px 20px;
@@ -3674,6 +3703,34 @@ img {
 
     .ws-detail-overlay {
         width: 100vw;
+    }
+}
+
+@media (max-width: 600px) {
+    .ws-interface-top {
+        padding: 16px;
+    }
+
+    .ws-interface-title-area h2 {
+        font-size: 18px;
+    }
+
+    .ws-back-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .ws-preview-pill {
+        width: 100%;
+        text-align: center;
+    }
+
+    .ws-editor-area {
+        border-radius: 14px;
+    }
+
+    .ws-viewer-area .ws-code-pre {
+        height: 360px;
     }
 }
 
