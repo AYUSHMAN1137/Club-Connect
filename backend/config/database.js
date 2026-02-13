@@ -1,6 +1,12 @@
 const { Sequelize } = require('sequelize');
 
-const databaseUrl = process.env.DATABASE_URL;
+const dbMode = String(process.env.DB_MODE || '').toLowerCase();
+const onlineUrl = process.env.ONLINE_DB_URL || '';
+let databaseUrl = process.env.DATABASE_URL || '';
+
+if (dbMode === 'online' && onlineUrl) {
+    databaseUrl = onlineUrl;
+}
 
 let sequelize;
 

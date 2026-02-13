@@ -15,22 +15,40 @@ echo.
 :: ---------- Read Supabase (online) DATABASE_URL from .env files ----------
 set "ONLINE_DB_URL="
 
-:: Check root .env
+:: Check root .env (prefer non-local URL)
 if exist ".env" (
     for /f "usebackq tokens=1,* delims==" %%A in (".env") do (
-        if /I "%%A"=="DATABASE_URL" set "ONLINE_DB_URL=%%B"
+        if /I "%%A"=="DATABASE_URL" (
+            set "CANDIDATE_URL=%%B"
+            echo !CANDIDATE_URL! | findstr /I "localhost 127.0.0.1" >nul
+            if errorlevel 1 set "ONLINE_DB_URL=!CANDIDATE_URL!"
+        )
     )
 )
 
-:: Check backend\.env (overrides root if present)
+:: Check backend\.env (only if it contains a non-local URL)
 if exist "backend\.env" (
     for /f "usebackq tokens=1,* delims==" %%A in ("backend\.env") do (
-        if /I "%%A"=="DATABASE_URL" set "ONLINE_DB_URL=%%B"
+        if /I "%%A"=="DATABASE_URL" (
+            set "CANDIDATE_URL=%%B"
+            echo !CANDIDATE_URL! | findstr /I "localhost 127.0.0.1" >nul
+            if errorlevel 1 set "ONLINE_DB_URL=!CANDIDATE_URL!"
+        )
     )
 )
 
 :: ---------- Local PostgreSQL Config ----------
-set "LOCAL_DB_URL=postgresql://postgres:postgres@localhost:5432/club_connect"
+set "LOCAL_DB_URL="
+if exist "backend\.env" (
+    for /f "usebackq tokens=1,* delims==" %%A in ("backend\.env") do (
+        if /I "%%A"=="DATABASE_URL" (
+            set "CANDIDATE_URL=%%B"
+            echo !CANDIDATE_URL! | findstr /I "localhost 127.0.0.1" >nul
+            if not errorlevel 1 set "LOCAL_DB_URL=!CANDIDATE_URL!"
+        )
+    )
+)
+if "%LOCAL_DB_URL%"=="" set "LOCAL_DB_URL=postgresql://postgres:postgres@localhost:5432/club_connect"
 
 :: ---------- Ask user ----------
 echo  Select Database Mode:
@@ -52,14 +70,19 @@ if "%DB_CHOICE%"=="1" (
         exit /b 1
     )
     set "DATABASE_URL=!ONLINE_DB_URL!"
+    set "ONLINE_DB_URL=!ONLINE_DB_URL!"
+    set "DB_MODE=online"
+    set "SKIP_SCHEMA_SYNC=1"
     echo.
     echo  [INFO] Mode: ONLINE ^(Supabase Cloud Database^)
 ) else (
     set "DATABASE_URL=%LOCAL_DB_URL%"
+    set "DB_MODE=offline"
+    set "SKIP_SCHEMA_SYNC=0"
     echo.
     echo  [INFO] Mode: OFFLINE ^(Local PostgreSQL^)
     echo  [INFO] Make sure PostgreSQL is running on localhost:5432
-    echo  [INFO] Database: club_connect ^| User: postgres
+    echo  [INFO] Using backend\.env DATABASE_URL for local DB
 )
 
 echo.
@@ -77,11 +100,16 @@ if errorlevel 1 (
 cd ..
 
 :: ---------- Start backend ----------
+echo  [INFO] Closing any server on port 4000...
+for /f "tokens=5" %%P in ('netstat -ano ^| findstr :4000 ^| findstr LISTENING') do (
+    taskkill /F /PID %%P >nul 2>&1
+)
 echo  [STEP 2/3] Starting Backend Server...
 cd backend
 start "CLUB CONNECT - Backend" cmd /k "title CLUB CONNECT - Backend && set DATABASE_URL=!DATABASE_URL!&& node server.js"
 cd ..
 echo  [OK] Backend started on http://localhost:4000
+echo  [INFO] If backend closes, check backend\.env DATABASE_URL and Postgres
 
 :: ---------- Open frontend ----------
 echo  [STEP 3/3] Opening Frontend...
