@@ -3031,11 +3031,10 @@ body {
 .owner-member-row-btn {
     width: 100%;
     text-align: left;
-    background: transparent;
-    border: 0;
-    padding: 0;
     cursor: pointer;
-    display: block;
+    appearance: none;
+    font: inherit;
+    color: inherit;
 }
 
 .owner-action-grid {
@@ -3773,6 +3772,24 @@ body.dark-mode .owner-check-item {
 body.dark-mode .owner-action-btn:hover {
     background: #111827;
     border-color: #475569;
+}
+
+body.dark-mode .owner-welcome {
+    background:
+        linear-gradient(135deg, rgba(45, 212, 191, 0.22) 0%, rgba(94, 234, 212, 0.12) 55%, rgba(45, 212, 191, 0.08) 100%),
+        #1e293b;
+    border: 1px solid rgba(94, 234, 212, 0.18);
+}
+
+body.dark-mode .owner-welcome::before {
+    background: radial-gradient(circle at 30% 30%, rgba(94, 234, 212, 0.18), transparent 60%);
+}
+
+body.dark-mode .owner-welcome::after {
+    background:
+        radial-gradient(circle at 18% 82%, rgba(94, 234, 212, 0.10) 0%, transparent 48%),
+        radial-gradient(circle at 82% 18%, rgba(94, 234, 212, 0.08) 0%, transparent 46%);
+    opacity: 0.75;
 }
 
 body.dark-mode .owner-check-content p,
@@ -7255,6 +7272,82 @@ body.dark-mode .ws-sections-list:empty::after {
 body.dark-mode .section-item {
     background: #111827;
     border-color: #374151;
+}
+
+.confirm-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-modal);
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--transition);
+}
+
+.confirm-dialog.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.confirm-content {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    padding: 30px;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    transform: scale(0.9);
+    transition: var(--transition);
+}
+
+.confirm-dialog.active .confirm-content {
+    transform: scale(1);
+}
+
+.confirm-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 28px;
+}
+
+.confirm-icon.warning {
+    background: var(--warning-light);
+    color: var(--warning-color);
+}
+
+.confirm-icon.danger {
+    background: var(--danger-light);
+    color: var(--danger-color);
+}
+
+.confirm-content h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 10px;
+}
+
+.confirm-content p {
+    font-size: 14px;
+    color: var(--gray-500);
+    margin-bottom: 25px;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
 }
 
 body.dark-mode .section-item:hover {

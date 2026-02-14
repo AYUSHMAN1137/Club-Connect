@@ -1512,26 +1512,64 @@ async function loadEvents() {
     }
 }
 
+function closeConfirmDialog() {
+    document.getElementById('confirmDialog')?.classList.remove('active');
+}
+
+function openConfirmDialog({ title, message, icon, iconClass, onConfirm }) {
+    const dialog = document.getElementById('confirmDialog');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const confirmTitle = document.getElementById('confirmTitle');
+    const confirmMessage = document.getElementById('confirmMessage');
+    const confirmIcon = document.getElementById('confirmIcon');
+    if (!dialog || !confirmBtn || !confirmTitle || !confirmMessage || !confirmIcon) {
+        return;
+    }
+    confirmTitle.textContent = title || 'Confirm Action';
+    confirmMessage.textContent = message || 'Are you sure you want to proceed?';
+    confirmIcon.innerHTML = `<i class="${icon || 'fa-solid fa-question-circle'}"></i>`;
+    confirmIcon.className = `confirm-icon ${iconClass || ''}`.trim();
+    confirmBtn.onclick = async () => {
+        closeConfirmDialog();
+        if (typeof onConfirm === 'function') {
+            await onConfirm();
+        }
+    };
+    dialog.classList.add('active');
+    dialog.onclick = (e) => {
+        if (e.target === dialog) {
+            closeConfirmDialog();
+        }
+    };
+}
+
 async function deleteEventOwner(eventId, eventTitle) {
     const label = eventTitle || 'this event';
-    if (!confirm(`Delete ${label}? Attendance, gallery photos, and certificates will be removed.`)) return;
-    try {
-        const response = await fetch(`${getApiUrl()}/owner/events/${eventId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (data.success) {
-            showNotification('Event deleted!', 'success');
-            loadEvents();
-            loadDashboardStats();
-        } else {
-            showNotification(data.message || 'Failed to delete event', 'error');
+    openConfirmDialog({
+        title: `Delete ${label}?`,
+        message: 'Attendance, gallery photos, and certificates will be removed.',
+        icon: 'fa-solid fa-trash',
+        iconClass: 'danger',
+        onConfirm: async () => {
+            try {
+                const response = await fetch(`${getApiUrl()}/owner/events/${eventId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Event deleted!', 'success');
+                    loadEvents();
+                    loadDashboardStats();
+                } else {
+                    showNotification(data.message || 'Failed to delete event', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting event:', error);
+                showNotification('Failed to delete event', 'error');
+            }
         }
-    } catch (error) {
-        console.error('Error deleting event:', error);
-        showNotification('Failed to delete event', 'error');
-    }
+    });
 }
 
 // Show/Hide Create Event Form
@@ -1666,7 +1704,7 @@ async function loadAnnouncements() {
 
 async function deleteAnnouncementOwner(announcementId, title) {
     const label = title || 'this announcement';
-    if (!confirm(`Delete ${label}? This announcement will be removed.`)) return;
+    if (!confirm(`Delete ${label}?`)) return;
     try {
         const response = await fetch(`${getApiUrl()}/owner/announcements/${announcementId}`, {
             method: 'DELETE',
@@ -1861,8 +1899,7 @@ async function loadPolls() {
             }).join('');
             const statusBadge = poll.status === 'closed' ? '<span class="poll-status poll-status--closed">Closed</span>' : '<span class="poll-status poll-status--active">Active</span>';
             const closeBtn = poll.status === 'active' ? `<button type="button" class="btn-secondary btn-sm poll-close-btn" onclick="closePollOwner(${poll.id})">Close Poll</button>` : '';
-            const safeQuestion = String(poll.question || 'Poll').replace(/'/g, "\\'");
-            const deleteBtn = `<button type="button" class="btn-secondary btn-sm poll-delete-btn" onclick="deletePollOwner(${poll.id}, '${safeQuestion}')"><i class="fa-solid fa-trash"></i> Delete</button>`;
+            const deleteBtn = `<button type="button" class="btn-secondary btn-sm poll-delete-btn" onclick="deletePollOwner(${poll.id})"><i class="fa-solid fa-trash"></i> Delete</button>`;
             return `
                 <div class="poll-card">
                     <div class="poll-card-header">
@@ -1915,9 +1952,8 @@ async function closePollOwner(pollId) {
     }
 }
 
-async function deletePollOwner(pollId, pollTitle) {
-    const label = pollTitle || 'this poll';
-    if (!confirm(`Delete ${label}? Votes will be removed.`)) return;
+async function deletePollOwner(pollId) {
+    if (!confirm('Delete this poll? Votes will be removed.')) return;
     try {
         const response = await fetch(`${getApiUrl()}/owner/polls/${pollId}`, {
             method: 'DELETE',
@@ -2068,7 +2104,7 @@ async function loadOwnerCertificates() {
             const fileType = (cert.fileType || '').toLowerCase();
             return `
                 <div class="certificate-card" data-title="${title}" data-file="${cert.filepath}" data-type="${fileType}">
-                    <button class="certificate-delete-btn" data-cert-id="${cert.id}" data-cert-title="${title}">
+                    <button class="certificate-delete-btn" data-cert-id="${cert.id}">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                     <div class="certificate-preview">
@@ -2103,8 +2139,7 @@ async function loadOwnerCertificates() {
             btn.addEventListener('click', (event) => {
                 event.stopPropagation();
                 const certId = btn.getAttribute('data-cert-id');
-                const certTitle = btn.getAttribute('data-cert-title') || '';
-                if (certId) deleteOwnerCertificate(certId, certTitle);
+                if (certId) deleteOwnerCertificate(certId);
             });
         });
     } catch (error) {
@@ -2114,9 +2149,8 @@ async function loadOwnerCertificates() {
     }
 }
 
-async function deleteOwnerCertificate(certId, title) {
-    const label = title || 'this certificate';
-    if (!confirm(`Delete ${label}? The file will be removed.`)) return;
+async function deleteOwnerCertificate(certId) {
+    if (!confirm('Delete this certificate?')) return;
     try {
         const response = await fetch(`${getApiUrl()}/owner/certificates/${certId}`, {
             method: 'DELETE',
@@ -3133,7 +3167,11 @@ function initSocketIO() {
     socket = io(getApiUrl(), {
         auth: {
             token: token
-        }
+        },
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 10000,
+        timeout: 20000
     });
 
     socket.on('connect', () => {

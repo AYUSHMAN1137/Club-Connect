@@ -1420,6 +1420,13 @@ img {
     box-shadow: var(--shadow-primary);
 }
 
+[data-theme="dark"] .welcome-section {
+    background:
+        linear-gradient(135deg, rgba(45, 212, 191, 0.22) 0%, rgba(94, 234, 212, 0.12) 60%, rgba(45, 212, 191, 0.08) 100%),
+        var(--gray-100);
+    box-shadow: var(--shadow);
+}
+
 .welcome-section::before {
     content: '';
     position: absolute;
@@ -1431,6 +1438,10 @@ img {
     border-radius: 50%;
 }
 
+[data-theme="dark"] .welcome-section::before {
+    background: rgba(94, 234, 212, 0.14);
+}
+
 .welcome-section::after {
     content: '';
     position: absolute;
@@ -1440,6 +1451,10 @@ img {
     height: 200px;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 50%;
+}
+
+[data-theme="dark"] .welcome-section::after {
+    background: rgba(94, 234, 212, 0.08);
 }
 
 .welcome-content {
@@ -4046,11 +4061,20 @@ img {
     gap: 20px;
     padding: 40px 20px;
     margin-bottom: 30px;
+    background: var(--white);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--gray-100);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
 }
 
 .podium-place {
     text-align: center;
     position: relative;
+    padding: 14px 16px 0;
+    border-radius: var(--radius-lg);
+    transition: var(--transition);
 }
 
 .podium-place.first {
@@ -4063,6 +4087,10 @@ img {
 
 .podium-place.third {
     order: 3;
+}
+
+.podium-place:hover {
+    transform: translateY(-4px);
 }
 
 .podium-crown {
@@ -4098,12 +4126,23 @@ img {
     justify-content: center;
     position: relative;
     overflow: hidden;
+    box-shadow: var(--shadow-md);
+    border: 3px solid var(--white);
 }
 
 .podium-place.first .podium-avatar {
     width: 100px;
     height: 100px;
-    box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.35);
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+}
+
+.podium-place.second .podium-avatar {
+    background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+}
+
+.podium-place.third .podium-avatar {
+    background: linear-gradient(135deg, #f59e0b, #b45309);
 }
 
 .podium-avatar img {
@@ -4127,6 +4166,7 @@ img {
     font-size: 12px;
     font-weight: 700;
     color: var(--white);
+    box-shadow: var(--shadow-sm);
 }
 
 .podium-name {
@@ -4134,6 +4174,8 @@ img {
     font-weight: 600;
     color: var(--gray-800);
     margin-bottom: 5px;
+    max-width: 120px;
+    margin-inline: auto;
 }
 
 .podium-points {
@@ -4153,6 +4195,7 @@ img {
     align-items: center;
     justify-content: center;
     border-radius: var(--radius) var(--radius) 0 0;
+    box-shadow: var(--shadow-md);
 }
 
 .podium-place.first .podium-stand {
@@ -4160,6 +4203,7 @@ img {
     width: 120px;
     background: linear-gradient(135deg, #ffd700, #ffb300);
     color: #8b6914;
+    box-shadow: 0 12px 24px rgba(255, 191, 0, 0.25);
 }
 
 .podium-place.second .podium-stand {
@@ -4182,6 +4226,10 @@ img {
     justify-content: space-between;
     margin-bottom: 25px;
     color: var(--white);
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .your-position-info {
@@ -4226,10 +4274,20 @@ img {
     border-radius: var(--radius-lg);
     padding: 20px;
     box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-100);
 }
 
 .leaderboard-table tbody tr.you {
     background: var(--primary-light);
+}
+
+.leaderboard-table tbody tr {
+    transition: var(--transition);
+}
+
+.leaderboard-table tbody tr:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
 
 .leaderboard-table .user-cell {
@@ -4248,6 +4306,8 @@ img {
     justify-content: center;
     color: var(--white);
     overflow: hidden;
+    border: 2px solid var(--white);
+    box-shadow: var(--shadow-sm);
 }
 
 .leaderboard-table .table-avatar img {
@@ -4822,6 +4882,7 @@ img {
 .profile-container {
     max-width: 1200px;
     margin: 0 auto;
+    padding: 6px 2px 16px;
 }
 
 .profile-header-card {
@@ -4829,12 +4890,29 @@ img {
     border-radius: var(--radius-xl);
     overflow: hidden;
     margin-bottom: 16px;
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-100);
+    position: relative;
+    transition: var(--transition);
+}
+
+.profile-header-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.08), rgba(37, 99, 235, 0.06), rgba(15, 118, 110, 0.08));
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+.profile-header-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
 }
 
 .profile-cover {
-    height: 110px;
-    background: var(--gradient-blue);
+    height: 140px;
+    background: linear-gradient(120deg, rgba(14, 165, 233, 0.95), rgba(15, 118, 110, 0.95));
     position: relative;
 }
 
@@ -4867,6 +4945,10 @@ img {
     margin-top: -40px;
     position: relative;
     z-index: 1;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    margin-inline: 16px;
+    box-shadow: var(--shadow-sm);
 }
 
 .profile-avatar-wrapper {
@@ -4887,6 +4969,7 @@ img {
     font-size: 36px;
     overflow: hidden;
     box-shadow: var(--shadow-lg);
+    position: relative;
 }
 
 .profile-avatar img {
@@ -4926,7 +5009,7 @@ img {
 }
 
 .profile-header-info .profile-name {
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 700;
     color: var(--gray-900);
     margin: 0;
@@ -4942,7 +5025,7 @@ img {
 
 .profile-badges {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
     align-items: center;
 }
@@ -4972,17 +5055,29 @@ img {
 }
 
 .profile-header-stats {
-    display: flex;
-    gap: 24px;
-    padding: 16px 24px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    padding: 18px 20px 22px;
     border-top: 1px solid var(--gray-100);
-    background: var(--gray-50);
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(226, 232, 240, 0.35));
     justify-content: center;
 }
 
 .profile-header-card .profile-stat {
     text-align: center;
     min-width: 64px;
+    padding: 10px 12px;
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-100);
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+
+.profile-header-card .profile-stat:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
 .profile-header-card .profile-stat .stat-value {
@@ -5002,7 +5097,7 @@ img {
 .profile-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
+    gap: 18px;
 }
 
 .profile-card {
@@ -5010,6 +5105,13 @@ img {
     border-radius: var(--radius-lg);
     overflow: hidden;
     box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-100);
+    transition: var(--transition);
+}
+
+.profile-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
 .profile-card.full-width {
@@ -5020,8 +5122,9 @@ img {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 16px;
+    padding: 16px 18px;
     border-bottom: 1px solid var(--gray-100);
+    background: var(--gray-50);
 }
 
 .profile-card .card-header h3 {
@@ -5039,11 +5142,11 @@ img {
 }
 
 .profile-card .card-body {
-    padding: 14px 16px;
+    padding: 16px 18px;
 }
 
 .profile-bio {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--gray-600);
     line-height: 1.6;
 }
@@ -5058,6 +5161,10 @@ img {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    padding: 10px 12px;
+    background: var(--gray-50);
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-100);
 }
 
 .info-label {
@@ -5106,13 +5213,23 @@ img {
 
 .achievements-list {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 14px;
 }
 
 .achievement-badge {
     text-align: center;
-    padding: 12px;
+    padding: 14px 12px;
+    background: var(--gray-50);
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-100);
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+
+.achievement-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
 .achievement-badge i {
@@ -5132,6 +5249,10 @@ img {
     grid-template-columns: repeat(52, 1fr);
     gap: 3px;
     min-height: 90px;
+    padding: 12px;
+    background: var(--gray-50);
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-100);
 }
 
 .activity-day {

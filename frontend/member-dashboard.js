@@ -13,6 +13,7 @@ let memberSectionsPublished = false;
 let memberSessionStatus = 'DRAFT';
 let memberHasSections = false;
 let memberWorkshopSocketBound = false;
+let latestAttendance = [];
 
 // Check authentication
 if (!token) {
@@ -84,6 +85,7 @@ async function verifyAuth() {
         }
 
         await loadMyClubs();
+        refreshNotificationBadge();
         const initialPage = getPageFromUrl();
         switchPage(initialPage, { replaceHistory: true });
         initHistoryNavigation();
@@ -534,6 +536,7 @@ async function loadDashboardStats() {
         const dashData = await dashResponse.json();
         const leaderData = await leaderboardResponse.json();
         const attendanceData = await attendanceResponse.json();
+        latestAttendance = attendanceData.success ? (attendanceData.attendance || []) : [];
 
         if (dashData.success) {
             const dash = dashData.dashboard;
@@ -694,6 +697,10 @@ async function loadDashboardStats() {
                         </div>
                     `;
             }
+            initActivityChart();
+            initAttendanceChart();
+            setDashboardLoading(false);
+            initAttendanceChart();
             setDashboardLoading(false);
         } else {
             throw new Error(dashData.message || 'Failed to load dashboard data');
@@ -988,12 +995,12 @@ function renderCalendarDayEvents(dayKey, dayEvents) {
         </div>
         <div class="calendar-events-list">
             ${dayEvents.map(event => {
-                const d = new Date(event.date);
-                const status = getEventStatus(getDateOnly(d), today);
-                const isPast = status === 'past';
-                const venue = event.venue || 'TBA';
-                const { rsvpButton, attendanceButton } = buildEventActionButtons(event, isPast);
-                return `
+        const d = new Date(event.date);
+        const status = getEventStatus(getDateOnly(d), today);
+        const isPast = status === 'past';
+        const venue = event.venue || 'TBA';
+        const { rsvpButton, attendanceButton } = buildEventActionButtons(event, isPast);
+        return `
                 <div class="calendar-event-item">
                     <div class="calendar-event-main">
                         <div class="calendar-event-title-row">
@@ -1007,7 +1014,7 @@ function renderCalendarDayEvents(dayKey, dayEvents) {
                         ${attendanceButton}
                     </div>
                 </div>`;
-            }).join('')}
+    }).join('')}
         </div>
     `;
 }
@@ -2999,6 +3006,24 @@ function updateNotificationBadge(count) {
     }
 }
 
+async function refreshNotificationBadge() {
+    try {
+        const response = await fetch(`${API_URL}/notifications`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        const data = await response.json();
+        if (data && data.success) {
+            updateNotificationBadge(data.unreadCount || 0);
+        } else {
+            updateNotificationBadge(0);
+        }
+    } catch (error) {
+        updateNotificationBadge(0);
+    }
+}
+
 function closeNotificationsModal() {
     const modal = document.getElementById('notificationsModal');
     if (modal) {
@@ -3955,19 +3980,62 @@ setTimeout(loadDashboardWidgets, 1000);
 let activityChart = null;
 let attendanceChart = null;
 
+function resolveRecordDate(record) {
+    const raw = record?.timestamp || record?.date || record?.createdAt;
+    if (!raw) return null;
+    const d = new Date(raw);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function buildWeeklyActivitySeries(records = []) {
+    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const data = Array(labels.length).fill(0);
+    records.forEach((rec) => {
+        const date = resolveRecordDate(rec);
+        if (!date) return;
+        const day = date.getDay();
+        const index = day === 0 ? 6 : day - 1;
+        data[index] += 1;
+    });
+    return { labels, data };
+}
+
+function buildMonthlyAttendanceSeries(records = []) {
+    const now = new Date();
+    const labels = [];
+    const data = [];
+    const monthKeys = [];
+    for (let i = 5; i >= 0; i -= 1) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        monthKeys.push(key);
+        labels.push(d.toLocaleString('default', { month: 'short' }));
+        data.push(0);
+    }
+    records.forEach((rec) => {
+        const date = resolveRecordDate(rec);
+        if (!date) return;
+        const key = `${date.getFullYear()}-${date.getMonth()}`;
+        const idx = monthKeys.indexOf(key);
+        if (idx >= 0) data[idx] += 1;
+    });
+    return { labels, data };
+}
+
 function initActivityChart() {
     const ctx = document.getElementById('activityChart')?.getContext('2d');
     if (!ctx) return;
 
     if (activityChart) activityChart.destroy();
+    const series = buildWeeklyActivitySeries(latestAttendance);
 
     activityChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            labels: series.labels,
             datasets: [{
                 label: 'Activity',
-                data: [5, 10, 8, 15, 12, 18, 14],
+                data: series.data,
                 borderColor: '#3b82f6',
                 backgroundColor: 'rgba(59, 130, 246, 0.1)',
                 fill: true,
@@ -3998,14 +4066,15 @@ function initAttendanceChart() {
     if (!ctx) return;
 
     if (attendanceChart) attendanceChart.destroy();
+    const series = buildMonthlyAttendanceSeries(latestAttendance);
 
     attendanceChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            labels: series.labels,
             datasets: [{
                 label: 'Events Attended',
-                data: [3, 5, 4, 6, 8, 5],
+                data: series.data,
                 backgroundColor: '#10b981',
                 borderRadius: 6
             }]
@@ -4748,7 +4817,11 @@ function initializeSocket() {
         socket = io(API_URL, {
             auth: {
                 token: token
-            }
+            },
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 10000,
+            timeout: 20000
         });
 
         socket.on('connect', () => {

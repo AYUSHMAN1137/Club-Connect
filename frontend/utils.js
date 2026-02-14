@@ -3,6 +3,33 @@
 window.API_URL = window.API_URL || 'http://localhost:4000';
 const API_URL = window.API_URL;
 
+// ===== NGROK INTERSTITIAL BYPASS =====
+// When using ngrok free tier, it injects an HTML warning page before the actual response.
+// This global fetch interceptor adds the bypass header to ALL fetch requests automatically.
+(function () {
+    const hostname = window.location.hostname;
+    const isNgrok = hostname.endsWith('ngrok-free.app') || hostname.endsWith('ngrok.app') || hostname.endsWith('ngrok.dev');
+    if (!isNgrok) return;
+
+    const originalFetch = window.fetch;
+    window.fetch = function (input, init) {
+        init = init || {};
+        init.headers = init.headers || {};
+        // Support both Headers object and plain object
+        if (init.headers instanceof Headers) {
+            if (!init.headers.has('ngrok-skip-browser-warning')) {
+                init.headers.set('ngrok-skip-browser-warning', 'true');
+            }
+        } else {
+            if (!init.headers['ngrok-skip-browser-warning']) {
+                init.headers['ngrok-skip-browser-warning'] = 'true';
+            }
+        }
+        return originalFetch.call(this, input, init);
+    };
+    console.log('🌐 Ngrok detected — fetch interceptor active');
+})();
+
 // Loading Spinner Component
 function showLoading(elementId) {
     const element = document.getElementById(elementId);
@@ -58,17 +85,27 @@ function initDarkMode() {
     }
 }
 
+// Detect if we're running through ngrok
+const isNgrokEnv = window.location.hostname.endsWith('ngrok-free.app') ||
+    window.location.hostname.endsWith('ngrok.app') ||
+    window.location.hostname.endsWith('ngrok.dev');
+
 // API Helper with loading
 async function apiCall(url, options = {}) {
     const token = localStorage.getItem('token');
     try {
+        const headers = {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+        // Bypass ngrok's interstitial warning page
+        if (isNgrokEnv) {
+            headers['ngrok-skip-browser-warning'] = 'true';
+        }
         const response = await fetch(`${API_URL}${url}`, {
             ...options,
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
+            headers
         });
 
         if (!response.ok) {

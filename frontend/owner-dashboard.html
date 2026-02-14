@@ -18,7 +18,16 @@
             const hostname = window.location.hostname;
             const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
             const isFile = window.location.protocol === 'file:' || !hostname;
-            window.API_URL = (isLocal || isFile) ? 'http://localhost:4000' : 'https://club-connect-hvsz.onrender.com';
+            const isNgrok = hostname.endsWith('ngrok-free.app') || hostname.endsWith('ngrok.app') || hostname.endsWith('ngrok.dev');
+            if (isFile) {
+                window.API_URL = 'http://localhost:4000';
+                return;
+            }
+            if (isLocal || isNgrok) {
+                window.API_URL = window.location.origin;
+                return;
+            }
+            window.API_URL = 'https://club-connect-hvsz.onrender.com';
         })();
     </script>
 </head>
@@ -1243,6 +1252,20 @@
 
         console.log('✅ Fallback functions initialized');
     </script>
+
+    <div class="confirm-dialog" id="confirmDialog">
+        <div class="confirm-content">
+            <div class="confirm-icon" id="confirmIcon">
+                <i class="fa-solid fa-question-circle"></i>
+            </div>
+            <h3 id="confirmTitle">Confirm Action</h3>
+            <p id="confirmMessage">Are you sure you want to proceed?</p>
+            <div class="confirm-actions">
+                <button class="btn-secondary" onclick="closeConfirmDialog()">Cancel</button>
+                <button class="btn-primary" id="confirmBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
 
     <script src="owner-dashboard.js"></script>
 

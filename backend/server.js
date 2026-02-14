@@ -8,17 +8,39 @@ const QRCode = require('qrcode');
 const multer = require('multer');
 const { Server } = require('socket.io');
 const http = require('http');
+const { spawn } = require('child_process');
 const dotenv = require('dotenv');
 dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
 
+// ========== GLOBAL ERROR HANDLERS (prevent silent crashes) ==========
+process.on('uncaughtException', (err) => {
+    console.error('❌ UNCAUGHT EXCEPTION — keeping server alive:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ UNHANDLED REJECTION — keeping server alive:', reason);
+});
+
 // ========== SQL DATABASE SERVICE ==========
 const db = require('./utils/dbService');
 const { generateNonce, generateAttendanceToken, verifyAttendanceToken, generateAttendanceCode } = require('./utils/tokenUtils');
 
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || '*';
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || '';
+const allowAllOrigins = CLIENT_ORIGIN.trim() === '' || CLIENT_ORIGIN.trim() === '*';
+const allowedOrigins = allowAllOrigins
+    ? []
+    : CLIENT_ORIGIN.split(',').map(o => o.trim()).filter(Boolean);
+
+const corsOrigin = (origin, callback) => {
+    if (allowAllOrigins) return callback(null, true);
+    if (!origin) return callback(null, true);
+    const appUrl = String(process.env.APP_URL || '').trim();
+    if (appUrl && origin === appUrl) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+};
 
 db.ClubOwner.sync().catch(() => null);
 
@@ -26,9 +48,24 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: CLIENT_ORIGIN,
+        origin: corsOrigin,
+        credentials: true,
         methods: ["GET", "POST"]
+    },
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    maxHttpBufferSize: 1e6,
+    connectionStateRecovery: {
+        maxDisconnectionDuration: 2 * 60 * 1000,
+        skipMiddlewares: true
     }
+});
+
+// Catch per-socket errors so one bad connection doesn't crash the server
+io.on('connection', (socket) => {
+    socket.on('error', (err) => {
+        console.error(`Socket ${socket.id} error:`, err.message || err);
+    });
 });
 
 // ========== MULTER SETUP FOR FILE UPLOADS ==========
@@ -102,8 +139,9 @@ const uploadCertificate = multer({
 // ========== SQL-ONLY APP CONFIG ==========
 
 // Middleware
-app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
-app.use(express.json());
+app.use(cors({ origin: corsOrigin, credentials: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rate limit for auth (prevents brute-force on login/register)
 const authLimiter = rateLimit({
@@ -115,6 +153,9 @@ const authLimiter = rateLimit({
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsDir));
 app.use('/uploads/certificates', express.static(certificatesDir));
+
+const frontendDir = path.join(__dirname, '..', 'frontend');
+app.use(express.static(frontendDir));
 
 function getBaseUrl(req) {
     // Prefer explicit APP_URL in production; fallback to request host.
@@ -300,16 +341,18 @@ async function isAdmin(req, res, next) {
 
 // Test route
 app.get('/', (req, res) => {
-    res.json({ message: 'Server is running! 🚀' });
+    res.sendFile(path.join(frontendDir, 'index.html'));
 });
 
 app.get('/health', async (req, res) => {
     try {
         await db.sequelize.authenticate();
-        const rawUrl = process.env.DATABASE_URL || '';
-        const dbMode = rawUrl
-            ? (/localhost|127\.0\.0\.1/i.test(rawUrl) ? 'env_local_url' : 'env_remote_url')
-            : 'default_local';
+        const rawUrl = db.sequelize.connectionUrl || process.env.DATABASE_URL || '';
+        const resolvedMode = db.sequelize.connectionMode || '';
+        const isLocal = rawUrl ? /localhost|127\.0\.0\.1/i.test(rawUrl) : true;
+        const dbMode = resolvedMode
+            ? resolvedMode
+            : (rawUrl ? (isLocal ? 'env_local_url' : 'env_remote_url') : 'default_local');
         let host = null;
         try {
             host = rawUrl ? new URL(rawUrl).hostname : null;
@@ -5100,14 +5143,177 @@ app.get('/admin/system-stats', verifyToken, async (req, res) => {
     return res.status(501).json({ success: false, message: 'Not available in SQL-only version.' });
 });
 
-// Start server
-const PORT = process.env.PORT || 4000;
+// ========== CATCH-ALL EXPRESS ERROR HANDLER ==========
+// This prevents unhandled route/middleware errors from crashing the server
+app.use((err, req, res, next) => {
+    console.error('Express error:', err.message || err);
+    if (res.headersSent) return next(err);
+    const status = err.status || err.statusCode || 500;
+    res.status(status).json({
+        success: false,
+        message: process.env.NODE_ENV === 'production'
+            ? 'Internal server error'
+            : (err.message || 'Internal server error')
+    });
+});
 
-// Connect to PostgreSQL and start server.
-// Schema creation/updates are handled via dedicated migration scripts (see package.json db:* scripts).
+const PORT = process.env.PORT || 4000;
+let serverStarted = false;
+let ngrokProcess = null;
+let ngrokPublicUrl = '';
+let ngrokStarting = false;
+
+function isTruthy(value) {
+    const v = String(value || '').trim().toLowerCase();
+    return v === '1' || v === 'true' || v === 'yes' || v === 'y' || v === 'on';
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function httpGetJson(url, timeoutMs = 4000) {
+    return new Promise((resolve, reject) => {
+        const req = http.get(url, res => {
+            let data = '';
+            res.setEncoding('utf8');
+            res.on('data', chunk => (data += chunk));
+            res.on('end', () => {
+                try {
+                    resolve(JSON.parse(data || '{}'));
+                } catch (err) {
+                    reject(err);
+                }
+            });
+        });
+        req.on('error', reject);
+        req.setTimeout(timeoutMs, () => req.destroy(new Error('Request timed out')));
+    });
+}
+
+function shouldAutoStartNgrok() {
+    if (process.env.NGROK_AUTOSTART !== undefined) return isTruthy(process.env.NGROK_AUTOSTART);
+    const mode = String(db?.sequelize?.connectionMode || '').toLowerCase();
+    const isLocalDb = mode === 'offline' || mode === 'local' || mode === 'sqlite' || mode === 'sqlite3';
+    return isLocalDb && String(process.env.NODE_ENV || '').toLowerCase() !== 'production';
+}
+
+async function startNgrok(port) {
+    if (ngrokPublicUrl) return ngrokPublicUrl;
+    if (ngrokStarting) return '';
+    ngrokStarting = true;
+
+    const region = String(process.env.NGROK_REGION || '').trim();
+    const args = ['http', String(port)];
+    if (region) args.push('--region', region);
+    args.push('--log=stdout', '--log-format=json');
+
+    const ngrokCmd = String(process.env.NGROK_BIN || process.env.NGROK_PATH || 'ngrok').trim() || 'ngrok';
+
+    try {
+        ngrokProcess = spawn(ngrokCmd, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    } catch (err) {
+        ngrokStarting = false;
+        console.error(`❌ ngrok start failed (command: ${ngrokCmd})`, err.message || err);
+        return '';
+    }
+
+    ngrokProcess.on('error', err => {
+        ngrokProcess = null;
+        ngrokPublicUrl = '';
+        ngrokStarting = false;
+        console.error(`❌ ngrok process error (command: ${ngrokCmd})`, err.message || err);
+    });
+
+    ngrokProcess.on('exit', () => {
+        ngrokProcess = null;
+        ngrokPublicUrl = '';
+        ngrokStarting = false;
+    });
+
+    const deadline = Date.now() + 20000;
+    while (Date.now() < deadline) {
+        try {
+            const data = await httpGetJson('http://127.0.0.1:4040/api/tunnels');
+            const tunnels = Array.isArray(data?.tunnels) ? data.tunnels : [];
+            const httpsTunnel = tunnels.find(t => typeof t?.public_url === 'string' && t.public_url.startsWith('https://'));
+            const anyTunnel = tunnels.find(t => typeof t?.public_url === 'string');
+            const url = (httpsTunnel || anyTunnel || {}).public_url;
+            if (url) {
+                ngrokPublicUrl = url;
+                process.env.APP_URL = url;
+                console.log(`🌐 Public URL (ngrok): ${url}`);
+                ngrokStarting = false;
+                return url;
+            }
+        } catch (_) {
+        }
+        await delay(500);
+    }
+
+    ngrokStarting = false;
+    console.warn('⚠️ ngrok started but public URL not detected (http://127.0.0.1:4040).');
+    return '';
+}
+
+async function startServer() {
+    if (serverStarted) return;
+    serverStarted = true;
+
+    try {
+        await new Promise((resolve, reject) => {
+            const onError = err => {
+                server.off('listening', onListening);
+                reject(err);
+            };
+            const onListening = () => {
+                server.off('error', onError);
+                resolve();
+            };
+            server.once('error', onError);
+            server.once('listening', onListening);
+            server.listen(PORT);
+        });
+    } catch (err) {
+        serverStarted = false;
+        const code = err && typeof err === 'object' ? err.code : '';
+        if (code === 'EADDRINUSE') {
+            console.error(`❌ Port ${PORT} already in use. Set PORT to a free port and restart.`);
+        } else {
+            console.error('❌ Server failed to start:', err);
+        }
+        return;
+    }
+
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📡 Socket.IO server ready`);
+
+    if (shouldAutoStartNgrok()) {
+        await startNgrok(PORT);
+    }
+}
+
+function stopNgrok() {
+    if (!ngrokProcess) return;
+    try {
+        ngrokProcess.kill();
+    } catch (_) {
+    }
+}
+
+process.once('SIGINT', () => {
+    stopNgrok();
+    process.exit(0);
+});
+
+process.once('SIGTERM', () => {
+    stopNgrok();
+    process.exit(0);
+});
+
 db.sequelize.authenticate()
     .then(async () => {
-        console.log('✅ Database connected (PostgreSQL)');
+        console.log('✅ Database connected');
     })
     .then(async () => {
         await ensureActiveClubColumn();
@@ -5116,12 +5322,9 @@ db.sequelize.authenticate()
         await ensureAdminUser();
     })
     .then(() => {
-
-        server.listen(PORT, () => {
-            console.log(`🚀 Server running on http://localhost:${PORT}`);
-            console.log(`📡 Socket.IO server ready`);
-        });
+        startServer();
     })
     .catch(err => {
         console.error('❌ Database connection failed:', err);
+        startServer();
     });
