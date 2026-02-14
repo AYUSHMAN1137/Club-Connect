@@ -16,7 +16,16 @@
             const hostname = window.location.hostname;
             const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
             const isFile = window.location.protocol === 'file:' || !hostname;
-            window.API_URL = (isLocal || isFile) ? 'http://localhost:4000' : 'https://club-connect-hvsz.onrender.com';
+            const isNgrok = hostname.endsWith('ngrok-free.app') || hostname.endsWith('ngrok.app') || hostname.endsWith('ngrok.dev');
+            if (isFile) {
+                window.API_URL = 'http://localhost:4000';
+                return;
+            }
+            if (isLocal || isNgrok) {
+                window.API_URL = window.location.origin;
+                return;
+            }
+            window.API_URL = 'https://club-connect-hvsz.onrender.com';
         })();
     </script>
     <script>
@@ -98,7 +107,7 @@
             <div class="notification-wrapper">
                 <button class="navbar-icon-btn" id="notificationBell" title="Notifications">
                     <i class="fa-solid fa-bell"></i>
-                    <span class="notification-badge" id="notificationBadge">3</span>
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
                 </button>
                 <div class="notification-dropdown" id="notificationDropdown">
                     <div class="notification-header">
