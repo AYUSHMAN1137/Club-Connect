@@ -262,6 +262,51 @@ let activeWorkshopBundle = null;
 let workshopPreviewEnabled = false;
 let workshopSocketBound = false;
 
+const moduleCache = new Map();
+const MODULE_CACHE_TTL = 120000;
+
+function getModuleCacheKey(moduleName) {
+    const userPart = currentUserId != null ? String(currentUserId) : 'anon';
+    const clubPart = currentClubId != null ? String(currentClubId) : 'club';
+    return `${moduleName}:${userPart}:${clubPart}`;
+}
+
+function getModuleCache(moduleName, ttl = MODULE_CACHE_TTL) {
+    const key = getModuleCacheKey(moduleName);
+    const entry = moduleCache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp < ttl) return entry.data;
+    moduleCache.delete(key);
+    return null;
+}
+
+function setModuleCache(moduleName, data) {
+    const key = getModuleCacheKey(moduleName);
+    moduleCache.set(key, { data, timestamp: Date.now() });
+}
+
+function invalidateModuleCache(moduleName) {
+    if (!moduleName) return;
+    if (moduleName === 'all') {
+        moduleCache.clear();
+        return;
+    }
+    const key = getModuleCacheKey(moduleName);
+    if (moduleCache.has(key)) moduleCache.delete(key);
+}
+
+function invalidateModuleCacheGroup(prefix) {
+    if (!prefix) return;
+    const userPart = currentUserId != null ? String(currentUserId) : 'anon';
+    const clubPart = currentClubId != null ? String(currentClubId) : 'club';
+    const suffix = `:${userPart}:${clubPart}`;
+    Array.from(moduleCache.keys()).forEach((key) => {
+        if (key.startsWith(`${prefix}:`) && key.endsWith(suffix)) {
+            moduleCache.delete(key);
+        }
+    });
+}
+
 // Get token from localStorage
 const token = localStorage.getItem('token');
 
@@ -311,6 +356,7 @@ async function verifyAuth() {
             welcomeOwnerNameEl.textContent = data.user.username || 'Owner';
         }
         currentUserId = data.user.id;
+        moduleCache.clear();
         initOwnerChecklist({ forceRestore: true });
 
         // Clear any cached data when new user logs in
@@ -1266,45 +1312,30 @@ function closeMemberProfile() {
 window.openMemberProfile = openMemberProfile;
 window.closeMemberProfile = closeMemberProfile;
 
-async function loadMembers() {
-    try {
-        console.log('🔄 Loading members for current club...');
-        const response = await fetch(`${getApiUrl()}/owner/members`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
-            cache: 'no-cache' // Ensure fresh data
-        });
+function renderMembersFromData(data) {
+    if (!data || !data.success) {
+        showNotification(data?.message || 'Failed to load members', 'error');
+        return;
+    }
+    allLoadedMembers = data.members || [];
+    window.allLoadedMembers = allLoadedMembers;
+    console.log(`✅ Loaded ${allLoadedMembers.length} members for current club`);
+    console.log('Members:', allLoadedMembers.map(m => m.username).join(', '));
 
-        if (!response.ok) {
-            console.error('Members API error:', response.status);
-            const errorText = await response.text();
-            showNotification('Failed to load members. ' + (errorText || ''), 'error');
-            return;
-        }
+    const tbody = document.getElementById('membersTableBody');
+    if (!tbody) return;
 
-        const data = await response.json();
+    if (!data.members || data.members.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">No members yet. Add members using Student ID above.</td></tr>';
+        return;
+    }
 
-        if (data.success) {
-            // Clear previous members and store new ones for current club ONLY
-            allLoadedMembers = data.members || [];
-            window.allLoadedMembers = allLoadedMembers;
-            console.log(`✅ Loaded ${allLoadedMembers.length} members for current club`);
-            console.log('Members:', allLoadedMembers.map(m => m.username).join(', '));
-
-            const tbody = document.getElementById('membersTableBody');
-
-            if (data.members.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="loading">No members yet. Add members using Student ID above.</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = data.members.map(member => {
-                const safeName = escapeHtml(member.username || '');
-                const safeEmail = escapeHtml(member.email || '');
-                const safeStudentId = escapeHtml(member.studentId || '');
-                const safeRole = escapeHtml((member.clubRole || 'member'));
-                return `
+    tbody.innerHTML = data.members.map(member => {
+        const safeName = escapeHtml(member.username || '');
+        const safeEmail = escapeHtml(member.email || '');
+        const safeStudentId = escapeHtml(member.studentId || '');
+        const safeRole = escapeHtml((member.clubRole || 'member'));
+        return `
                 <tr data-member-id="${member.id}">
                     <td><button type="button" class="link-btn member-link" data-member-id="${member.id}" onclick="openMemberProfile(${member.id})">${safeName}</button></td>
                     <td>${safeEmail}</td>
@@ -1331,13 +1362,40 @@ async function loadMembers() {
                         </div>
                     </td>
                 </tr>
-            `}).join('');
+            `;
+    }).join('');
 
-            // Initialize dropdown interactions after rendering
-            initActionDropdowns();
-        } else {
-            showNotification(data.message || 'Failed to load members', 'error');
+    initActionDropdowns();
+}
+
+async function loadMembers() {
+    try {
+        const cached = getModuleCache('members');
+        if (cached) {
+            renderMembersFromData(cached);
+            return;
         }
+        console.log('🔄 Loading members for current club...');
+        const response = await fetch(`${getApiUrl()}/owner/members`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            cache: 'no-cache' // Ensure fresh data
+        });
+
+        if (!response.ok) {
+            console.error('Members API error:', response.status);
+            const errorText = await response.text();
+            showNotification('Failed to load members. ' + (errorText || ''), 'error');
+            return;
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            setModuleCache('members', data);
+        }
+        renderMembersFromData(data);
     } catch (error) {
         console.error('Error loading members:', error);
         if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
@@ -1381,6 +1439,8 @@ async function awardPoints(points) {
         if (data.success) {
             showNotification(data.message, 'success');
             closeAwardPointsModal();
+            invalidateModuleCache('members');
+            invalidateModuleCacheGroup('analytics');
             loadMembers();
         } else {
             showNotification(data.message, 'error');
@@ -1409,6 +1469,10 @@ async function removeMember(memberId, memberName) {
 
         if (data.success) {
             showNotification(data.message, 'success');
+            invalidateModuleCache('members');
+            invalidateModuleCache('messages');
+            invalidateModuleCache('project-progress');
+            invalidateModuleCacheGroup('analytics');
             loadMembers();
             loadDashboardStats();
         } else {
@@ -1422,41 +1486,28 @@ async function removeMember(memberId, memberName) {
 
 // Load Events
 let eventsLoadInFlight = false;
-async function loadEvents() {
-    if (eventsLoadInFlight) return;
-    eventsLoadInFlight = true;
-    try {
-        const response = await fetch(`${getApiUrl()}/owner/events`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
 
-        if (!response.ok) {
-            console.error('Events API error:', response.status);
-            const errorText = await response.text();
-            showNotification('Failed to load events. ' + (errorText || ''), 'error');
-            return;
-        }
+function renderEventsFromData(data) {
+    if (!data || !data.success) {
+        showNotification(data?.message || 'Failed to load events', 'error');
+        return;
+    }
+    const grid = document.getElementById('eventsGrid');
+    if (!grid) return;
 
-        const data = await response.json();
+    if (!data.events || data.events.length === 0) {
+        grid.innerHTML = '<p class="loading">No events yet. Create one!</p>';
+        return;
+    }
 
-        if (data.success) {
-            const grid = document.getElementById('eventsGrid');
+    grid.innerHTML = data.events.map(event => {
+        const d = new Date(event.date);
+        const day = d.getDate();
+        const month = d.toLocaleString('default', { month: 'short' });
+        const isPast = new Date(event.date) < new Date(Date.now() - 86400000);
+        const attendedCount = event.attendedCount || (event.attendanceList ? event.attendanceList.length : 0);
 
-            if (data.events.length === 0) {
-                grid.innerHTML = '<p class="loading">No events yet. Create one!</p>';
-                return;
-            }
-
-            grid.innerHTML = data.events.map(event => {
-                const d = new Date(event.date);
-                const day = d.getDate();
-                const month = d.toLocaleString('default', { month: 'short' });
-                const isPast = new Date(event.date) < new Date(Date.now() - 86400000);
-                const attendedCount = event.attendedCount || (event.attendanceList ? event.attendanceList.length : 0);
-
-                return `
+        return `
                 <div class="event-card ${isPast ? 'is-past' : 'is-upcoming'}">
                     <div class="event-card-header">
                         <div class="event-date-badge">
@@ -1508,10 +1559,37 @@ async function loadEvents() {
                         </button>`}
                     </div>
                 </div>`;
-            }).join('');
-        } else {
-            showNotification(data.message || 'Failed to load events', 'error');
+    }).join('');
+}
+
+async function loadEvents() {
+    if (eventsLoadInFlight) return;
+    eventsLoadInFlight = true;
+    try {
+        const cached = getModuleCache('events');
+        if (cached) {
+            renderEventsFromData(cached);
+            return;
         }
+        const response = await fetch(`${getApiUrl()}/owner/events`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            console.error('Events API error:', response.status);
+            const errorText = await response.text();
+            showNotification('Failed to load events. ' + (errorText || ''), 'error');
+            return;
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            setModuleCache('events', data);
+        }
+        renderEventsFromData(data);
     } catch (error) {
         console.error('Error loading events:', error);
         if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
@@ -1571,6 +1649,8 @@ async function deleteEventOwner(eventId, eventTitle) {
                 const data = await response.json();
                 if (data.success) {
                     showNotification('Event deleted!', 'success');
+                    invalidateModuleCache('events');
+                    invalidateModuleCacheGroup('analytics');
                     loadEvents();
                     loadDashboardStats();
                 } else {
@@ -1639,6 +1719,8 @@ document.getElementById('eventForm').addEventListener('submit', async (e) => {
         if (data.success) {
             showNotification('Event created successfully!', 'success');
             hideCreateEventForm();
+            invalidateModuleCache('events');
+            invalidateModuleCacheGroup('analytics');
             loadEvents();
             loadDashboardStats();
         } else {
@@ -1672,34 +1754,30 @@ function showQRCode(eventId, qrCode, eventTitle) {
 }
 
 // Load Announcements
-async function loadAnnouncements() {
-    try {
-        const response = await fetch(`${getApiUrl()}/owner/announcements`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+function renderAnnouncementsFromData(data) {
+    if (!data || !data.success) {
+        showNotification(data?.message || 'Failed to load announcements', 'error');
+        return;
+    }
+    const list = document.getElementById('announcementsList');
+    const countEl = document.getElementById('announcementsCount');
+    if (countEl) {
+        countEl.textContent = `${data.announcements.length} total`;
+    }
 
-        const data = await response.json();
+    if (!list) return;
 
-        if (data.success) {
-            const list = document.getElementById('announcementsList');
-            const countEl = document.getElementById('announcementsCount');
-            if (countEl) {
-                countEl.textContent = `${data.announcements.length} total`;
-            }
-
-            if (data.announcements.length === 0) {
-                list.innerHTML = `
+    if (!data.announcements || data.announcements.length === 0) {
+        list.innerHTML = `
                     <div class="empty-state">
                         <i class="fa-solid fa-bullhorn"></i>
                         <p>No announcements yet</p>
                     </div>
                 `;
-                return;
-            }
+        return;
+    }
 
-            list.innerHTML = data.announcements.map(announcement => `
+    list.innerHTML = data.announcements.map(announcement => `
                 <div class="announcement-item">
                     <div class="announcement-item-header">
                         <div class="announcement-item-body">
@@ -1716,7 +1794,27 @@ async function loadAnnouncements() {
                     </div>
                 </div>
             `).join('');
+}
+
+async function loadAnnouncements() {
+    try {
+        const cached = getModuleCache('announcements');
+        if (cached) {
+            renderAnnouncementsFromData(cached);
+            return;
         }
+        const response = await fetch(`${getApiUrl()}/owner/announcements`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            setModuleCache('announcements', data);
+        }
+        renderAnnouncementsFromData(data);
     } catch (error) {
         console.error('Error loading announcements:', error);
         showNotification('Failed to load announcements', 'error');
@@ -1734,6 +1832,7 @@ async function deleteAnnouncementOwner(announcementId, title) {
         const data = await response.json();
         if (data.success) {
             showNotification('Announcement deleted!', 'success');
+            invalidateModuleCache('announcements');
             loadAnnouncements();
         } else {
             showNotification(data.message || 'Failed to delete announcement', 'error');
@@ -1769,6 +1868,7 @@ document.getElementById('announcementForm').addEventListener('submit', async (e)
         if (data.success) {
             showNotification('Announcement sent successfully!', 'success');
             document.getElementById('announcementForm').reset();
+            invalidateModuleCache('announcements');
             loadAnnouncements();
         } else {
             showNotification(data.message, 'error');
@@ -2009,6 +2109,12 @@ async function loadPolls() {
     if (!list) return;
     list.innerHTML = '<p class="loading">Loading polls...</p>';
     try {
+        const cached = getModuleCache('polls');
+        if (cached) {
+            ownerPollsCache = Array.isArray(cached) ? cached : [];
+            applyOwnerPollFiltersAndRender();
+            return;
+        }
         const response = await fetch(`${getApiUrl()}/owner/polls`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -2018,6 +2124,7 @@ async function loadPolls() {
             return;
         }
         ownerPollsCache = data.polls || [];
+        setModuleCache('polls', ownerPollsCache);
         applyOwnerPollFiltersAndRender();
     } catch (error) {
         console.error('Error loading polls:', error);
@@ -2041,6 +2148,7 @@ async function closePollOwner(pollId) {
         const data = await response.json();
         if (data.success) {
             showNotification('Poll closed!', 'success');
+            invalidateModuleCache('polls');
             loadPolls();
         } else {
             showNotification(data.message || 'Failed to close poll', 'error');
@@ -2061,6 +2169,7 @@ async function deletePollOwner(pollId) {
         const data = await response.json();
         if (data.success) {
             showNotification('Poll deleted!', 'success');
+            invalidateModuleCache('polls');
             loadPolls();
         } else {
             showNotification(data.message || 'Failed to delete poll', 'error');
@@ -2173,6 +2282,7 @@ document.getElementById('pollForm')?.addEventListener('submit', async (e) => {
             const endDateField = document.getElementById('pollEndDateField');
             if (endDateField) endDateField.classList.remove('is-visible');
             renderPollOptions();
+            invalidateModuleCache('polls');
             loadPolls();
         } else {
             showNotification(data.message || 'Failed to create poll', 'error');
@@ -2192,47 +2302,41 @@ document.getElementById('pollForm')?.addEventListener('submit', async (e) => {
 
 renderPollOptions();
 
-async function loadOwnerCertificates() {
+function renderOwnerCertificatesFromData(data) {
     const grid = document.getElementById('ownerCertificatesGrid');
     if (!grid) return;
-    grid.innerHTML = '<p class="loading">Loading certificates...</p>';
-    try {
-        const response = await fetch(`${getApiUrl()}/owner/certificates`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (!data.success) {
-            grid.innerHTML = '<p class="loading">Failed to load certificates.</p>';
-            return;
-        }
-        const certificates = data.certificates || [];
-        if (!certificates.length) {
-            grid.innerHTML = `
+    if (!data || !data.success) {
+        grid.innerHTML = '<p class="loading">Failed to load certificates.</p>';
+        return;
+    }
+    const certificates = data.certificates || [];
+    if (!certificates.length) {
+        grid.innerHTML = `
                 <div class="empty-state">
                     <i class="fa-solid fa-certificate"></i>
                     <p>No certificates uploaded yet</p>
                 </div>
             `;
-            return;
-        }
-        grid.innerHTML = certificates.map(cert => {
-            const title = escapeHtml(cert.title || 'Certificate');
-            const memberName = escapeHtml(cert.member?.username || 'Member');
-            const eventTitle = cert.event?.title ? escapeHtml(cert.event.title) : '';
-            const description = cert.description ? escapeHtml(cert.description) : '';
-            const uploadedAt = new Date(cert.uploadedAt).toLocaleDateString();
-            const issueDate = cert.issueDate ? new Date(cert.issueDate).toLocaleDateString() : '';
-            const fileType = (cert.fileType || '').toLowerCase();
-            return `
+        return;
+    }
+    grid.innerHTML = certificates.map(cert => {
+        const title = escapeHtml(cert.title || 'Certificate');
+        const memberName = escapeHtml(cert.member?.username || 'Member');
+        const eventTitle = cert.event?.title ? escapeHtml(cert.event.title) : '';
+        const description = cert.description ? escapeHtml(cert.description) : '';
+        const uploadedAt = new Date(cert.uploadedAt).toLocaleDateString();
+        const issueDate = cert.issueDate ? new Date(cert.issueDate).toLocaleDateString() : '';
+        const fileType = (cert.fileType || '').toLowerCase();
+        return `
                 <div class="certificate-card" data-title="${title}" data-file="${cert.filepath}" data-type="${fileType}">
                     <button class="certificate-delete-btn" data-cert-id="${cert.id}">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                     <div class="certificate-preview">
                         ${fileType === 'pdf'
-                    ? `<i class="fa-solid fa-file-pdf"></i>`
-                    : `<img src="${cert.filepath}" alt="${title}">`
-                }
+                ? `<i class="fa-solid fa-file-pdf"></i>`
+                : `<img src="${cert.filepath}" alt="${title}">`
+            }
                     </div>
                     <div class="certificate-info">
                         <h3>${title}</h3>
@@ -2249,20 +2353,40 @@ async function loadOwnerCertificates() {
                     </div>
                 </div>
             `;
-        }).join('');
-        grid.querySelectorAll('.certificate-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const fileUrl = card.getAttribute('data-file') || '';
-                if (fileUrl) window.open(fileUrl, '_blank', 'noopener');
-            });
+    }).join('');
+    grid.querySelectorAll('.certificate-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const fileUrl = card.getAttribute('data-file') || '';
+            if (fileUrl) window.open(fileUrl, '_blank', 'noopener');
         });
-        grid.querySelectorAll('.certificate-delete-btn').forEach(btn => {
-            btn.addEventListener('click', (event) => {
-                event.stopPropagation();
-                const certId = btn.getAttribute('data-cert-id');
-                if (certId) deleteOwnerCertificate(certId);
-            });
+    });
+    grid.querySelectorAll('.certificate-delete-btn').forEach(btn => {
+        btn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const certId = btn.getAttribute('data-cert-id');
+            if (certId) deleteOwnerCertificate(certId);
         });
+    });
+}
+
+async function loadOwnerCertificates() {
+    const grid = document.getElementById('ownerCertificatesGrid');
+    if (!grid) return;
+    grid.innerHTML = '<p class="loading">Loading certificates...</p>';
+    try {
+        const cached = getModuleCache('certificates');
+        if (cached) {
+            renderOwnerCertificatesFromData(cached);
+            return;
+        }
+        const response = await fetch(`${getApiUrl()}/owner/certificates`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            setModuleCache('certificates', data);
+        }
+        renderOwnerCertificatesFromData(data);
     } catch (error) {
         console.error('Error loading certificates:', error);
         grid.innerHTML = '<p class="loading">Failed to load certificates.</p>';
@@ -2280,6 +2404,7 @@ async function deleteOwnerCertificate(certId) {
         const data = await response.json();
         if (data.success) {
             showNotification('Certificate deleted!', 'success');
+            invalidateModuleCache('certificates');
             loadOwnerCertificates();
         } else {
             showNotification(data.message || 'Failed to delete certificate', 'error');
@@ -2291,74 +2416,91 @@ async function deleteOwnerCertificate(certId) {
 }
 
 // ========== PROJECT PROGRESS ==========
+function renderProjectProgressData(data, ideasData) {
+    const grid = document.getElementById('projectProgressMembersGrid');
+    const banner = document.getElementById('projectProgressBanner');
+    if (!grid) return;
+    if (!data || !data.success) {
+        grid.innerHTML = '<p class="loading">Failed to load.</p>';
+        return;
+    }
+    const club = data.club || {};
+    const summary = data.summary || {};
+    const members = data.members || [];
+    document.getElementById('projectProgressClubName').textContent = club.name || 'Club';
+    document.getElementById('projectProgressClubDesc').textContent = club.tagline || club.description || '';
+    document.getElementById('projectProgressMembersPill').innerHTML = '<i class="fa-solid fa-users"></i> ' + (summary.totalMembers || 0) + ' Members';
+    const ideasCount = ideasData?.projectIdeas ? ideasData.projectIdeas.length : 0;
+    document.getElementById('projectProgressIdeasPill').innerHTML = '<i class="fa-solid fa-lightbulb"></i> ' + ideasCount + ' Projects';
+    document.getElementById('metricTotalMembers').textContent = summary.totalMembers || 0;
+    document.getElementById('metricCompleted').textContent = summary.completed || 0;
+    document.getElementById('metricInProgress').textContent = summary.inProgress || 0;
+    document.getElementById('metricAvgProgress').textContent = (summary.avgProgress || 0) + '%';
+    const pending = summary.pendingApproval || 0;
+    const pendingBadge = document.getElementById('projectProgressPendingBadge');
+    if (pending > 0) {
+        pendingBadge.style.display = 'inline-flex';
+        document.getElementById('pendingCount').textContent = pending;
+    } else pendingBadge.style.display = 'none';
+    if (members.length === 0) {
+        grid.innerHTML = '<p class="loading">No members yet.</p>';
+    } else {
+        grid.innerHTML = members.map(m => {
+            const mp = m.memberProject;
+            const title = mp ? (mp.projectTitle || 'No project') : 'No project chosen';
+            const desc = mp ? (mp.projectDescription || '') : '';
+            const status = mp ? mp.status : 'not_started';
+            const pct = mp ? (mp.progressPercent || 0) : 0;
+            const approvalStatus = mp ? mp.approvalStatus : null;
+            const changeCount = mp ? (mp.changeCount || 0) : 0;
+            const startedAt = mp && mp.startedAt ? new Date(mp.startedAt).toLocaleDateString() : '-';
+            let statusBadge = '<span style="background:#9ca3af;color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;">Not Started</span>';
+            if (status === 'in_progress') statusBadge = '<span style="background:#f59e0b;color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;">In Progress</span>';
+            else if (status === 'completed') {
+                if (approvalStatus === 'approved') statusBadge = '<span style="background:#10b981;color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;">Completed</span>';
+                else if (approvalStatus === 'pending') statusBadge = '<span style="background:#f59e0b;color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;">Pending</span>';
+                else statusBadge = '<span style="background:#6b7280;color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;">Rejected</span>';
+            }
+            const barColor = status === 'completed' && approvalStatus === 'approved' ? '#10b981' : (status === 'in_progress' ? '#6366f1' : '#e5e7eb');
+            let approveBtns = '';
+            if (status === 'completed' && approvalStatus === 'pending' && mp) {
+                approveBtns = '<div style="margin-top:8px;"><button type="button" class="btn-primary btn-sm" onclick="approveProject(' + mp.id + ', \'approved\')">Approve</button> <button type="button" class="btn-secondary btn-sm" onclick="approveProject(' + mp.id + ', \'rejected\')">Reject</button></div>';
+            }
+            return '<div class="project-member-card" style="background:#f9fafb;border-radius:12px;padding:16px;border:1px solid #e5e7eb;">' +
+                '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+                '<div style="width:40px;height:40px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-user"></i></div>' +
+                '<div style="flex:1;"><strong>' + escapeHtml(m.username) + '</strong>' + (changeCount > 0 ? ' <span style="color:#6b7280;font-size:12px;">(' + changeCount + ' change(s))</span>' : '') + '</div>' + statusBadge + '</div>' +
+                '<div style="font-weight:600;margin-bottom:4px;">' + escapeHtml(title) + '</div>' +
+                '<div style="font-size:13px;color:#6b7280;margin-bottom:8px;">' + escapeHtml(desc).substring(0, 80) + (desc.length > 80 ? '...' : '') + '</div>' +
+                '<div style="height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;margin-bottom:4px;"><div style="height:100%;width:' + pct + '%;background:' + barColor + ';border-radius:4px;"></div></div>' +
+                '<div style="display:flex;justify-content:space-between;font-size:13px;color:#6b7280;">' +
+                '<span>' + pct + '%</span><span><i class="fa-solid fa-calendar"></i> ' + startedAt + '</span></div>' + approveBtns + '</div>';
+        }).join('');
+    }
+    loadProjectIdeasList(ideasData);
+}
+
 async function loadProjectProgress() {
     const grid = document.getElementById('projectProgressMembersGrid');
     const banner = document.getElementById('projectProgressBanner');
     if (!grid) return;
     grid.innerHTML = '<p class="loading">Loading...</p>';
     try {
+        const cached = getModuleCache('project-progress');
+        if (cached) {
+            renderProjectProgressData(cached.progressData, cached.ideasData);
+            return;
+        }
         const response = await fetch(`${getApiUrl()}/owner/project-progress`, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await response.json();
         if (!data.success) {
             grid.innerHTML = '<p class="loading">Failed to load.</p>';
             return;
         }
-        const club = data.club || {};
-        const summary = data.summary || {};
-        const members = data.members || [];
-        document.getElementById('projectProgressClubName').textContent = club.name || 'Club';
-        document.getElementById('projectProgressClubDesc').textContent = club.tagline || club.description || '';
-        document.getElementById('projectProgressMembersPill').innerHTML = '<i class="fa-solid fa-users"></i> ' + (summary.totalMembers || 0) + ' Members';
         const ideasResp = await fetch(`${getApiUrl()}/owner/project-ideas`, { headers: { 'Authorization': `Bearer ${token}` } });
         const ideasData = await ideasResp.json();
-        const ideasCount = ideasData.projectIdeas ? ideasData.projectIdeas.length : 0;
-        document.getElementById('projectProgressIdeasPill').innerHTML = '<i class="fa-solid fa-lightbulb"></i> ' + ideasCount + ' Projects';
-        document.getElementById('metricTotalMembers').textContent = summary.totalMembers || 0;
-        document.getElementById('metricCompleted').textContent = summary.completed || 0;
-        document.getElementById('metricInProgress').textContent = summary.inProgress || 0;
-        document.getElementById('metricAvgProgress').textContent = (summary.avgProgress || 0) + '%';
-        const pending = summary.pendingApproval || 0;
-        const pendingBadge = document.getElementById('projectProgressPendingBadge');
-        if (pending > 0) {
-            pendingBadge.style.display = 'inline-flex';
-            document.getElementById('pendingCount').textContent = pending;
-        } else pendingBadge.style.display = 'none';
-        if (members.length === 0) {
-            grid.innerHTML = '<p class="loading">No members yet.</p>';
-        } else {
-            grid.innerHTML = members.map(m => {
-                const mp = m.memberProject;
-                const title = mp ? (mp.projectTitle || 'No project') : 'No project chosen';
-                const desc = mp ? (mp.projectDescription || '') : '';
-                const status = mp ? mp.status : 'not_started';
-                const pct = mp ? (mp.progressPercent || 0) : 0;
-                const approvalStatus = mp ? mp.approvalStatus : null;
-                const changeCount = mp ? (mp.changeCount || 0) : 0;
-                const startedAt = mp && mp.startedAt ? new Date(mp.startedAt).toLocaleDateString() : '-';
-                let statusBadge = '<span style="background:#9ca3af;color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;">Not Started</span>';
-                if (status === 'in_progress') statusBadge = '<span style="background:#f59e0b;color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;">In Progress</span>';
-                else if (status === 'completed') {
-                    if (approvalStatus === 'approved') statusBadge = '<span style="background:#10b981;color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;">Completed</span>';
-                    else if (approvalStatus === 'pending') statusBadge = '<span style="background:#f59e0b;color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;">Pending</span>';
-                    else statusBadge = '<span style="background:#6b7280;color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;">Rejected</span>';
-                }
-                const barColor = status === 'completed' && approvalStatus === 'approved' ? '#10b981' : (status === 'in_progress' ? '#6366f1' : '#e5e7eb');
-                let approveBtns = '';
-                if (status === 'completed' && approvalStatus === 'pending' && mp) {
-                    approveBtns = '<div style="margin-top:8px;"><button type="button" class="btn-primary btn-sm" onclick="approveProject(' + mp.id + ', \'approved\')">Approve</button> <button type="button" class="btn-secondary btn-sm" onclick="approveProject(' + mp.id + ', \'rejected\')">Reject</button></div>';
-                }
-                return '<div class="project-member-card" style="background:#f9fafb;border-radius:12px;padding:16px;border:1px solid #e5e7eb;">' +
-                    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
-                    '<div style="width:40px;height:40px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-user"></i></div>' +
-                    '<div style="flex:1;"><strong>' + escapeHtml(m.username) + '</strong>' + (changeCount > 0 ? ' <span style="color:#6b7280;font-size:12px;">(' + changeCount + ' change(s))</span>' : '') + '</div>' + statusBadge + '</div>' +
-                    '<div style="font-weight:600;margin-bottom:4px;">' + escapeHtml(title) + '</div>' +
-                    '<div style="font-size:13px;color:#6b7280;margin-bottom:8px;">' + escapeHtml(desc).substring(0, 80) + (desc.length > 80 ? '...' : '') + '</div>' +
-                    '<div style="height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;margin-bottom:4px;"><div style="height:100%;width:' + pct + '%;background:' + barColor + ';border-radius:4px;"></div></div>' +
-                    '<div style="display:flex;justify-content:space-between;font-size:13px;color:#6b7280;">' +
-                    '<span>' + pct + '%</span><span><i class="fa-solid fa-calendar"></i> ' + startedAt + '</span></div>' + approveBtns + '</div>';
-            }).join('');
-        }
-        loadProjectIdeasList();
+        setModuleCache('project-progress', { progressData: data, ideasData });
+        renderProjectProgressData(data, ideasData);
     } catch (error) {
         console.error('Error loading project progress:', error);
         grid.innerHTML = '<p class="loading">Failed to load.</p>';
@@ -2376,6 +2518,7 @@ async function approveProject(memberProjectId, approvalStatus) {
         const data = await response.json();
         if (data.success) {
             showNotification(approvalStatus === 'approved' ? 'Approved!' : 'Rejected.', 'success');
+            invalidateModuleCache('project-progress');
             loadProjectProgress();
         } else showNotification(data.message || 'Failed', 'error');
     } catch (error) {
@@ -2384,12 +2527,15 @@ async function approveProject(memberProjectId, approvalStatus) {
     }
 }
 
-async function loadProjectIdeasList() {
+async function loadProjectIdeasList(ideasData = null) {
     const list = document.getElementById('projectIdeasList');
     if (!list) return;
     try {
-        const response = await fetch(`${getApiUrl()}/owner/project-ideas`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const data = await response.json();
+        let data = ideasData;
+        if (!data) {
+            const response = await fetch(`${getApiUrl()}/owner/project-ideas`, { headers: { 'Authorization': `Bearer ${token}` } });
+            data = await response.json();
+        }
         if (!data.success || !data.projectIdeas || data.projectIdeas.length === 0) {
             list.innerHTML = '<p style="color:#6b7280;">No project ideas yet. Add one above.</p>';
             return;
@@ -2419,6 +2565,7 @@ function showAddProjectIdeaForm() {
             const data = await response.json();
             if (data.success) {
                 showNotification('Project idea added!', 'success');
+                invalidateModuleCache('project-progress');
                 loadProjectProgress();
             } else showNotification(data.message || 'Failed', 'error');
         } catch (e) {
@@ -2436,6 +2583,7 @@ async function deleteProjectIdea(id) {
         const data = await response.json();
         if (data.success) {
             showNotification('Deleted!', 'success');
+            invalidateModuleCache('project-progress');
             loadProjectProgress();
         } else showNotification(data.message || 'Cannot delete (in use?)', 'error');
     } catch (e) {
@@ -2444,25 +2592,16 @@ async function deleteProjectIdea(id) {
 }
 
 // Load Advanced Analytics
-async function loadAdvancedAnalytics() {
-    const period = document.getElementById('analyticsPeriod')?.value || '30';
+function renderAdvancedAnalyticsFromData(data) {
     const content = document.getElementById('analyticsContent');
+    if (!content) return;
+    if (!data || !data.success) {
+        content.innerHTML = '<p class="loading">Error loading analytics</p>';
+        return;
+    }
+    const analytics = data.analytics;
 
-    try {
-        showLoading('analyticsContent');
-
-        const response = await fetch(`${getApiUrl()}/owner/advanced-analytics?period=${period}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            const analytics = data.analytics;
-
-            content.innerHTML = `
+    content.innerHTML = `
                 <!-- Summary Cards -->
                 <div class="modern-stats-grid" style="margin-bottom: 30px;">
                     <div class="modern-stat-card gradient-blue">
@@ -2550,16 +2689,40 @@ async function loadAdvancedAnalytics() {
                     </table>
                 </div>
             `;
+    createMemberGrowthChart(analytics.memberGrowth);
+    createParticipationChart(analytics.participationTrends);
+    createPointsDistributionChart(analytics.pointsDistribution);
+}
 
-            // Create charts
-            createMemberGrowthChart(analytics.memberGrowth);
-            createParticipationChart(analytics.participationTrends);
-            createPointsDistributionChart(analytics.pointsDistribution);
+async function loadAdvancedAnalytics() {
+    const period = document.getElementById('analyticsPeriod')?.value || '30';
+    const content = document.getElementById('analyticsContent');
+
+    try {
+        showLoading('analyticsContent');
+        const cacheKey = `analytics:${period}`;
+        const cached = getModuleCache(cacheKey);
+        if (cached) {
+            renderAdvancedAnalyticsFromData(cached);
+            return;
         }
+
+        const response = await fetch(`${getApiUrl()}/owner/advanced-analytics?period=${period}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            setModuleCache(cacheKey, data);
+        }
+        renderAdvancedAnalyticsFromData(data);
     } catch (error) {
         console.error('Error loading analytics:', error);
         showNotification('Failed to load analytics', 'error');
-        content.innerHTML = '<p class="loading">Error loading analytics</p>';
+        if (content) content.innerHTML = '<p class="loading">Error loading analytics</p>';
     }
 }
 
@@ -3234,6 +3397,10 @@ async function addMemberByStudentId() {
             inputElement.value = '';
             // Reload members list
             setTimeout(() => {
+                invalidateModuleCache('members');
+                invalidateModuleCache('messages');
+                invalidateModuleCache('project-progress');
+                invalidateModuleCacheGroup('analytics');
                 loadMembers();
                 loadDashboardStats();
             }, 500);
@@ -3786,32 +3953,22 @@ if (notificationBell && !notificationBell.hasAttribute('data-listener-added')) {
 }
 
 // ========== MESSAGING SYSTEM (OWNER-ONLY) ==========
-async function loadMessages() {
-    try {
-        // Use contacts API for Owner-Only Messaging
-        const response = await fetch(`${getApiUrl()}/messages/contacts`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            const messageList = document.getElementById('messageList');
-            if (messageList) {
-                if (data.contacts.length === 0) {
-                    messageList.innerHTML = `
+function renderMessagesFromData(data) {
+    if (!data || !data.success) return;
+    const messageList = document.getElementById('messageList');
+    if (!messageList) return;
+    if (!data.contacts || data.contacts.length === 0) {
+        messageList.innerHTML = `
                         <div style="padding: 20px; text-align: center; color: #6b7280;">
                             <i class="fa-solid fa-users" style="font-size: 32px; margin-bottom: 10px; opacity: 0.5;"></i>
                             <p style="font-size: 14px;">No members yet</p>
                             <p style="font-size: 12px; color: #9ca3af; margin-top: 5px;">Add members to your club to start messaging</p>
                         </div>
                     `;
-                    return;
-                }
+        return;
+    }
 
-                messageList.innerHTML = data.contacts.map(contact => `
+    messageList.innerHTML = data.contacts.map(contact => `
                     <div class="message-item ${currentChatRecipientId === contact.id ? 'active' : ''}" 
                          onclick="openChat(${contact.id}, '${contact.username}')">
                         <div style="display: flex; align-items: center; gap: 10px;">
@@ -3838,11 +3995,30 @@ async function loadMessages() {
                     </div>
                 `).join('');
 
-                // Update message badge with total unread count
-                const totalUnread = data.contacts.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
-                updateMessageBadge(totalUnread);
-            }
+    const totalUnread = data.contacts.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+    updateMessageBadge(totalUnread);
+}
+
+async function loadMessages() {
+    try {
+        const cached = getModuleCache('messages');
+        if (cached) {
+            renderMessagesFromData(cached);
+            return;
         }
+        // Use contacts API for Owner-Only Messaging
+        const response = await fetch(`${getApiUrl()}/messages/contacts`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            setModuleCache('messages', data);
+        }
+        renderMessagesFromData(data);
     } catch (error) {
         console.error('Error loading messages:', error);
         showNotification('Failed to load messages', 'error');
@@ -3950,6 +4126,8 @@ async function sendMessage(e) {
 
         if (data.success) {
             messageInput.value = '';
+            invalidateModuleCache('messages');
+            loadMessages();
             await loadChatMessages(currentChatRecipientId);
         } else {
             showNotification(data.message, 'error');
@@ -3979,6 +4157,15 @@ function closeNewMessageModal() {
 
 async function loadMembersForMessage() {
     try {
+        const cached = getModuleCache('members');
+        if (cached && cached.success) {
+            const select = document.getElementById('recipientSelect');
+            if (select) {
+                select.innerHTML = '<option value="">Choose a member...</option>' +
+                    (cached.members || []).map(m => `<option value="${m.id}">${m.username} (${m.email})</option>`).join('');
+            }
+            return;
+        }
         const response = await fetch(`${getApiUrl()}/owner/members`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -3988,6 +4175,7 @@ async function loadMembersForMessage() {
         const data = await response.json();
 
         if (data.success) {
+            setModuleCache('members', data);
             const select = document.getElementById('recipientSelect');
             select.innerHTML = '<option value="">Choose a member...</option>' +
                 data.members.map(m => `<option value="${m.id}">${m.username} (${m.email})</option>`).join('');
@@ -4027,6 +4215,7 @@ document.getElementById('newMessageForm')?.addEventListener('submit', async (e) 
         if (data.success) {
             showNotification('Message sent successfully!', 'success');
             closeNewMessageModal();
+            invalidateModuleCache('messages');
             loadMessages();
             if (currentChatRecipientId === recipientId) {
                 await loadChatMessages(recipientId);
@@ -4189,6 +4378,7 @@ async function createWorkshop() {
         if (data.success) {
             showNotification('Workshop created', 'success');
             closeWorkshopCreateModal();
+            invalidateModuleCache('workshops');
             loadOwnerWorkshops();
         } else {
             showNotification(data.message || 'Failed to create workshop', 'error');
@@ -4197,6 +4387,16 @@ async function createWorkshop() {
         console.error('Error creating workshop:', error);
         showNotification('Failed to create workshop', 'error');
     }
+}
+
+function renderOwnerWorkshopsFromData(data) {
+    const container = document.getElementById('ownerWorkshopCards');
+    if (!data || !data.success) {
+        if (container) container.innerHTML = '<p class="loading">No workshops available</p>';
+        return;
+    }
+    ownerWorkshops = data.workshops || [];
+    renderOwnerWorkshopCards();
 }
 
 async function loadOwnerWorkshops() {
@@ -4210,16 +4410,19 @@ async function loadOwnerWorkshops() {
         `;
     }
     try {
+        const cached = getModuleCache('workshops');
+        if (cached) {
+            renderOwnerWorkshopsFromData(cached);
+            return;
+        }
         const response = await fetch(`${getApiUrl()}/workshops`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
         if (data.success) {
-            ownerWorkshops = data.workshops || [];
-            renderOwnerWorkshopCards();
-        } else {
-            if (container) container.innerHTML = '<p class="loading">No workshops available</p>';
+            setModuleCache('workshops', data);
         }
+        renderOwnerWorkshopsFromData(data);
     } catch (error) {
         console.error('Error loading workshops:', error);
         if (container) container.innerHTML = '<p class="loading">Failed to load workshops</p>';
@@ -4288,6 +4491,7 @@ async function deleteOwnerWorkshop(workshopId, title) {
         const data = await response.json();
         if (data.success) {
             showNotification('Workshop deleted!', 'success');
+            invalidateModuleCache('workshops');
             loadOwnerWorkshops();
         } else {
             showNotification(data.message || 'Failed to delete workshop', 'error');

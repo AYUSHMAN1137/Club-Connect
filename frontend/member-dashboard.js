@@ -2970,7 +2970,7 @@ async function loadNotifications() {
                     list.innerHTML = '<p class="loading">No notifications</p>';
                 } else {
                     list.innerHTML = data.notifications.map(notif => `
-                        <div class="notification-item ${!notif.read ? 'unread' : ''}" 
+                        <div class="notification-item ${!notif.isRead ? 'unread' : ''}" 
                              onclick="markNotificationRead(${notif.id})">
                             <div style="display: flex; justify-content: space-between; align-items: start; padding: 15px; border-bottom: 1px solid #e5e7eb;">
                                 <div style="flex: 1;">
@@ -2980,7 +2980,7 @@ async function loadNotifications() {
                                         ${new Date(notif.createdAt).toLocaleString()}
                                     </p>
                                 </div>
-                                ${!notif.read ? '<span style="color: #3b82f6;"><i class="fa-solid fa-circle" style="font-size: 8px;"></i></span>' : ''}
+                                ${!notif.isRead ? '<span style="color: #3b82f6;"><i class="fa-solid fa-circle" style="font-size: 8px;"></i></span>' : ''}
                             </div>
                         </div>
                     `).join('');
@@ -3034,7 +3034,7 @@ function closeNotificationsModal() {
 async function markNotificationRead(notifId) {
     try {
         await fetch(`${API_URL}/notifications/${notifId}/read`, {
-            method: 'POST',
+            method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -3172,7 +3172,7 @@ async function loadChatHistory() {
 
             // Mark as read
             data.messages.forEach(msg => {
-                if (msg.recipientId === userId && !msg.read) {
+                if (msg.recipientId === userId && !msg.isRead) {
                     fetch(`${API_URL}/messages/${msg.id}/read`, {
                         method: 'PUT',
                         headers: { 'Authorization': `Bearer ${token}` }
@@ -3528,7 +3528,7 @@ async function loadNotificationDropdown() {
 
         if (data.success && data.notifications && data.notifications.length > 0) {
             list.innerHTML = data.notifications.slice(0, 5).map(notif => `
-                <div class="notification-item ${!notif.read ? 'unread' : ''}" onclick="markNotificationRead(${notif.id})">
+                <div class="notification-item ${!notif.isRead ? 'unread' : ''}" onclick="markNotificationRead(${notif.id})">
                     <div class="notification-icon ${notif.type || 'event'}">
                         <i class="fa-solid fa-${getNotifIcon(notif.type)}"></i>
                     </div>
@@ -4120,8 +4120,8 @@ const markAllReadBtn = document.getElementById('markAllRead');
 if (markAllReadBtn) {
     markAllReadBtn.addEventListener('click', async () => {
         try {
-            await fetch(`${API_URL}/notifications/mark-all-read`, {
-                method: 'POST',
+            await fetch(`${API_URL}/notifications/read-all`, {
+                method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             updateNotificationBadge(0);
