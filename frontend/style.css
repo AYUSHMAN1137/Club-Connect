@@ -831,27 +831,56 @@ input.success {
 
 /* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
+    body {
+        padding: 10px;
+        align-items: center;
+        min-height: 100svh;
+        overflow: hidden;
+        overflow-x: hidden;
+    }
+
     .container {
         width: 100%;
-        min-height: 100vh;
-        border-radius: 0;
-        box-shadow: none;
+        max-width: 440px;
+        min-height: 0;
+        max-height: calc(100svh - 20px);
+        border-radius: 24px;
+        box-shadow: 0 18px 48px rgba(15, 23, 42, 0.14);
+        border: 1px solid rgba(226, 232, 240, 0.7);
     }
     
     form {
-        padding: 0 40px;
+        padding: 24px 22px 26px;
+        height: 100%;
+        gap: 6px;
+        align-items: center;
+        justify-content: center;
     }
     
     .form-container {
         width: 100%;
+        position: relative;
+        height: 100%;
+        transition: none;
     }
     
     .sign-in-container {
         z-index: 2;
+        left: auto;
+        width: 100%;
+        opacity: 1;
+        pointer-events: all;
+        transform: none;
     }
     
     .sign-up-container {
         z-index: 1;
+        left: auto;
+        width: 100%;
+        opacity: 1;
+        pointer-events: all;
+        transform: none;
+        display: none;
     }
     
     .overlay-container {
@@ -861,41 +890,113 @@ input.success {
     .mobile-link {
         display: block;
     }
+
+    h1 {
+        text-align: center;
+        font-size: 28px;
+    }
+
+    h1::after {
+        margin: 10px auto 0;
+    }
+
+    p {
+        text-align: center;
+        margin: 12px 0 18px;
+    }
+
+    .icon-decoration {
+        width: 76px;
+        height: 76px;
+        margin: 6px auto 18px;
+    }
+
+    .input-container {
+        margin-top: 8px;
+    }
+
+    .account-text {
+        width: 100%;
+        text-align: center;
+    }
+
+    button {
+        width: 100%;
+        margin-top: 14px;
+    }
     
     .container.right-panel-active .sign-in-container {
-        transform: translateX(0);
-        opacity: 0;
-        z-index: 1;
+        display: none;
     }
     
     .container.right-panel-active .sign-up-container {
-        transform: translateX(0);
-        opacity: 1;
+        display: block;
         z-index: 5;
+        transform: none;
+        opacity: 1;
+        animation: none;
     }
-    
+}
+
+@media (max-width: 768px) and (max-height: 720px) {
+    body {
+        padding: 8px;
+    }
+
+    .container {
+        max-height: calc(100svh - 16px);
+    }
+
+    form {
+        padding: 18px 18px 20px;
+        gap: 4px;
+    }
+
     h1 {
-        font-size: 30px;
+        font-size: 24px;
+    }
+
+    p {
+        margin: 8px 0 12px;
+    }
+
+    .icon-decoration {
+        width: 64px;
+        height: 64px;
+        margin: 4px auto 12px;
+    }
+
+    .input-container {
+        margin-top: 6px;
+    }
+
+    button {
+        margin-top: 12px;
+    }
+
+    .account-text {
+        margin-top: 12px;
     }
 }
 
 @media (max-width: 480px) {
     form {
-        padding: 0 30px;
+        padding: 20px 18px 22px;
     }
     
     h1 {
-        font-size: 26px;
+        font-size: 25px;
     }
     
     button {
-        padding: 14px 45px;
+        width: 100%;
+        padding: 14px 18px;
         font-size: 13px;
     }
     
     input {
         font-size: 14px;
-        padding: 13px 45px 13px 13px;
+        padding: 12px 45px 12px 13px;
     }
 }
 
