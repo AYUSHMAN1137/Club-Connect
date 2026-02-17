@@ -435,11 +435,16 @@
 
             <!-- Events Page -->
             <div class="page" id="events-page">
-                <div class="page-header">
-                    <h1>Events Management</h1>
-                    <button class="btn-primary" onclick="showCreateEventForm()">
-                        <i class="fa-solid fa-plus"></i> Create New Event
-                    </button>
+                <div class="ws-hero owner-events-hero">
+                    <div class="ws-hero-content">
+                        <div class="ws-hero-text">
+                            <h1><i class="fa-solid fa-calendar-days"></i> Events</h1>
+                            <p class="ws-hero-subtitle">Create events, take attendance, manage gallery</p>
+                        </div>
+                        <button class="ws-create-btn" onclick="showCreateEventForm()">
+                            <i class="fa-solid fa-plus"></i> Create New Event
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Create Event Form (Hidden by default) -->
@@ -480,39 +485,59 @@
 
             <!-- Announcements Page -->
             <div class="page" id="announcements-page">
-                <div class="page-header">
-                    <h1>Announcements</h1>
-                    <p>Send messages to all club members</p>
+                <div class="ws-hero owner-announcements-hero">
+                    <div class="ws-hero-content">
+                        <div class="ws-hero-text">
+                            <h1><i class="fa-solid fa-bullhorn"></i> Announcements</h1>
+                            <p class="ws-hero-subtitle">Send messages to all club members</p>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="announcement-form">
-                    <h3>Send New Announcement</h3>
-                    <form id="announcementForm">
-                        <div class="form-group">
-                            <label>Title</label>
-                            <input type="text" id="announcementTitle" placeholder="Announcement Title">
-                        </div>
-                        <div class="form-group">
-                            <label>Message *</label>
-                            <textarea id="announcementMessage" rows="4" placeholder="Type your message here..."
-                                required></textarea>
-                        </div>
-                        <button type="submit" class="btn-primary">
-                            <i class="fa-solid fa-paper-plane"></i> Send Announcement
-                        </button>
-                    </form>
-                </div>
+                <div class="owner-announcements-layout">
+                    <div class="announcement-form">
+                        <h3><i class="fa-solid fa-paper-plane"></i> Send New Announcement</h3>
+                        <form id="announcementForm">
+                            <div class="form-group">
+                                <label>Title</label>
+                                <input type="text" id="announcementTitle" placeholder="Announcement Title">
+                            </div>
+                            <div class="form-group">
+                                <label>Message *</label>
+                                <textarea id="announcementMessage" rows="4" placeholder="Type your message here..."
+                                    required></textarea>
+                            </div>
+                            <button type="submit" class="btn-primary">
+                                <i class="fa-solid fa-paper-plane"></i> Send Announcement
+                            </button>
+                        </form>
+                    </div>
 
-                <div class="announcements-list">
-                    <h3>Recent Announcements</h3>
-                    <div id="announcementsList">
-                        <p class="loading">Loading announcements...</p>
+                    <div class="announcements-list">
+                        <div class="announcements-list-header">
+                            <h3><i class="fa-solid fa-clock-rotate-left"></i> Recent Announcements</h3>
+                            <span class="announcements-count" id="announcementsCount"></span>
+                        </div>
+                        <div id="announcementsList">
+                            <p class="loading">Loading announcements...</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Polls Page -->
             <div class="page" id="polls-page">
+                <div class="ws-hero owner-polls-hero">
+                    <div class="ws-hero-content">
+                        <div class="ws-hero-text">
+                            <h1><i class="fa-solid fa-chart-pie"></i> Polls</h1>
+                            <p class="ws-hero-subtitle">Create polls, track votes, and close results</p>
+                        </div>
+                        <button class="ws-create-btn" type="button" onclick="resetOwnerPollForm()">
+                            <i class="fa-solid fa-plus"></i> New Poll
+                        </button>
+                    </div>
+                </div>
                 <div class="polls-create-layout">
                     <div class="poll-create-card">
                         <div class="poll-create-header">
@@ -581,8 +606,42 @@
                     </div>
                     <div class="polls-list-panel">
                         <div class="polls-list-header">
-                            <h3>All Polls</h3>
-                            <p>Scroll to view every poll</p>
+                            <div class="polls-list-top">
+                                <div class="polls-list-title">
+                                    <h3>All Polls</h3>
+                                    <p>Scroll to view every poll</p>
+                                </div>
+                                <div class="polls-header-right">
+                                    <span class="polls-count" id="pollsCount"></span>
+                                    <button type="button" class="polls-icon-btn" id="pollsRefreshBtn"
+                                        title="Refresh polls">
+                                        <i class="fa-solid fa-rotate"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="polls-tools">
+                                <div class="poll-segmented polls-filter" role="radiogroup" aria-label="Poll status">
+                                    <input type="radio" id="pollsFilterAll" name="pollsStatusFilter" value="all"
+                                        checked>
+                                    <label for="pollsFilterAll" class="poll-segment"><i
+                                            class="fa-solid fa-layer-group"></i> All</label>
+                                    <input type="radio" id="pollsFilterActive" name="pollsStatusFilter" value="active">
+                                    <label for="pollsFilterActive" class="poll-segment"><i
+                                            class="fa-solid fa-bolt"></i> Active</label>
+                                    <input type="radio" id="pollsFilterClosed" name="pollsStatusFilter" value="closed">
+                                    <label for="pollsFilterClosed" class="poll-segment"><i
+                                            class="fa-solid fa-lock"></i> Closed</label>
+                                </div>
+                                <div class="polls-search">
+                                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                                    <input type="text" id="pollsSearchInput" placeholder="Search polls..."
+                                        autocomplete="off">
+                                    <button type="button" class="polls-icon-btn polls-clear-btn" id="pollsClearBtn"
+                                        title="Clear search" disabled>
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div class="polls-list-scroll" id="pollsList">
                             <p class="loading">Loading polls...</p>
@@ -631,6 +690,14 @@
                         <div id="metricAvgProgress" class="metric-value primary">0%</div>
                     </div>
                 </div>
+                <div class="panel">
+                    <h3 class="panel-title">Manage Project Ideas</h3>
+                    <p class="panel-text">Add project ideas that members can choose from. Once a member chooses an idea,
+                        only the description can be edited.</p>
+                    <button type="button" class="btn-primary btn-inline" onclick="showAddProjectIdeaForm()"><i
+                            class="fa-solid fa-plus"></i> Add Project Idea</button>
+                    <div id="projectIdeasList" class="panel-list"></div>
+                </div>
                 <div class="panel panel-stack">
                     <div class="panel-header-row">
                         <h3 class="panel-title">Members & Projects</h3>
@@ -640,14 +707,6 @@
                     <div id="projectProgressMembersGrid" class="project-members-grid">
                         <p class="loading">Loading...</p>
                     </div>
-                </div>
-                <div class="panel">
-                    <h3 class="panel-title">Manage Project Ideas</h3>
-                    <p class="panel-text">Add project ideas that members can choose from. Once a member chooses an idea,
-                        only the description can be edited.</p>
-                    <button type="button" class="btn-primary btn-inline" onclick="showAddProjectIdeaForm()"><i
-                            class="fa-solid fa-plus"></i> Add Project Idea</button>
-                    <div id="projectIdeasList" class="panel-list"></div>
                 </div>
             </div>
 
@@ -676,11 +735,16 @@
 
             <!-- Messages Page -->
             <div class="page" id="messages-page">
-                <div class="page-header">
-                    <h1>Messages</h1>
-                    <button class="btn-primary" onclick="openNewMessageModal()">
-                        <i class="fa-solid fa-plus"></i> New Message
-                    </button>
+                <div class="ws-hero owner-messages-hero">
+                    <div class="ws-hero-content">
+                        <div class="ws-hero-text">
+                            <h1><i class="fa-solid fa-message"></i> Messages</h1>
+                            <p class="ws-hero-subtitle">Chat with members and keep conversations organized</p>
+                        </div>
+                        <button class="ws-create-btn" onclick="openNewMessageModal()">
+                            <i class="fa-solid fa-plus"></i> New Message
+                        </button>
+                    </div>
                 </div>
 
                 <div class="messages-layout">

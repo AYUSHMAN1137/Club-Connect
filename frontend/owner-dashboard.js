@@ -1457,19 +1457,31 @@ async function loadEvents() {
                 const attendedCount = event.attendedCount || (event.attendanceList ? event.attendanceList.length : 0);
 
                 return `
-                <div class="event-card">
+                <div class="event-card ${isPast ? 'is-past' : 'is-upcoming'}">
                     <div class="event-card-header">
                         <div class="event-date-badge">
                             <div class="event-date-day">${day}</div>
                             <div class="event-date-month">${month}</div>
                         </div>
-                        <div>
-                            <h3>${event.title}</h3>
+                        <div class="event-header-main">
+                            <div class="event-title-row">
+                                <h3>${event.title}</h3>
+                                <span class="event-status-badge ${isPast ? 'is-past' : 'is-upcoming'}">${isPast ? 'Past' : 'Upcoming'}</span>
+                            </div>
                             <p><i class="fa-solid fa-location-dot"></i> ${event.venue}</p>
                         </div>
                     </div>
                     <div class="event-card-body">
-                        <p><i class="fa-solid fa-users"></i> <strong>${attendedCount}</strong> Attended</p>
+                        <div class="event-meta-row">
+                            <span class="event-meta-pill">
+                                <i class="fa-solid fa-users"></i>
+                                <strong>${attendedCount}</strong> Attended
+                            </span>
+                            <span class="event-meta-pill event-meta-id">
+                                <i class="fa-solid fa-hashtag"></i>
+                                #${event.id}
+                            </span>
+                        </div>
                     </div>
                     <div class="event-card-footer ${isPast ? 'is-past' : ''}">
                         ${isPast ? `
@@ -1672,9 +1684,18 @@ async function loadAnnouncements() {
 
         if (data.success) {
             const list = document.getElementById('announcementsList');
+            const countEl = document.getElementById('announcementsCount');
+            if (countEl) {
+                countEl.textContent = `${data.announcements.length} total`;
+            }
 
             if (data.announcements.length === 0) {
-                list.innerHTML = '<p class="loading">No announcements yet</p>';
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fa-solid fa-bullhorn"></i>
+                        <p>No announcements yet</p>
+                    </div>
+                `;
                 return;
             }
 
@@ -1767,6 +1788,7 @@ const pollOptionsState = [
     { id: 3, value: '' }
 ];
 let lastAddedOptionId = null;
+let ownerPollsCache = [];
 
 function renderPollOptions() {
     const list = document.getElementById('pollOptionsList');
@@ -1858,6 +1880,130 @@ function updatePollFormState() {
     if (addBtn) addBtn.disabled = pollOptionsState.length >= 6;
 }
 
+function resetOwnerPollForm() {
+    const form = document.getElementById('pollForm');
+    const successBanner = document.getElementById('pollSuccessBanner');
+    const questionError = document.getElementById('pollQuestionError');
+    const optionsError = document.getElementById('pollOptionsError');
+    if (successBanner) successBanner.classList.remove('show');
+    if (questionError) questionError.textContent = '';
+    if (optionsError) optionsError.textContent = '';
+    if (form) form.reset();
+    pollOptionsState.splice(0, pollOptionsState.length, { id: 1, value: '' }, { id: 2, value: '' }, { id: 3, value: '' });
+    const endDateField = document.getElementById('pollEndDateField');
+    if (endDateField) endDateField.classList.remove('is-visible');
+    renderPollOptions();
+    updatePollFormState();
+    const questionInput = document.getElementById('pollQuestion');
+    if (questionInput) {
+        questionInput.focus();
+        questionInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+function formatPollEndDate(endDate) {
+    if (!endDate) return '';
+    const d = new Date(endDate);
+    if (Number.isNaN(d.getTime())) return String(endDate);
+    return d.toLocaleDateString();
+}
+
+function getOwnerPollsFilterState() {
+    const search = (document.getElementById('pollsSearchInput')?.value || '').trim().toLowerCase();
+    const status = document.querySelector('input[name="pollsStatusFilter"]:checked')?.value || 'all';
+    return { search, status };
+}
+
+function applyOwnerPollFiltersAndRender() {
+    const list = document.getElementById('pollsList');
+    if (!list) return;
+    const { search, status } = getOwnerPollsFilterState();
+    const total = ownerPollsCache.length;
+    let filtered = ownerPollsCache.slice();
+    if (status !== 'all') {
+        filtered = filtered.filter(p => (p.status || '').toLowerCase() === status);
+    }
+    if (search) {
+        filtered = filtered.filter(p => String(p.question || '').toLowerCase().includes(search));
+    }
+
+    const countEl = document.getElementById('pollsCount');
+    if (countEl) {
+        countEl.textContent = filtered.length === total ? `${total} total` : `${filtered.length} of ${total}`;
+    }
+
+    const clearBtn = document.getElementById('pollsClearBtn');
+    if (clearBtn) {
+        clearBtn.disabled = !search;
+    }
+
+    if (total === 0) {
+        list.innerHTML = `
+            <div class="poll-empty">
+                <div class="poll-empty-icon"><i class="fa-solid fa-chart-column"></i></div>
+                <h4>No polls yet</h4>
+                <p>Create your first poll using the form above.</p>
+            </div>`;
+        return;
+    }
+
+    if (filtered.length === 0) {
+        list.innerHTML = `
+            <div class="poll-empty">
+                <div class="poll-empty-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+                <h4>No matching polls</h4>
+                <p>Try a different search or switch the status filter.</p>
+            </div>`;
+        return;
+    }
+
+    list.innerHTML = filtered.map(poll => {
+        const totalVotes = poll.totalVotes || 0;
+        const optionCount = (poll.options || []).length;
+        const optionsHtml = (poll.options || []).map(opt => {
+            const pct = totalVotes > 0 ? Math.round((opt.voteCount / totalVotes) * 100) : 0;
+            return `
+                <div class="poll-option">
+                    <div class="poll-option-top">
+                        <span class="poll-option-label">${escapeHtml(opt.text)}</span>
+                        <span class="poll-option-stats">${opt.voteCount} votes (${pct}%)</span>
+                    </div>
+                    <div class="poll-option-bar">
+                        <div class="poll-option-bar-fill" data-pct="${pct}"></div>
+                    </div>
+                </div>`;
+        }).join('');
+        const statusBadge = (poll.status || '').toLowerCase() === 'closed'
+            ? '<span class="poll-status poll-status--closed">Closed</span>'
+            : '<span class="poll-status poll-status--active">Active</span>';
+        const closeBtn = (poll.status || '').toLowerCase() === 'active'
+            ? `<button type="button" class="poll-action-btn poll-action-btn--close" onclick="closePollOwner(${poll.id})" title="Close Poll"><i class="fa-solid fa-lock"></i><span>Close</span></button>`
+            : '';
+        const deleteBtn = `<button type="button" class="poll-action-btn poll-action-btn--danger" onclick="deletePollOwner(${poll.id})" title="Delete Poll"><i class="fa-solid fa-trash"></i><span>Delete</span></button>`;
+        const formattedEnd = poll.endDate ? formatPollEndDate(poll.endDate) : '';
+        return `
+            <div class="poll-card">
+                <div class="poll-card-header">
+                    <h4 class="poll-title">${escapeHtml(poll.question)}</h4>
+                    <div class="poll-badges">${statusBadge}${closeBtn}${deleteBtn}</div>
+                </div>
+                <div class="poll-card-meta">
+                    <span class="poll-chip"><i class="fa-solid fa-chart-simple"></i> ${totalVotes} votes</span>
+                    <span class="poll-chip"><i class="fa-solid fa-list"></i> ${optionCount} options</span>
+                    ${formattedEnd ? `<span class="poll-chip poll-chip--muted"><i class="fa-solid fa-calendar"></i> Ends ${escapeHtml(formattedEnd)}</span>` : ''}
+                </div>
+                <div class="poll-results">${optionsHtml}</div>
+            </div>`;
+    }).join('');
+
+    requestAnimationFrame(() => {
+        document.querySelectorAll('.poll-option-bar-fill').forEach((bar) => {
+            const pct = Number(bar.dataset.pct || 0);
+            bar.style.width = `${pct}%`;
+        });
+    });
+}
+
 async function loadPolls() {
     const list = document.getElementById('pollsList');
     if (!list) return;
@@ -1871,55 +2017,8 @@ async function loadPolls() {
             list.innerHTML = '<p class="loading">Failed to load polls.</p>';
             return;
         }
-        const polls = data.polls || [];
-        if (polls.length === 0) {
-            list.innerHTML = `
-                <div class="poll-empty">
-                    <div class="poll-empty-icon"><i class="fa-solid fa-chart-column"></i></div>
-                    <h4>No polls yet</h4>
-                    <p>Create your first poll using the form above.</p>
-                </div>`;
-            return;
-        }
-        list.innerHTML = polls.map(poll => {
-            const total = poll.totalVotes || 0;
-            const optionCount = (poll.options || []).length;
-            const optionsHtml = (poll.options || []).map(opt => {
-                const pct = total > 0 ? Math.round((opt.voteCount / total) * 100) : 0;
-                return `
-                    <div class="poll-option">
-                        <div class="poll-option-top">
-                            <span class="poll-option-label">${escapeHtml(opt.text)}</span>
-                            <span class="poll-option-stats">${opt.voteCount} votes (${pct}%)</span>
-                        </div>
-                        <div class="poll-option-bar">
-                            <div class="poll-option-bar-fill" data-pct="${pct}"></div>
-                        </div>
-                    </div>`;
-            }).join('');
-            const statusBadge = poll.status === 'closed' ? '<span class="poll-status poll-status--closed">Closed</span>' : '<span class="poll-status poll-status--active">Active</span>';
-            const closeBtn = poll.status === 'active' ? `<button type="button" class="btn-secondary btn-sm poll-close-btn" onclick="closePollOwner(${poll.id})">Close Poll</button>` : '';
-            const deleteBtn = `<button type="button" class="btn-secondary btn-sm poll-delete-btn" onclick="deletePollOwner(${poll.id})"><i class="fa-solid fa-trash"></i> Delete</button>`;
-            return `
-                <div class="poll-card">
-                    <div class="poll-card-header">
-                        <h4 class="poll-title">${escapeHtml(poll.question)}</h4>
-                        <div class="poll-badges">${statusBadge}${closeBtn}${deleteBtn}</div>
-                    </div>
-                    <div class="poll-card-meta">
-                        <span class="poll-chip"><i class="fa-solid fa-chart-simple"></i> ${total} votes</span>
-                        <span class="poll-chip"><i class="fa-solid fa-list"></i> ${optionCount} options</span>
-                        ${poll.endDate ? `<span class="poll-chip poll-chip--muted"><i class="fa-solid fa-calendar"></i> Ends ${poll.endDate}</span>` : ''}
-                    </div>
-                    <div class="poll-results">${optionsHtml}</div>
-                </div>`;
-        }).join('');
-        requestAnimationFrame(() => {
-            document.querySelectorAll('.poll-option-bar-fill').forEach((bar) => {
-                const pct = Number(bar.dataset.pct || 0);
-                bar.style.width = `${pct}%`;
-            });
-        });
+        ownerPollsCache = data.polls || [];
+        applyOwnerPollFiltersAndRender();
     } catch (error) {
         console.error('Error loading polls:', error);
         list.innerHTML = '<p class="loading">Failed to load polls.</p>';
@@ -1994,6 +2093,28 @@ document.getElementById('addPollOptionBtn')?.addEventListener('click', () => {
 
 document.getElementById('pollQuestion')?.addEventListener('input', () => {
     updatePollFormState();
+});
+
+document.getElementById('pollsSearchInput')?.addEventListener('input', () => {
+    applyOwnerPollFiltersAndRender();
+});
+
+document.querySelectorAll('input[name="pollsStatusFilter"]').forEach((el) => {
+    el.addEventListener('change', () => {
+        applyOwnerPollFiltersAndRender();
+    });
+});
+
+document.getElementById('pollsClearBtn')?.addEventListener('click', () => {
+    const input = document.getElementById('pollsSearchInput');
+    if (!input) return;
+    input.value = '';
+    applyOwnerPollFiltersAndRender();
+    input.focus();
+});
+
+document.getElementById('pollsRefreshBtn')?.addEventListener('click', () => {
+    loadPolls();
 });
 
 document.getElementById('pollEndDateToggle')?.addEventListener('change', (event) => {

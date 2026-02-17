@@ -13,7 +13,7 @@ const dotenv = require('dotenv');
 dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 const bcrypt = require('bcryptjs');
-const rateLimit = require('express-rate-limit');
+
 
 // ========== GLOBAL ERROR HANDLERS (prevent silent crashes) ==========
 process.on('uncaughtException', (err) => {
@@ -143,12 +143,7 @@ app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limit for auth (prevents brute-force on login/register)
-const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 20, // 20 attempts per IP per window
-    message: { success: false, message: 'Too many attempts. Try again later.' }
-});
+
 
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsDir));
@@ -366,7 +361,7 @@ app.get('/health', async (req, res) => {
 });
 
 // REGISTER Route (only for members) - NOW USING SQL DATABASE
-app.post('/auth/register', authLimiter, async (req, res) => {
+app.post('/auth/register', async (req, res) => {
     try {
         const { username, studentId, email, password } = req.body;
 
@@ -439,7 +434,7 @@ app.post('/auth/register', authLimiter, async (req, res) => {
 });
 
 // LOGIN Route - NOW USING SQL DATABASE
-app.post('/auth/login', authLimiter, async (req, res) => {
+app.post('/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
         const identifier = typeof username === 'string' ? username.trim() : '';
