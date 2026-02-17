@@ -832,10 +832,9 @@ input.success {
 /* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
     body {
-        padding: 10px;
+        padding: 14px;
         align-items: center;
-        min-height: 100svh;
-        overflow: hidden;
+        overflow-y: auto;
         overflow-x: hidden;
     }
 
@@ -843,7 +842,6 @@ input.success {
         width: 100%;
         max-width: 440px;
         min-height: 0;
-        max-height: calc(100svh - 20px);
         border-radius: 24px;
         box-shadow: 0 18px 48px rgba(15, 23, 42, 0.14);
         border: 1px solid rgba(226, 232, 240, 0.7);
@@ -851,16 +849,15 @@ input.success {
     
     form {
         padding: 24px 22px 26px;
-        height: 100%;
+        height: auto;
         gap: 6px;
         align-items: center;
-        justify-content: center;
     }
     
     .form-container {
         width: 100%;
         position: relative;
-        height: 100%;
+        height: auto;
         transition: none;
     }
     
@@ -922,7 +919,6 @@ input.success {
 
     button {
         width: 100%;
-        margin-top: 14px;
     }
     
     .container.right-panel-active .sign-in-container {
@@ -940,42 +936,7 @@ input.success {
 
 @media (max-width: 768px) and (max-height: 720px) {
     body {
-        padding: 8px;
-    }
-
-    .container {
-        max-height: calc(100svh - 16px);
-    }
-
-    form {
-        padding: 18px 18px 20px;
-        gap: 4px;
-    }
-
-    h1 {
-        font-size: 24px;
-    }
-
-    p {
-        margin: 8px 0 12px;
-    }
-
-    .icon-decoration {
-        width: 64px;
-        height: 64px;
-        margin: 4px auto 12px;
-    }
-
-    .input-container {
-        margin-top: 6px;
-    }
-
-    button {
-        margin-top: 12px;
-    }
-
-    .account-text {
-        margin-top: 12px;
+        align-items: flex-start;
     }
 }
 
