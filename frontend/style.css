@@ -587,7 +587,7 @@ input.success {
 }
 
 .success-modal.show {
-    opacity: 1;
+    opacity: 2;
     pointer-events: all;
 }
 
