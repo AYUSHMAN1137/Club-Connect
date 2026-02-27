@@ -61,18 +61,19 @@
             <button id="sidebarToggle" class="sidebar-toggle">
                 <i class="fa-solid fa-bars"></i>
             </button>
-            <div class="logo-container">
+            <div class="logo-container" id="mobileClubToggle">
                 <div class="logo-icon">
                     <i class="fa-solid fa-users-between-lines"></i>
                 </div>
+                <i class="fa-solid fa-chevron-down mobile-switcher-arrow"></i>
                 <!-- Desktop Club Name -->
                 <span id="clubName" class="desktop-only text-xl font-bold ml-2">Loading...</span>
             </div>
         </div>
 
-        <div class="navbar-center desktop-only">
+        <div class="navbar-center">
             <div class="club-switcher" id="clubSwitcher">
-                <button class="club-switcher-btn" id="clubSwitcherBtn" type="button" aria-haspopup="true"
+                <button class="club-switcher-btn desktop-only" id="clubSwitcherBtn" type="button" aria-haspopup="true"
                     aria-expanded="false">
                     <div class="club-avatar">
                         <i class="fa-solid fa-building"></i>

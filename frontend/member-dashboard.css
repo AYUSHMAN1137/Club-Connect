@@ -429,6 +429,36 @@ img {
     font-size: 20px;
 }
 
+.mobile-switcher-arrow {
+    display: none;
+    font-size: 10px;
+    color: var(--gray-400);
+    margin-left: 2px;
+    transition: var(--transition);
+}
+
+.club-switcher.active .mobile-switcher-arrow {
+    transform: rotate(180deg);
+}
+
+.desktop-only {
+    display: flex !important;
+}
+
+.mobile-only {
+    display: none !important;
+}
+
+@media (max-width: 900px) {
+    .desktop-only {
+        display: none !important;
+    }
+
+    .mobile-only {
+        display: flex !important;
+    }
+}
+
 /* Navbar Center - Club Switcher */
 .navbar-center {
     flex: 1;
@@ -6899,7 +6929,31 @@ img {
     }
 
     .navbar-center {
-        display: none;
+        position: absolute;
+        left: 20px;
+        top: 0;
+        width: 140px;
+        height: var(--navbar-height);
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        margin: 0;
+        max-width: none;
+        pointer-events: none;
+        z-index: 100;
+    }
+
+    .club-switcher {
+        position: static;
+        width: auto;
+    }
+
+    .club-dropdown {
+        top: calc(100% - 10px);
+        left: 0;
+        width: 280px;
+        border-radius: 24px;
+        pointer-events: all;
     }
 
     .messages-container {
@@ -6966,6 +7020,14 @@ img {
     }
 
     .sidebar-toggle {
+        display: block;
+    }
+
+    .logo-container {
+        cursor: pointer;
+    }
+
+    .mobile-switcher-arrow {
         display: block;
     }
 

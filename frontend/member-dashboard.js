@@ -222,11 +222,15 @@ async function loadMyClubs() {
 document.addEventListener('click', (e) => {
     const switcher = document.getElementById('clubSwitcher');
     const switcherBtn = document.getElementById('clubSwitcherBtn');
+    const mobileToggle = document.getElementById('mobileClubToggle');
     const userMenu = document.querySelector('.user-menu');
     const userDropdownBtn = document.querySelector('.user-menu .dropdown-btn');
 
-    // Handle Club Switcher Toggle
-    if (switcherBtn && (e.target === switcherBtn || switcherBtn.contains(e.target))) {
+    // Handle Club Switcher Toggle (Desktop Button or Mobile Logo)
+    const isSwitcherClicked = (switcherBtn && (e.target === switcherBtn || switcherBtn.contains(e.target))) ||
+        (mobileToggle && (e.target === mobileToggle || mobileToggle.contains(e.target)));
+
+    if (isSwitcherClicked) {
         e.stopPropagation();
         const isActive = switcher.classList.contains('active');
 
