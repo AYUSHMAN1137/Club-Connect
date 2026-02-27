@@ -304,46 +304,74 @@
                                     </div>
                                 </div>
                                 <div class="owner-card-body">
-                                    <div class="owner-checklist-progress">
-                                        <span>0 of 3 tasks completed</span>
-                                        <div class="owner-checklist-bar">
-                                            <div class="owner-checklist-fill"></div>
+                                    <div class="owner-checklist-panel" id="ownerChecklistPanel">
+                                        <div class="owner-checklist-progress">
+                                            <span>0 of 3 tasks completed</span>
+                                            <div class="owner-checklist-bar">
+                                                <div class="owner-checklist-fill"></div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="owner-checklist">
-                                        <button class="owner-check-item" type="button" role="checkbox"
-                                            aria-checked="false" data-check-id="post-weekly-update">
-                                            <div class="owner-check-indicator" aria-hidden="true"></div>
-                                            <div class="owner-check-icon" aria-hidden="true">
-                                                <i class="fa-solid fa-bullhorn"></i>
+                                        <div class="owner-checklist-tools">
+                                            <div class="owner-checklist-inputs">
+                                                <input type="text" id="ownerChecklistTitle"
+                                                    placeholder="Custom task title">
+                                                <input type="text" id="ownerChecklistDesc"
+                                                    placeholder="Optional details">
                                             </div>
-                                            <div class="owner-check-content">
-                                                <h4>Post weekly update</h4>
-                                                <p>Keep members engaged with the latest news.</p>
+                                            <button class="owner-checklist-add-btn" type="button"
+                                                id="ownerChecklistAddBtn">
+                                                <i class="fa-solid fa-plus"></i> Add task
+                                            </button>
+                                        </div>
+                                        <div class="owner-checklist-section">
+                                            <div class="owner-checklist-label">
+                                                <span>Quick tasks</span>
+                                                <span class="owner-checklist-count" id="ownerChecklistDefaultCount"></span>
                                             </div>
-                                        </button>
-                                        <button class="owner-check-item" type="button" role="checkbox"
-                                            aria-checked="false" data-check-id="plan-next-event">
-                                            <div class="owner-check-indicator" aria-hidden="true"></div>
-                                            <div class="owner-check-icon" aria-hidden="true">
-                                                <i class="fa-solid fa-calendar-day"></i>
+                                            <div class="owner-checklist owner-checklist-default" id="ownerChecklistDefault">
+                                                <button class="owner-check-item" type="button" role="checkbox"
+                                                    aria-checked="false" data-check-id="post-weekly-update">
+                                                    <div class="owner-check-indicator" aria-hidden="true"></div>
+                                                    <div class="owner-check-icon" aria-hidden="true">
+                                                        <i class="fa-solid fa-bullhorn"></i>
+                                                    </div>
+                                                    <div class="owner-check-content">
+                                                        <h4>Post weekly update</h4>
+                                                        <p>Keep members engaged with the latest news.</p>
+                                                    </div>
+                                                </button>
+                                                <button class="owner-check-item" type="button" role="checkbox"
+                                                    aria-checked="false" data-check-id="plan-next-event">
+                                                    <div class="owner-check-indicator" aria-hidden="true"></div>
+                                                    <div class="owner-check-icon" aria-hidden="true">
+                                                        <i class="fa-solid fa-calendar-day"></i>
+                                                    </div>
+                                                    <div class="owner-check-content">
+                                                        <h4>Plan next event</h4>
+                                                        <p>Schedule something exciting for your club.</p>
+                                                    </div>
+                                                </button>
+                                                <button class="owner-check-item" type="button" role="checkbox"
+                                                    aria-checked="false" data-check-id="review-member-roles">
+                                                    <div class="owner-check-indicator" aria-hidden="true"></div>
+                                                    <div class="owner-check-icon" aria-hidden="true">
+                                                        <i class="fa-solid fa-users-gear"></i>
+                                                    </div>
+                                                    <div class="owner-check-content">
+                                                        <h4>Review member roles</h4>
+                                                        <p>Assign roles to keep your team active.</p>
+                                                    </div>
+                                                </button>
                                             </div>
-                                            <div class="owner-check-content">
-                                                <h4>Plan next event</h4>
-                                                <p>Schedule something exciting for your club.</p>
+                                        </div>
+                                        <div class="owner-checklist-section">
+                                            <div class="owner-checklist-label">
+                                                <span>Custom tasks</span>
+                                                <span class="owner-checklist-count" id="ownerChecklistCustomCount"></span>
                                             </div>
-                                        </button>
-                                        <button class="owner-check-item" type="button" role="checkbox"
-                                            aria-checked="false" data-check-id="review-member-roles">
-                                            <div class="owner-check-indicator" aria-hidden="true"></div>
-                                            <div class="owner-check-icon" aria-hidden="true">
-                                                <i class="fa-solid fa-users-gear"></i>
-                                            </div>
-                                            <div class="owner-check-content">
-                                                <h4>Review member roles</h4>
-                                                <p>Assign roles to keep your team active.</p>
-                                            </div>
-                                        </button>
+                                            <div class="owner-checklist owner-checklist-custom" id="ownerChecklistCustom"></div>
+                                            <p class="owner-checklist-empty" id="ownerChecklistEmpty">No custom tasks yet.</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

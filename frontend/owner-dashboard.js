@@ -177,6 +177,26 @@ function saveOwnerChecklistState(state) {
     } catch (e) { }
 }
 
+function getOwnerChecklistCustomKey() {
+    return `${getOwnerChecklistStorageKey()}:custom`;
+}
+
+function loadOwnerChecklistCustomTasks() {
+    try {
+        const raw = localStorage.getItem(getOwnerChecklistCustomKey());
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveOwnerChecklistCustomTasks(tasks) {
+    try {
+        localStorage.setItem(getOwnerChecklistCustomKey(), JSON.stringify(Array.isArray(tasks) ? tasks : []));
+    } catch (e) { }
+}
+
 function applyOwnerChecklistState(items, state) {
     items.forEach((item, index) => {
         const id = item.getAttribute('data-check-id') || String(index);
@@ -188,15 +208,37 @@ function applyOwnerChecklistState(items, state) {
 
 function initOwnerChecklist(options = {}) {
     try {
-        const checklist = document.querySelector('.owner-checklist');
-        if (!checklist) return;
-        const alreadyInit = checklist.hasAttribute('data-init');
-        if (!alreadyInit) checklist.setAttribute('data-init', 'true');
-        const items = Array.from(checklist.querySelectorAll('.owner-check-item'));
-        const progressText = document.querySelector('.owner-checklist-progress span');
-        const progressFill = document.querySelector('.owner-checklist-fill');
+        const checklistPanel = document.getElementById('ownerChecklistPanel');
+        if (!checklistPanel) return;
+        const alreadyInit = checklistPanel.hasAttribute('data-init');
+        if (!alreadyInit) checklistPanel.setAttribute('data-init', 'true');
+
+        const progressText = checklistPanel.querySelector('.owner-checklist-progress span');
+        const progressFill = checklistPanel.querySelector('.owner-checklist-fill');
+        const defaultList = document.getElementById('ownerChecklistDefault') || checklistPanel.querySelector('.owner-checklist');
+        const customList = document.getElementById('ownerChecklistCustom');
+        const emptyState = document.getElementById('ownerChecklistEmpty');
+        const defaultCount = document.getElementById('ownerChecklistDefaultCount');
+        const customCount = document.getElementById('ownerChecklistCustomCount');
+        const titleInput = document.getElementById('ownerChecklistTitle');
+        const descInput = document.getElementById('ownerChecklistDesc');
+        const addBtn = document.getElementById('ownerChecklistAddBtn');
+
+        const getItems = () => Array.from(checklistPanel.querySelectorAll('.owner-check-item'));
+
+        const updateCounts = () => {
+            if (defaultCount) {
+                const totalDefault = defaultList ? defaultList.querySelectorAll('.owner-check-item').length : 0;
+                defaultCount.textContent = `${totalDefault} task${totalDefault === 1 ? '' : 's'}`;
+            }
+            if (customCount) {
+                const totalCustom = customList ? customList.querySelectorAll('.owner-check-item').length : 0;
+                customCount.textContent = `${totalCustom} task${totalCustom === 1 ? '' : 's'}`;
+            }
+        };
 
         const updateProgress = () => {
+            const items = getItems();
             const total = items.length;
             const completed = items.filter((item) => item.classList.contains('is-complete')).length;
             if (progressText) {
@@ -206,28 +248,159 @@ function initOwnerChecklist(options = {}) {
                 const width = total > 0 ? Math.round((completed / total) * 100) : 0;
                 progressFill.style.width = `${width}%`;
             }
+            updateCounts();
+        };
+
+        const bindItem = (item, index) => {
+            if (item.hasAttribute('data-bound')) return;
+            item.setAttribute('data-bound', 'true');
+            const fallbackId = item.getAttribute('data-check-id') || String(index);
+            if (!item.getAttribute('data-check-id')) {
+                item.setAttribute('data-check-id', fallbackId);
+            }
+            item.addEventListener('click', () => {
+                item.classList.toggle('is-complete');
+                const id = item.getAttribute('data-check-id') || String(index);
+                const state = loadOwnerChecklistState();
+                state[id] = item.classList.contains('is-complete');
+                saveOwnerChecklistState(state);
+                item.setAttribute('aria-checked', state[id] ? 'true' : 'false');
+                updateProgress();
+            });
+        };
+
+        const renderCustomTasks = () => {
+            if (!customList) return;
+            const tasks = loadOwnerChecklistCustomTasks();
+            customList.innerHTML = '';
+            tasks.forEach((task, index) => {
+                const row = document.createElement('div');
+                row.className = 'owner-check-row';
+
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'owner-check-item owner-check-item-custom';
+                item.setAttribute('role', 'checkbox');
+                item.setAttribute('aria-checked', 'false');
+                const itemId = task.id || `custom-${index}`;
+                item.setAttribute('data-check-id', itemId);
+
+                const indicator = document.createElement('div');
+                indicator.className = 'owner-check-indicator';
+                indicator.setAttribute('aria-hidden', 'true');
+
+                const iconWrap = document.createElement('div');
+                iconWrap.className = 'owner-check-icon';
+                iconWrap.setAttribute('aria-hidden', 'true');
+                const icon = document.createElement('i');
+                icon.className = 'fa-solid fa-list-check';
+                iconWrap.appendChild(icon);
+
+                const content = document.createElement('div');
+                content.className = 'owner-check-content';
+                const title = document.createElement('h4');
+                title.textContent = task.title || 'Custom task';
+                content.appendChild(title);
+                if (task.description) {
+                    const description = document.createElement('p');
+                    description.textContent = task.description;
+                    content.appendChild(description);
+                }
+
+                item.appendChild(indicator);
+                item.appendChild(iconWrap);
+                item.appendChild(content);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.className = 'owner-check-delete';
+                deleteBtn.setAttribute('aria-label', 'Delete task');
+                const deleteIcon = document.createElement('i');
+                deleteIcon.className = 'fa-solid fa-trash';
+                deleteBtn.appendChild(deleteIcon);
+
+                deleteBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const label = task.title || 'this task';
+                    openConfirmDialog({
+                        title: `Delete ${label}?`,
+                        message: 'This task will be removed from your checklist.',
+                        icon: 'fa-solid fa-trash',
+                        iconClass: 'danger',
+                        onConfirm: () => {
+                            const nextTasks = loadOwnerChecklistCustomTasks().filter((entry) => entry.id !== itemId);
+                            saveOwnerChecklistCustomTasks(nextTasks);
+                            const state = loadOwnerChecklistState();
+                            delete state[itemId];
+                            saveOwnerChecklistState(state);
+                            renderCustomTasks();
+                            updateProgress();
+                        }
+                    });
+                });
+
+                row.appendChild(item);
+                row.appendChild(deleteBtn);
+                customList.appendChild(row);
+                bindItem(item, index);
+            });
+
+            if (emptyState) {
+                emptyState.style.display = tasks.length ? 'none' : 'block';
+            }
+            applyOwnerChecklistState(getItems(), loadOwnerChecklistState());
+            updateCounts();
+        };
+
+        const addTask = () => {
+            if (!titleInput) return;
+            const title = titleInput.value.trim();
+            const description = descInput ? descInput.value.trim() : '';
+            if (!title) {
+                if (typeof showNotification === 'function') {
+                    showNotification('Please enter a task title.', 'error');
+                }
+                return;
+            }
+            const tasks = loadOwnerChecklistCustomTasks();
+            tasks.push({
+                id: `custom-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+                title,
+                description
+            });
+            saveOwnerChecklistCustomTasks(tasks);
+            titleInput.value = '';
+            if (descInput) descInput.value = '';
+            renderCustomTasks();
+            updateProgress();
         };
 
         const restore = () => {
-            const state = loadOwnerChecklistState();
-            applyOwnerChecklistState(items, state);
+            applyOwnerChecklistState(getItems(), loadOwnerChecklistState());
             updateProgress();
         };
 
         if (!alreadyInit) {
-            items.forEach((item, index) => {
-                if (!item.getAttribute('data-check-id')) item.setAttribute('data-check-id', String(index));
-                item.addEventListener('click', () => {
-                    item.classList.toggle('is-complete');
-                    const id = item.getAttribute('data-check-id') || String(index);
-                    const state = loadOwnerChecklistState();
-                    state[id] = item.classList.contains('is-complete');
-                    saveOwnerChecklistState(state);
-                    item.setAttribute('aria-checked', state[id] ? 'true' : 'false');
-                    updateProgress();
+            const defaultItems = defaultList ? Array.from(defaultList.querySelectorAll('.owner-check-item')) : [];
+            defaultItems.forEach((item, index) => bindItem(item, index));
+            if (addBtn) {
+                addBtn.addEventListener('click', addTask);
+            }
+            const bindEnter = (input) => {
+                if (!input) return;
+                input.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        addTask();
+                    }
                 });
-            });
+            };
+            bindEnter(titleInput);
+            bindEnter(descInput);
         }
+
+        renderCustomTasks();
 
         if (options.forceRestore || !alreadyInit) {
             restore();

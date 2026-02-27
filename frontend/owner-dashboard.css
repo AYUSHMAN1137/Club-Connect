@@ -3547,10 +3547,134 @@ body {
     background: rgba(15, 118, 110, 0.12);
 }
 
+.owner-checklist-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.owner-checklist-tools {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 16px;
+    border: 1px dashed var(--border);
+    background: var(--gray-50);
+}
+
+.owner-checklist-inputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+}
+
+.owner-checklist-inputs input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+    background: var(--white);
+    color: var(--text-1);
+}
+
+.owner-checklist-add-btn {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--white);
+    color: var(--text-1);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform var(--transition-default), box-shadow var(--transition-default), border-color var(--transition-default), background var(--transition-default);
+}
+
+.owner-checklist-add-btn:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-2);
+    transform: translateY(-1px);
+}
+
+.owner-checklist-add-btn:active {
+    transform: scale(0.98);
+}
+
+.owner-checklist-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.owner-checklist-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
+.owner-checklist-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-2);
+    text-transform: none;
+    letter-spacing: 0;
+}
+
 .owner-checklist {
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+.owner-check-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.owner-check-row .owner-check-item {
+    flex: 1;
+}
+
+.owner-check-delete {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid rgba(220, 38, 38, 0.2);
+    background: var(--danger-light);
+    color: var(--danger-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform var(--transition-default), box-shadow var(--transition-default), border-color var(--transition-default), background var(--transition-default);
+}
+
+.owner-check-delete:hover {
+    border-color: rgba(220, 38, 38, 0.4);
+    box-shadow: var(--shadow-2);
+    transform: translateY(-1px);
+}
+
+.owner-check-delete:active {
+    transform: scale(0.95);
+}
+
+.owner-checklist-empty {
+    margin: 0;
+    padding: 6px 4px;
+    font-size: 13px;
+    color: var(--text-3);
 }
 
 .owner-check-item {
@@ -4366,6 +4490,40 @@ body.dark-mode .owner-check-item {
     background: #0f172a;
     border-color: #334155;
     color: #e2e8f0;
+}
+
+body.dark-mode .owner-checklist-tools {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: #334155;
+}
+
+body.dark-mode .owner-checklist-add-btn {
+    background: #0f172a;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+body.dark-mode .owner-checklist-add-btn:hover {
+    background: #111827;
+    border-color: #475569;
+}
+
+body.dark-mode .owner-check-delete {
+    background: rgba(248, 113, 113, 0.18);
+    border-color: rgba(248, 113, 113, 0.35);
+    color: #fca5a5;
+}
+
+body.dark-mode .owner-checklist-label {
+    color: #94a3b8;
+}
+
+body.dark-mode .owner-checklist-count {
+    color: #cbd5e1;
+}
+
+body.dark-mode .owner-checklist-empty {
+    color: #94a3b8;
 }
 
 body.dark-mode .owner-action-btn:hover {
