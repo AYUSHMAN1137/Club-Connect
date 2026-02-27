@@ -3,8 +3,7 @@ setlocal enabledelayedexpansion
 
 cd /d "%~dp0"
 
-set /p MSG=Commit message (default: "deploy"): 
-if "%MSG%"=="" set MSG=deploy
+set MSG=deploy
 
 git status --porcelain >nul 2>nul
 if errorlevel 1 (
