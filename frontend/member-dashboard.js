@@ -20,6 +20,15 @@ if (!token) {
     window.location.href = 'index.html';
 }
 
+// === PERFORMANCE: Debounce utility for search inputs ===
+function debounce(fn, delay = 300) {
+    let timer;
+    return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
 // Helper to get full image URL
 function getFullImageUrl(path) {
     if (!path) return '';
@@ -1087,7 +1096,9 @@ function initEventsUi() {
     if (eventsUiInitialized) return;
     eventsUiInitialized = true;
 
-    document.getElementById('eventSearchInput')?.addEventListener('input', () => renderEvents());
+    // PERFORMANCE: Debounce search input to avoid re-rendering on every keystroke
+    const debouncedRenderEvents = debounce(() => renderEvents(), 250);
+    document.getElementById('eventSearchInput')?.addEventListener('input', debouncedRenderEvents);
     document.getElementById('eventStatusFilter')?.addEventListener('change', () => renderEvents());
     document.getElementById('eventTypeFilter')?.addEventListener('change', () => renderEvents());
 

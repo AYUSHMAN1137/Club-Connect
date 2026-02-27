@@ -3102,6 +3102,7 @@ img {
 }
 
 @keyframes ws-pulse {
+
     0%,
     100% {
         opacity: 1;
@@ -9296,6 +9297,156 @@ textarea,
     flex: 1;
     justify-content: center;
 }
-\ n / *   = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = \ n       M O B I L E   P E R F O R M A N C E   O P T I M I Z A T I O N S   ( F o r   l o w - e n d   d e v i c e s ) \ n       D i s a b l e s   h e a v y   G P U   e f f e c t s   l i k e   b a c k d r o p - f i l t e r   a n d   c o m p l e x   s h a d o w s \ n       = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =   * / \ n @ m e d i a   ( m a x - w i d t h :   7 6 8 p x )   { \ n         / *   1 .   D i s a b l e   G l a s s m o r p h i s m   ( B a c k d r o p   F i l t e r )   g l o b a l l y   * / \ n         * ,   * : b e f o r e ,   * : a f t e r ,   \ n         . t o p - n a v b a r ,   . s i d e b a r ,   . g l a s s - c a r d ,   . c l u b - d r o p d o w n ,   . n o t i f i c a t i o n - d r o p d o w n ,   . m o d a l - c o n t e n t   { \ n                 b a c k d r o p - f i l t e r :   n o n e   ! i m p o r t a n t ; \ n                 - w e b k i t - b a c k d r o p - f i l t e r :   n o n e   ! i m p o r t a n t ; \ n         } \ n \ n         / *   P r o v i d e   a   s o l i d   f a l l b a c k   c o l o r   f o r   t h i n g s   t h a t   w e r e   t r a n s p a r e n t   g l a s s   * / \ n         . t o p - n a v b a r   { \ n                 b a c k g r o u n d - c o l o r :   r g b a ( 2 5 5 ,   2 5 5 ,   2 5 5 ,   0 . 9 8 )   ! i m p o r t a n t ;   / *   S o l i d   w h i t e   * / \ n         } \ n         \ n         [ d a t a - t h e m e = \  
- d a r k \ ]   . t o p - n a v b a r   { \ n                 b a c k g r o u n d - c o l o r :   r g b a ( 1 5 ,   2 3 ,   4 2 ,   0 . 9 8 )   ! i m p o r t a n t ;   / *   S o l i d   d a r k   b l u e   * / \ n         } \ n \ n         / *   2 .   S i m p l i f y   a l l   h e a v y   b o x - s h a d o w s   t o   a   s i n g l e ,   c h e a p   l a y e r   * / \ n         *   { \ n                 b o x - s h a d o w :   n o n e   ! i m p o r t a n t ; \ n         } \ n \ n         / *   R e s t o r e   b a s i c ,   c h e a p   s h a d o w s   o n l y   w h e r e   s t r i c t l y   n e c e s s a r y   ( c a r d s ,   n a v ,   d r o p d o w n s )   * / \ n         . t o p - n a v b a r ,   . s i d e b a r ,   . e v e n t - c a r d ,   . p o l l - c a r d ,   . p r o j e c t - c a r d ,   . s t a t - c a r d ,   . c l u b - d r o p d o w n   { \ n                 b o x - s h a d o w :   0   2 p x   4 p x   r g b a ( 0 ,   0 ,   0 ,   0 . 0 5 )   ! i m p o r t a n t ; \ n         } \ n \ n         [ d a t a - t h e m e = \ d a r k \ ]   . t o p - n a v b a r ,   \ n         [ d a t a - t h e m e = \ d a r k \ ]   . s i d e b a r ,   \ n         [ d a t a - t h e m e = \ d a r k \ ]   . e v e n t - c a r d   { \ n                 b o x - s h a d o w :   0   2 p x   4 p x   r g b a ( 0 ,   0 ,   0 ,   0 . 2 )   ! i m p o r t a n t ; \ n         } \ n \ n         / *   3 .   F o r c e   h a r d w a r e   a c c e l e r a t i o n   o n   c o m m o n l y   a n i m a t e d   e l e m e n t s   * / \ n         . s i d e b a r ,   . m o d a l - c o n t e n t   { \ n                 w i l l - c h a n g e :   t r a n s f o r m ,   o p a c i t y ; \ n         } \ n } \ n  
- 
+
+/* ==============================================================
+   MOBILE PERFORMANCE OPTIMIZATIONS (For low-end devices)
+   Targets: backdrop-filter, box-shadow, content-visibility,
+   infinite animations, transitions, and hardware acceleration
+   ============================================================== */
+
+/* Method 3: content-visibility for hidden pages -
+   Tells the browser to skip rendering pages that are not visible */
+.page:not(.active) {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 500px;
+}
+
+@media (max-width: 768px) {
+
+    /* === 1. DISABLE GLASSMORPHISM (backdrop-filter) === */
+    *,
+    *::before,
+    *::after,
+    .top-navbar,
+    .sidebar,
+    .glass-card,
+    .club-dropdown,
+    .notification-dropdown,
+    .modal-content,
+    .search-modal,
+    .search-modal-content,
+    .sidebar-overlay,
+    .ws-detail-overlay {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    /* Solid fallback colors for glass elements */
+    .top-navbar {
+        background: var(--white) !important;
+    }
+
+    [data-theme="dark"] .top-navbar {
+        background: #0f172a !important;
+    }
+
+    .sidebar {
+        background: var(--white) !important;
+    }
+
+    [data-theme="dark"] .sidebar {
+        background: #0f172a !important;
+    }
+
+    .sidebar-overlay.active {
+        background: rgba(0, 0, 0, 0.5) !important;
+    }
+
+    /* === 2. SIMPLIFY BOX-SHADOWS === */
+    /* Reset all shadows globally */
+    :root {
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+        --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.06) !important;
+        --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.07) !important;
+        --shadow-xl: 0 4px 8px rgba(0, 0, 0, 0.08) !important;
+        --shadow-2xl: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+        --shadow-primary: 0 2px 6px rgba(15, 118, 110, 0.15) !important;
+        --shadow-success: 0 2px 6px rgba(34, 197, 94, 0.15) !important;
+        --shadow-danger: 0 2px 6px rgba(239, 68, 68, 0.15) !important;
+        --shadow-glow: none !important;
+    }
+
+    [data-theme="dark"] {
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+        --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.25) !important;
+        --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
+        --shadow-xl: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+        --shadow-2xl: 0 4px 8px rgba(0, 0, 0, 0.35) !important;
+        --shadow-primary: 0 2px 6px rgba(45, 212, 191, 0.2) !important;
+        --shadow-glow: none !important;
+    }
+
+    /* === 3. PAUSE INFINITE ANIMATIONS on mobile === */
+    .floating-card,
+    .empty-icon-wrapper,
+    .ws-live-dot,
+    .loader-ring,
+    .loader-icon,
+    .loader-text {
+        animation-play-state: paused !important;
+    }
+
+    /* Re-enable only when preloader is actually visible */
+    .preloader:not(.hidden) .loader-ring,
+    .preloader:not(.hidden) .loader-icon,
+    .preloader:not(.hidden) .loader-text {
+        animation-play-state: running !important;
+    }
+
+    /* === 4. SIMPLIFY TRANSITIONS on mobile === */
+    /* Reduce transition durations globally for snappier feel */
+    :root {
+        --transition-fast: 100ms ease !important;
+        --transition: 150ms ease !important;
+        --transition-slow: 200ms ease !important;
+        --transition-bounce: 250ms ease !important;
+        --transition-spring: 300ms ease !important;
+    }
+
+    /* Disable transitions on frequently repainting elements */
+    .menu-item,
+    .navbar-icon-btn,
+    .club-switcher-btn,
+    .notification-item,
+    .contact-item,
+    .club-item {
+        transition: background-color 100ms ease, color 100ms ease !important;
+    }
+
+    /* === 5. HARDWARE ACCELERATION hints === */
+    .sidebar,
+    .modal-content,
+    .search-modal,
+    .ws-detail-overlay,
+    .club-dropdown,
+    .notification-dropdown,
+    .user-dropdown,
+    .top-navbar {
+        will-change: transform, opacity;
+        transform: translateZ(0);
+    }
+
+    /* === 6. OPTIMIZE SCROLL PERFORMANCE === */
+    .content,
+    .club-list,
+    .notification-list,
+    .chat-messages,
+    .attendance-table-wrapper,
+    .events-list,
+    .events-grid {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+
+    /* === 7. REDUCE GRADIENT COMPLEXITY === */
+    .stat-bg-pattern {
+        display: none !important;
+    }
+
+    .welcome-illustration .floating-card {
+        display: none !important;
+    }
+}
+
