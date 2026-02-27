@@ -6,6 +6,14 @@
 # Dependencies
 node_modules/
 
+# Android build outputs
+android/app/build/
+android/.gradle/
+android/build/
+android/capacitor-cordova-android-plugins/build/
+*.apk
+*.aab
+
 # Database (optional: uncomment if each dev should have their own DB)
 # backend/database.sqlite
 

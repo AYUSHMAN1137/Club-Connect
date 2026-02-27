@@ -16,9 +16,14 @@
     <script>
         (function () {
             const hostname = window.location.hostname;
+            const isCapacitor = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
             const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
             const isFile = window.location.protocol === 'file:' || !hostname;
             const isNgrok = hostname.endsWith('ngrok-free.app') || hostname.endsWith('ngrok.app') || hostname.endsWith('ngrok.dev');
+            if (isCapacitor) {
+                window.API_URL = 'https://club-connect-hvsz.onrender.com';
+                return;
+            }
             if (isFile) {
                 window.API_URL = 'http://localhost:4000';
                 return;
@@ -326,9 +331,11 @@
                                         <div class="owner-checklist-section">
                                             <div class="owner-checklist-label">
                                                 <span>Quick tasks</span>
-                                                <span class="owner-checklist-count" id="ownerChecklistDefaultCount"></span>
+                                                <span class="owner-checklist-count"
+                                                    id="ownerChecklistDefaultCount"></span>
                                             </div>
-                                            <div class="owner-checklist owner-checklist-default" id="ownerChecklistDefault">
+                                            <div class="owner-checklist owner-checklist-default"
+                                                id="ownerChecklistDefault">
                                                 <button class="owner-check-item" type="button" role="checkbox"
                                                     aria-checked="false" data-check-id="post-weekly-update">
                                                     <div class="owner-check-indicator" aria-hidden="true"></div>
@@ -367,10 +374,13 @@
                                         <div class="owner-checklist-section">
                                             <div class="owner-checklist-label">
                                                 <span>Custom tasks</span>
-                                                <span class="owner-checklist-count" id="ownerChecklistCustomCount"></span>
+                                                <span class="owner-checklist-count"
+                                                    id="ownerChecklistCustomCount"></span>
                                             </div>
-                                            <div class="owner-checklist owner-checklist-custom" id="ownerChecklistCustom"></div>
-                                            <p class="owner-checklist-empty" id="ownerChecklistEmpty">No custom tasks yet.</p>
+                                            <div class="owner-checklist owner-checklist-custom"
+                                                id="ownerChecklistCustom"></div>
+                                            <p class="owner-checklist-empty" id="ownerChecklistEmpty">No custom tasks
+                                                yet.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -654,11 +664,11 @@
                                     <label for="pollsFilterAll" class="poll-segment"><i
                                             class="fa-solid fa-layer-group"></i> All</label>
                                     <input type="radio" id="pollsFilterActive" name="pollsStatusFilter" value="active">
-                                    <label for="pollsFilterActive" class="poll-segment"><i
-                                            class="fa-solid fa-bolt"></i> Active</label>
+                                    <label for="pollsFilterActive" class="poll-segment"><i class="fa-solid fa-bolt"></i>
+                                        Active</label>
                                     <input type="radio" id="pollsFilterClosed" name="pollsStatusFilter" value="closed">
-                                    <label for="pollsFilterClosed" class="poll-segment"><i
-                                            class="fa-solid fa-lock"></i> Closed</label>
+                                    <label for="pollsFilterClosed" class="poll-segment"><i class="fa-solid fa-lock"></i>
+                                        Closed</label>
                                 </div>
                                 <div class="polls-search">
                                     <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
@@ -1269,7 +1279,8 @@
                                     <i class="fa-solid fa-hourglass-half" style="color: #6b7280;"></i>
                                     <span>Session expires: <strong id="qrExpiresAt">-</strong></span>
                                 </div>
-                                <button onclick="exportQRAttendance()" class="btn-primary" style="width: 100%; margin-bottom: 10px;">
+                                <button onclick="exportQRAttendance()" class="btn-primary"
+                                    style="width: 100%; margin-bottom: 10px;">
                                     <i class="fa-solid fa-file-export"></i> Export Attendance
                                 </button>
                                 <button onclick="endQRAttendanceSession()" class="btn-secondary" style="width: 100%;">

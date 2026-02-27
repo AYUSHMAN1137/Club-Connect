@@ -1,0 +1,17 @@
+{
+  "appId": "com.clubconnect.app",
+  "appName": "Club Connect",
+  "webDir": "frontend",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": [
+      "club-connect-hvsz.onrender.com",
+      "*.onrender.com"
+    ]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "club-connect",
+  "version": "1.0.0",
+  "description": "Club Connect - College Club Management Platform",
+  "private": true,
+  "scripts": {
+    "cap:sync": "npx cap sync",
+    "cap:open": "npx cap open android",
+    "cap:build": "npx cap sync && cd android && gradlew assembleDebug",
+    "cap:run": "npx cap run android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0"
+  }
+}
