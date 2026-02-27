@@ -3,6 +3,11 @@
    Modern academic/professional theme
    ============================================ */
 
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
 :root {
     /* Typography */
     --font-body: 'Manrope', 'Segoe UI', sans-serif;
