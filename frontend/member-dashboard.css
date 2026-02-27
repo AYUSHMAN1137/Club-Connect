@@ -372,8 +372,8 @@ img {
     backdrop-filter: blur(var(--blur-lg));
     -webkit-backdrop-filter: blur(var(--blur-lg));
     border-bottom: 1px solid var(--glass-border);
-    border-bottom-left-radius: var(--radius-xl);
-    border-bottom-right-radius: var(--radius-xl);
+    border-bottom-left-radius: var(--radius-lg);
+    border-bottom-right-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -6982,7 +6982,7 @@ img {
         left: 12px;
         right: 12px;
         bottom: 8px;
-        border-radius: 22px;
+        border-radius: 16px;
         background: var(--glass-bg);
         border: 1px solid var(--glass-border);
         box-shadow: var(--shadow-md);
