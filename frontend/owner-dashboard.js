@@ -572,6 +572,7 @@ async function verifyAuth() {
                 updateThemeIcon();
             });
         }
+        initUserMenuDropdown();
         if (typeof initSocketIO === 'function') {
             initSocketIO();
         }
@@ -634,6 +635,40 @@ if (document.readyState === 'loading') {
 
 // Expose to window for onclick handler
 window.handleLogout = handleLogout;
+
+let userMenuDropdownBound = false;
+
+function initUserMenuDropdown() {
+    if (userMenuDropdownBound) return;
+    const userMenu = document.querySelector('.user-menu');
+    const btn = document.getElementById('userMenuBtn');
+    const dropdown = document.getElementById('userDropdown');
+    if (!userMenu || !btn || !dropdown) return;
+
+    userMenuDropdownBound = true;
+
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        userMenu.classList.toggle('active');
+    });
+
+    dropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!userMenu.contains(e.target)) {
+            userMenu.classList.remove('active');
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            userMenu.classList.remove('active');
+        }
+    });
+}
 
 // Page Switching - Initialize after DOM is ready
 let menuItems;

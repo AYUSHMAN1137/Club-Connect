@@ -61,20 +61,23 @@
                 <span class="notification-badge" id="notificationBadge">0</span>
             </div>
             <div class="user-menu">
-                <div class="user-avatar">
-                    <i class="fa-solid fa-user-circle"></i>
-                </div>
-                <div class="dropdown">
-                    <button class="dropdown-btn">
-                        <span id="ownerName">Owner</span>
-                        <i class="fa-solid fa-chevron-down"></i>
-                    </button>
-                    <div class="dropdown-content" id="userDropdown">
-                        <a href="#" onclick="return false;"><i class="fa-solid fa-user"></i> View Profile</a>
-                        <a href="#" id="logoutBtn" class="danger-link" onclick="handleLogout(event); return false;">
-                            <i class="fa-solid fa-right-from-bracket"></i>
-                            Logout</a>
+                <button class="user-menu-btn" id="userMenuBtn" type="button">
+                    <div class="user-avatar">
+                        <i class="fa-solid fa-user"></i>
                     </div>
+                    <div class="user-info">
+                        <span class="user-name" id="ownerName">Owner</span>
+                        <span class="user-role">Owner</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="#" onclick="return false;">
+                        <i class="fa-solid fa-user-circle"></i> View Profile
+                    </a>
+                    <button id="logoutBtn" class="logout-btn" type="button">
+                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    </button>
                 </div>
             </div>
         </div>
