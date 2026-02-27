@@ -67,7 +67,9 @@
 
     /* Layout */
     --safe-top: env(safe-area-inset-top, 0px);
-    --navbar-height: calc(65px + var(--safe-top));
+    --navbar-surface-height: 62px;
+    --navbar-gap: 12px;
+    --navbar-height: calc(var(--safe-top) + var(--navbar-surface-height) + var(--navbar-gap));
     --sidebar-width: 280px;
     --sidebar-collapsed-width: 80px;
 
@@ -367,18 +369,31 @@ img {
     top: 0;
     left: 0;
     right: 0;
-    height: var(--navbar-height);
+    height: auto;
+    background: transparent;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: var(--safe-top) 0 0;
+    z-index: var(--z-fixed);
+    transition: background var(--transition-slow), border-color var(--transition-slow), box-shadow var(--transition-slow);
+}
+
+.top-navbar-surface {
+    width: min(1200px, calc(100% - 24px));
+    min-height: var(--navbar-surface-height);
     background: var(--glass-bg);
     backdrop-filter: blur(var(--blur-lg));
     -webkit-backdrop-filter: blur(var(--blur-lg));
-    border-bottom: 1px solid var(--glass-border);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--safe-top) 24px 0;
-    z-index: var(--z-fixed);
+    gap: 14px;
+    padding: 10px 14px;
+    margin: var(--navbar-gap) 12px 0;
     box-shadow: var(--shadow-md);
-    transition: background var(--transition-slow), border-color var(--transition-slow), box-shadow var(--transition-slow);
 }
 
 .navbar-brand {
@@ -445,7 +460,8 @@ img {
     display: flex;
     justify-content: center;
     max-width: 400px;
-    margin: 0 20px;
+    min-width: 0;
+    margin: 0 16px;
 }
 
 .club-switcher {
@@ -6963,7 +6979,14 @@ img {
 
 @media (max-width: 768px) {
     .top-navbar {
-        padding: 0 15px;
+        padding: var(--safe-top) 0 0;
+    }
+
+    .top-navbar-surface {
+        width: calc(100% - 20px);
+        margin: 8px 10px 0;
+        padding: 8px 10px;
+        border-radius: 16px;
     }
 
     .logo-text {
