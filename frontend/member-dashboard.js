@@ -262,25 +262,7 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Club Search Filter
-const clubSearchInput = document.getElementById('clubSearchInput');
-if (clubSearchInput) {
-    clubSearchInput.addEventListener('input', (e) => {
-        const searchTerm = e.target.value.toLowerCase();
-        const clubItems = document.querySelectorAll('#clubDropdownList .club-item');
 
-        clubItems.forEach(item => {
-            const clubName = item.querySelector('h5').textContent.toLowerCase();
-            const tagline = item.querySelector('p').textContent.toLowerCase();
-
-            if (clubName.includes(searchTerm) || tagline.includes(searchTerm)) {
-                item.style.display = 'flex';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    });
-}
 
 // Switch active club
 async function switchClub(clubId) {
