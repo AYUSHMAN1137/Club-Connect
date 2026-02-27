@@ -6984,7 +6984,7 @@ img {
 
     .top-navbar-surface {
         width: calc(100% - 20px);
-        margin: 8px 10px 0;
+        margin: 1px 10px 0;
         padding: 8px 10px;
         border-radius: 16px;
     }
