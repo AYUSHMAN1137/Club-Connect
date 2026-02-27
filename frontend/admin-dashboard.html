@@ -35,6 +35,12 @@
         })();
     </script>
     <style>
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+            --admin-navbar-height: 56px;
+            --admin-navbar-safe-height: calc(var(--admin-navbar-height) + var(--safe-top));
+        }
+
         body {
             background: #0b1220;
             color: #e5e7eb;
@@ -45,7 +51,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 16px;
+            height: var(--admin-navbar-safe-height);
+            padding: var(--safe-top) 16px 0;
             background: #0f172a;
             border-bottom: 1px solid #1f2937;
             position: sticky;
@@ -147,7 +154,7 @@
 
         .notification-container {
             position: fixed;
-            top: 16px;
+            top: calc(16px + var(--safe-top));
             right: 16px;
             z-index: 100;
         }
