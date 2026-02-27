@@ -56,112 +56,117 @@
 
     <!-- Top Navbar -->
     <nav class="top-navbar">
-        <div class="top-navbar-surface">
-            <div class="navbar-brand">
-                <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle Sidebar">
-                    <i class="fa-solid fa-bars"></i>
-                </button>
-                <div class="logo-container">
-                    <div class="logo-icon">
-                        <i class="fa-solid fa-users-between-lines"></i>
+        <div class="navbar-brand">
+            <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle Sidebar">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-users-between-lines"></i>
+                </div>
+                <span class="logo-text">ClubConnect</span>
+            </div>
+        </div>
+
+        <div class="navbar-center">
+            <!-- Club Switcher -->
+            <div class="club-switcher">
+                <button class="club-switcher-btn" id="clubSwitcherBtn">
+                    <div class="club-avatar">
+                        <i class="fa-solid fa-building"></i>
                     </div>
-                    <span class="logo-text">ClubConnect</span>
+                    <div class="club-info">
+                        <span class="club-label">Current Club</span>
+                        <span id="currentClubName">Select Club</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-down switcher-arrow"></i>
+                </button>
+                <div class="club-dropdown" id="clubDropdown">
+                    <div class="club-dropdown-header">
+                        <h4><i class="fa-solid fa-building-user"></i> My Clubs</h4>
+                        <span class="club-count" id="clubCount">0</span>
+                    </div>
+                    <div class="club-search">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" placeholder="Search clubs..." id="clubSearchInput">
+                    </div>
+                    <div class="club-list" id="clubList">
+                        <!-- Clubs loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="navbar-right">
+            <!-- Search Button -->
+            <button class="navbar-icon-btn" id="globalSearchBtn" title="Search">
+                <i class="fa-solid fa-search"></i>
+            </button>
+
+            <!-- Theme Toggle -->
+            <button class="navbar-icon-btn" id="themeToggle" title="Toggle Theme">
+                <i class="fa-solid fa-moon"></i>
+            </button>
+
+            <!-- Notifications -->
+            <div class="notification-wrapper">
+                <button class="navbar-icon-btn" id="notificationBell" title="Notifications">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                </button>
+                <div class="notification-dropdown" id="notificationDropdown">
+                    <div class="notification-header">
+                        <h4>Notifications</h4>
+                        <button class="mark-all-read" id="markAllRead">Mark all read</button>
+                    </div>
+                    <div class="notification-list" id="notificationList">
+                        <!-- Notifications loaded dynamically -->
+                    </div>
+                    <div class="notification-footer">
+                        <a href="#" onclick="navigateTo('notifications')">View All Notifications</a>
+                    </div>
                 </div>
             </div>
 
-            <div class="navbar-center">
-                <div class="club-switcher">
-                    <button class="club-switcher-btn" id="clubSwitcherBtn">
-                        <div class="club-avatar">
-                            <i class="fa-solid fa-building"></i>
-                        </div>
-                        <div class="club-info">
-                            <span class="club-label">Current Club</span>
-                            <span id="currentClubName">Select Club</span>
-                        </div>
-                        <i class="fa-solid fa-chevron-down switcher-arrow"></i>
-                    </button>
-                    <div class="club-dropdown" id="clubDropdown">
-                        <div class="club-dropdown-header">
-                            <h4><i class="fa-solid fa-building-user"></i> My Clubs</h4>
-                            <span class="club-count" id="clubCount">0</span>
-                        </div>
-                        <div class="club-search">
-                            <i class="fa-solid fa-search"></i>
-                            <input type="text" placeholder="Search clubs..." id="clubSearchInput">
-                        </div>
-                        <div class="club-list" id="clubList">
-                        </div>
+            <!-- User Menu -->
+            <div class="user-menu">
+                <button class="user-menu-btn" id="userMenuBtn">
+                    <div class="user-avatar" id="navUserAvatar">
+                        <img src="" alt="" id="navUserImg" style="display: none;">
+                        <i class="fa-solid fa-user"></i>
                     </div>
-                </div>
-            </div>
-
-            <div class="navbar-right">
-                <button class="navbar-icon-btn" id="globalSearchBtn" title="Search">
-                    <i class="fa-solid fa-search"></i>
-                </button>
-
-                <button class="navbar-icon-btn" id="themeToggle" title="Toggle Theme">
-                    <i class="fa-solid fa-moon"></i>
-                </button>
-
-                <div class="notification-wrapper">
-                    <button class="navbar-icon-btn" id="notificationBell" title="Notifications">
-                        <i class="fa-solid fa-bell"></i>
-                        <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
-                    </button>
-                    <div class="notification-dropdown" id="notificationDropdown">
-                        <div class="notification-header">
-                            <h4>Notifications</h4>
-                            <button class="mark-all-read" id="markAllRead">Mark all read</button>
-                        </div>
-                        <div class="notification-list" id="notificationList">
-                        </div>
-                        <div class="notification-footer">
-                            <a href="#" onclick="navigateTo('notifications')">View All Notifications</a>
-                        </div>
+                    <div class="user-info">
+                        <span class="user-name" id="memberName">Member</span>
+                        <span class="user-role" id="memberRole">Member</span>
                     </div>
-                </div>
-
-                <div class="user-menu">
-                    <button class="user-menu-btn" id="userMenuBtn">
-                        <div class="user-avatar" id="navUserAvatar">
-                            <img src="" alt="" id="navUserImg" style="display: none;">
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="user-dropdown" id="userDropdown">
+                    <div class="user-dropdown-header">
+                        <div class="user-avatar-large">
+                            <img src="" alt="" id="dropdownUserImg" style="display: none;">
                             <i class="fa-solid fa-user"></i>
                         </div>
-                        <div class="user-info">
-                            <span class="user-name" id="memberName">Member</span>
-                            <span class="user-role" id="memberRole">Member</span>
+                        <div class="user-details">
+                            <h4 id="dropdownUserName">Member Name</h4>
+                            <p id="dropdownUserEmail">member@email.com</p>
                         </div>
-                        <i class="fa-solid fa-chevron-down"></i>
-                    </button>
-                    <div class="user-dropdown" id="userDropdown">
-                        <div class="user-dropdown-header">
-                            <div class="user-avatar-large">
-                                <img src="" alt="" id="dropdownUserImg" style="display: none;">
-                                <i class="fa-solid fa-user"></i>
-                            </div>
-                            <div class="user-details">
-                                <h4 id="dropdownUserName">Member Name</h4>
-                                <p id="dropdownUserEmail">member@email.com</p>
-                            </div>
-                        </div>
-                        <div class="user-dropdown-body">
-                            <a href="#" onclick="navigateTo('profile')">
-                                <i class="fa-solid fa-user-circle"></i> My Profile
-                            </a>
-                            <a href="#" onclick="navigateTo('settings')">
-                                <i class="fa-solid fa-gear"></i> Settings
-                            </a>
-                            <a href="#" onclick="navigateTo('help')">
-                                <i class="fa-solid fa-circle-question"></i> Help & Support
-                            </a>
-                        </div>
-                        <div class="user-dropdown-footer">
-                            <button id="logoutBtn" class="logout-btn">
-                                <i class="fa-solid fa-right-from-bracket"></i> Logout
-                            </button>
-                        </div>
+                    </div>
+                    <div class="user-dropdown-body">
+                        <a href="#" onclick="navigateTo('profile')">
+                            <i class="fa-solid fa-user-circle"></i> My Profile
+                        </a>
+                        <a href="#" onclick="navigateTo('settings')">
+                            <i class="fa-solid fa-gear"></i> Settings
+                        </a>
+                        <a href="#" onclick="navigateTo('help')">
+                            <i class="fa-solid fa-circle-question"></i> Help & Support
+                        </a>
+                    </div>
+                    <div class="user-dropdown-footer">
+                        <button id="logoutBtn" class="logout-btn">
+                            <i class="fa-solid fa-right-from-bracket"></i> Logout
+                        </button>
                     </div>
                 </div>
             </div>
