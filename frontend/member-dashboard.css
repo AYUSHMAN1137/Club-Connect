@@ -3102,7 +3102,6 @@ img {
 }
 
 @keyframes ws-pulse {
-
     0%,
     100% {
         opacity: 1;
@@ -9296,105 +9295,4 @@ textarea,
 .event-card-footer .btn-event-action {
     flex: 1;
     justify-content: center;
-}
-
-/* ==============================================================
-   MOBILE PERFORMANCE OPTIMIZATIONS (For low-end devices)
-   Only proven, tested optimizations.
-   Removed: content-visibility (caused LCP regression),
-            will-change/translateZ (doubled System time),
-            transition overrides (added parsing overhead)
-   ============================================================== */
-
-@media (max-width: 768px) {
-
-    /* === 1. DISABLE GLASSMORPHISM (backdrop-filter) === 
-       PROVEN: Reduced Rendering time by 25% */
-    *,
-    *::before,
-    *::after {
-        backdrop-filter: none !important;
-        -webkit-backdrop-filter: none !important;
-    }
-
-    /* Solid fallback colors */
-    .top-navbar {
-        background: var(--white) !important;
-    }
-
-    [data-theme="dark"] .top-navbar {
-        background: #0f172a !important;
-    }
-
-    .sidebar {
-        background: var(--white) !important;
-    }
-
-    [data-theme="dark"] .sidebar {
-        background: #0f172a !important;
-    }
-
-    .sidebar-overlay.active {
-        background: rgba(0, 0, 0, 0.5) !important;
-    }
-
-    /* === 2. SIMPLIFY BOX-SHADOWS ===
-       PROVEN: Reduced Painting time */
-    :root {
-        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
-        --shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
-        --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.06) !important;
-        --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.07) !important;
-        --shadow-xl: 0 4px 8px rgba(0, 0, 0, 0.08) !important;
-        --shadow-2xl: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
-        --shadow-primary: 0 2px 6px rgba(15, 118, 110, 0.15) !important;
-        --shadow-success: 0 2px 6px rgba(34, 197, 94, 0.15) !important;
-        --shadow-danger: 0 2px 6px rgba(239, 68, 68, 0.15) !important;
-        --shadow-glow: none !important;
-    }
-
-    [data-theme="dark"] {
-        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
-        --shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
-        --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.25) !important;
-        --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
-        --shadow-xl: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
-        --shadow-2xl: 0 4px 8px rgba(0, 0, 0, 0.35) !important;
-        --shadow-primary: 0 2px 6px rgba(45, 212, 191, 0.2) !important;
-        --shadow-glow: none !important;
-    }
-
-    /* === 3. PAUSE INFINITE ANIMATIONS on mobile === */
-    .floating-card,
-    .empty-icon-wrapper,
-    .ws-live-dot {
-        animation-play-state: paused !important;
-    }
-
-    /* Re-enable only when preloader is actually visible */
-    .preloader:not(.hidden) .loader-ring,
-    .preloader:not(.hidden) .loader-icon,
-    .preloader:not(.hidden) .loader-text {
-        animation-play-state: running !important;
-    }
-
-    /* === 4. OPTIMIZE SCROLL PERFORMANCE === */
-    .content,
-    .club-list,
-    .notification-list,
-    .chat-messages,
-    .events-list,
-    .events-grid {
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior: contain;
-    }
-
-    /* === 5. HIDE DECORATIVE ELEMENTS to reduce paint area === */
-    .stat-bg-pattern {
-        display: none !important;
-    }
-
-    .welcome-illustration .floating-card {
-        display: none !important;
-    }
 }
