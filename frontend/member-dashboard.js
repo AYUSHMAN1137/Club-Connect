@@ -57,8 +57,10 @@ async function verifyAuth() {
         if (document.getElementById('dropdownUserName')) {
             document.getElementById('dropdownUserName').textContent = data.user.username;
         }
-        if (document.getElementById('dropdownUserEmail')) {
-            document.getElementById('dropdownUserEmail').textContent = data.user.email || 'Email not available';
+        if (document.getElementById('dropdownUserRole')) {
+            document.getElementById('dropdownUserRole').textContent = data.user.role
+                ? data.user.role.charAt(0).toUpperCase() + data.user.role.slice(1)
+                : 'Member';
         }
 
         // Update profile pictures
@@ -66,21 +68,15 @@ async function verifyAuth() {
             const fullUrl = getFullImageUrl(data.user.profilePic);
 
             // Navbar Avatar
-            const navImg = document.getElementById('navUserImg');
-            if (navImg) {
-                navImg.src = fullUrl;
-                navImg.style.display = 'block';
-                const icon = navImg.nextElementSibling;
-                if (icon && icon.tagName === 'I') icon.style.display = 'none';
+            const headerAvatar = document.getElementById('headerAvatar');
+            if (headerAvatar) {
+                headerAvatar.innerHTML = `<img src="${fullUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
             }
 
-            // Dropdown Large Avatar
-            const dropdownImg = document.getElementById('dropdownUserImg');
-            if (dropdownImg) {
-                dropdownImg.src = fullUrl;
-                dropdownImg.style.display = 'block';
-                const icon = dropdownImg.nextElementSibling;
-                if (icon && icon.tagName === 'I') icon.style.display = 'none';
+            // Dropdown Avatar
+            const dropdownAvatar = document.getElementById('dropdownUserImg');
+            if (dropdownAvatar) {
+                dropdownAvatar.innerHTML = `<img src="${fullUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;">`;
             }
         }
 
@@ -224,9 +220,19 @@ document.addEventListener('click', (e) => {
     const switcherBtn = document.getElementById('clubSwitcherBtn');
     const mobileToggle = document.getElementById('mobileClubToggle');
     const userMenu = document.querySelector('.user-menu');
-    const userDropdownBtn = document.querySelector('.user-menu .dropdown-btn');
+    const userMenuBtn = document.getElementById('userMenuBtn');
+    const logoHomeBtn = document.getElementById('logoHomeBtn');
 
-    // Handle Club Switcher Toggle (Desktop Button or Mobile Logo)
+    // Logo-icon click → go to home (mobile)
+    if (logoHomeBtn && (e.target === logoHomeBtn || logoHomeBtn.contains(e.target))) {
+        e.stopPropagation();
+        if (switcher) switcher.classList.remove('active');
+        switchPage('home');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+    }
+
+    // Handle Club Switcher Toggle (Desktop Button or Mobile Arrow)
     const isSwitcherClicked = (switcherBtn && (e.target === switcherBtn || switcherBtn.contains(e.target))) ||
         (mobileToggle && (e.target === mobileToggle || mobileToggle.contains(e.target)));
 
@@ -239,27 +245,28 @@ document.addEventListener('click', (e) => {
 
         // Toggle this one
         switcher.classList.toggle('active');
+        // Sync arrow rotation
+        if (mobileToggle) mobileToggle.classList.toggle('open', !isActive);
         console.log('🔄 Club switcher toggled:', !isActive);
         return;
     }
 
     // Handle User Menu Toggle
-    if (userDropdownBtn && (e.target === userDropdownBtn || userDropdownBtn.contains(e.target))) {
+    if (userMenuBtn && (e.target === userMenuBtn || userMenuBtn.contains(e.target))) {
         e.stopPropagation();
-        const dropdown = userMenu.querySelector('.dropdown'); // Some versions use .dropdown on parent
-        const parent = userMenu;
 
-        // Close other dropdowns
+        // Close club switcher dropdown
         if (switcher) switcher.classList.remove('active');
 
-        // Toggle this one
-        parent.classList.toggle('active');
+        // Toggle user menu
+        if (userMenu) userMenu.classList.toggle('active');
         return;
     }
 
     // Close all if clicking outside
     if (switcher && !switcher.contains(e.target)) {
         switcher.classList.remove('active');
+        if (mobileToggle) mobileToggle.classList.remove('open');
     }
     if (userMenu && !userMenu.contains(e.target)) {
         userMenu.classList.remove('active');
@@ -321,17 +328,18 @@ document.getElementById('logoutBtn').addEventListener('click', (e) => {
     window.location.href = 'index.html';
 });
 
-// Make brand (icon + text) clickable to go Home smoothly
+// Make logo-icon clickable to go Home (also handled in click delegation above, this is a backup)
 document.addEventListener('DOMContentLoaded', () => {
-    const brand = document.querySelector('.navbar-brand');
-    if (brand) {
-        brand.addEventListener('click', (e) => {
+    const logoHomeBtn = document.getElementById('logoHomeBtn');
+    if (logoHomeBtn) {
+        logoHomeBtn.addEventListener('click', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             try {
                 switchPage('home');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } catch (err) {
-                console.error('Brand click navigation error:', err);
+                console.error('Logo click navigation error:', err);
             }
         });
     }

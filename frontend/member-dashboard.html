@@ -61,11 +61,13 @@
             <button id="sidebarToggle" class="sidebar-toggle">
                 <i class="fa-solid fa-bars"></i>
             </button>
-            <div class="logo-container" id="mobileClubToggle">
-                <div class="logo-icon">
+            <div class="logo-container">
+                <div class="logo-icon" id="logoHomeBtn">
                     <i class="fa-solid fa-users-between-lines"></i>
                 </div>
-                <i class="fa-solid fa-chevron-down mobile-switcher-arrow"></i>
+                <button class="mobile-club-arrow-btn" id="mobileClubToggle" type="button" aria-label="Switch Club">
+                    <i class="fa-solid fa-chevron-down mobile-switcher-arrow"></i>
+                </button>
                 <!-- Desktop Club Name -->
                 <span id="clubName" class="desktop-only text-xl font-bold ml-2">Loading...</span>
             </div>
@@ -114,12 +116,21 @@
                     <i class="fa-solid fa-chevron-down desktop-only"></i>
                 </button>
                 <div class="user-dropdown" id="userDropdown">
-                    <a href="#" onclick="navigateTo('profile'); return false;">
-                        <i class="fa-solid fa-user-circle"></i> View Profile
-                    </a>
-                    <button id="logoutBtn" class="logout-btn" type="button">
-                        <i class="fa-solid fa-right-from-bracket"></i> Logout
-                    </button>
+                    <div class="user-dropdown-body">
+                        <a href="#" class="ud-item" onclick="navigateTo('profile'); return false;">
+                            <span class="ud-item-icon"><i class="fa-solid fa-user"></i></span>
+                            <span>View Profile</span>
+                        </a>
+                        <a href="#" class="ud-item" onclick="navigateTo('settings'); return false;">
+                            <span class="ud-item-icon"><i class="fa-solid fa-gear"></i></span>
+                            <span>Settings</span>
+                        </a>
+                        <div class="ud-divider"></div>
+                        <button id="logoutBtn" class="ud-item ud-item-danger" type="button">
+                            <span class="ud-item-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
+                            <span>Logout</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
