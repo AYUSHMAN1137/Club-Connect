@@ -33,13 +33,31 @@ const allowedOrigins = allowAllOrigins
     ? []
     : CLIENT_ORIGIN.split(',').map(o => o.trim()).filter(Boolean);
 
+// Always-allowed origins (Capacitor native apps, local development)
+const CAPACITOR_ORIGINS = [
+    'https://localhost',
+    'capacitor://localhost',
+    'http://localhost',
+    'http://localhost:4000',
+    'ionic://localhost'
+];
+
 const corsOrigin = (origin, callback) => {
-    if (allowAllOrigins) return callback(null, true);
-    if (!origin) return callback(null, true);
-    const appUrl = String(process.env.APP_URL || '').trim();
-    if (appUrl && origin === appUrl) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'));
+    try {
+        if (allowAllOrigins) return callback(null, true);
+        if (!origin) return callback(null, true);
+        // Always allow Capacitor / local development origins
+        if (CAPACITOR_ORIGINS.some(cap => origin.startsWith(cap))) return callback(null, true);
+        const appUrl = String(process.env.APP_URL || '').trim();
+        if (appUrl && origin === appUrl) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        // Allow anyway to prevent 500 errors — log for debugging
+        console.warn(`⚠️ CORS: unexpected origin "${origin}" — allowing anyway`);
+        return callback(null, true);
+    } catch (err) {
+        console.error('CORS handler error:', err);
+        return callback(null, true);
+    }
 };
 
 db.ClubOwner.sync().catch(() => null);

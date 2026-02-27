@@ -3,8 +3,12 @@
   "appName": "Club Connect",
   "webDir": "frontend",
   "server": {
-    "url": "https://club-connect-hvsz.onrender.com",
-    "cleartext": false
+    "androidScheme": "https",
+    "allowNavigation": [
+      "club-connect-hvsz.onrender.com",
+      "*.onrender.com",
+      "*.supabase.com"
+    ]
   },
   "android": {
     "allowMixedContent": true,
