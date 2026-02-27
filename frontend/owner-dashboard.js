@@ -551,28 +551,26 @@ async function verifyAuth() {
 
         // Initialize features
         console.log('Initializing features...');
-        // Dark mode from utils.js
-        if (typeof initDarkMode === 'function') {
-            initDarkMode();
-        } else {
-            // Fallback dark mode initialization
-            const darkMode = localStorage.getItem('darkMode') === 'true';
-            if (darkMode) {
-                document.body.classList.add('dark-mode');
-            }
-            const toggle = document.getElementById('darkModeToggle');
-            if (toggle) {
-                toggle.checked = darkMode;
-                toggle.addEventListener('change', (e) => {
-                    if (e.target.checked) {
-                        document.body.classList.add('dark-mode');
-                        localStorage.setItem('darkMode', 'true');
-                    } else {
-                        document.body.classList.remove('dark-mode');
-                        localStorage.setItem('darkMode', 'false');
-                    }
-                });
-            }
+        const themeToggle = document.getElementById('themeToggle');
+        const darkMode = localStorage.getItem('darkMode') === 'true';
+        if (darkMode) {
+            document.body.classList.add('dark-mode');
+        }
+        const updateThemeIcon = () => {
+            const icon = themeToggle?.querySelector('i');
+            if (!icon) return;
+            icon.className = document.body.classList.contains('dark-mode') ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        };
+        updateThemeIcon();
+        if (themeToggle && !themeToggle.hasAttribute('data-listener-added')) {
+            themeToggle.setAttribute('data-listener-added', 'true');
+            themeToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                document.body.classList.toggle('dark-mode');
+                localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? 'true' : 'false');
+                updateThemeIcon();
+            });
         }
         if (typeof initSocketIO === 'function') {
             initSocketIO();
@@ -794,6 +792,9 @@ function switchPage(pageName, options = {}) {
                 break;
             case 'analytics':
                 loadAdvancedAnalytics();
+                break;
+            case 'messages':
+                loadMessages();
                 break;
             case 'settings':
                 loadSettings();
@@ -1640,6 +1641,7 @@ async function removeMember(memberId, memberName) {
         if (data.success) {
             showNotification(data.message, 'success');
             invalidateModuleCache('members');
+            invalidateModuleCache('messages');
             invalidateModuleCache('project-progress');
             invalidateModuleCacheGroup('analytics');
             loadMembers();
@@ -3567,6 +3569,7 @@ async function addMemberByStudentId() {
             // Reload members list
             setTimeout(() => {
                 invalidateModuleCache('members');
+                invalidateModuleCache('messages');
                 invalidateModuleCache('project-progress');
                 invalidateModuleCacheGroup('analytics');
                 loadMembers();
@@ -3647,6 +3650,18 @@ function initSocketIO() {
         }
     });
 
+    socket.on('new-message', (message) => {
+        if (!message) return;
+        if (message.recipientId !== currentUserId) return;
+        invalidateModuleCache('messages');
+        if (getActivePageName() === 'messages') {
+            loadMessages();
+            if (currentChatRecipientId === message.senderId) {
+                loadChatMessages(message.senderId);
+            }
+        }
+    });
+
     socket.on('attendance-updated', (data) => {
         if (document.getElementById('attendanceContent')) {
             loadAttendanceData(data.eventId);
@@ -3654,6 +3669,285 @@ function initSocketIO() {
     });
 
     bindWorkshopSocketHandlers();
+}
+
+function updateMessageBadge(count) {
+    const badge = document.getElementById('messageBadge');
+    if (!badge) return;
+    if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : String(count);
+        badge.style.display = 'flex';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function renderMessagesFromData(data) {
+    const messageList = document.getElementById('messageList');
+    if (!messageList) return;
+    if (!data || !data.success || !Array.isArray(data.contacts) || data.contacts.length === 0) {
+        messageList.innerHTML = `
+            <div style="padding: 20px; text-align: center; color: #6b7280;">
+                <i class="fa-solid fa-users" style="font-size: 32px; margin-bottom: 10px; opacity: 0.5;"></i>
+                <p style="font-size: 14px;">No members yet</p>
+                <p style="font-size: 12px; color: #9ca3af; margin-top: 5px;">Add members to your club to start messaging</p>
+            </div>
+        `;
+        updateMessageBadge(0);
+        return;
+    }
+
+    messageList.innerHTML = data.contacts.map(contact => `
+        <div class="message-item ${currentChatRecipientId === contact.id ? 'active' : ''}" onclick="openChat(${contact.id})">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #2563eb); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; flex-shrink: 0;">
+                    ${(contact.username || 'M').charAt(0).toUpperCase()}
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <strong style="display: block;">${contact.username || 'Member'}</strong>
+                    ${contact.lastMessage ? `
+                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${(contact.lastMessage.message || '').substring(0, 50)}${(contact.lastMessage.message || '').length > 50 ? '...' : ''}
+                        </p>
+                        <p style="margin: 5px 0 0 0; font-size: 11px; color: #9ca3af;">
+                            ${new Date(contact.lastMessage.createdAt).toLocaleString()}
+                        </p>
+                    ` : '<p style="margin: 5px 0 0 0; font-size: 13px; color: #9ca3af;">No messages yet</p>'}
+                </div>
+                ${contact.unreadCount > 0 ? `
+                    <span style="background: #ef4444; color: white; border-radius: 50%; min-width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; padding: 0 6px;">
+                        ${contact.unreadCount}
+                    </span>
+                ` : ''}
+            </div>
+        </div>
+    `).join('');
+
+    const totalUnread = data.contacts.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+    updateMessageBadge(totalUnread);
+}
+
+async function loadMessages() {
+    try {
+        const cached = getModuleCache('messages');
+        if (cached) {
+            renderMessagesFromData(cached);
+            return;
+        }
+        const response = await fetch(`${getApiUrl()}/messages/contacts`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            setModuleCache('messages', data);
+        }
+        renderMessagesFromData(data);
+    } catch (error) {
+        console.error('Error loading messages:', error);
+        showNotification('Failed to load messages', 'error');
+        renderMessagesFromData(null);
+    }
+}
+
+async function openChat(recipientId) {
+    currentChatRecipientId = recipientId;
+
+    document.querySelectorAll('.message-item').forEach(item => {
+        item.classList.remove('active');
+    });
+
+    await loadChatMessages(recipientId);
+
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) chatInput.style.display = 'block';
+
+    try {
+        const membersCached = getModuleCache('members');
+        let member = null;
+        if (membersCached && membersCached.success && Array.isArray(membersCached.members)) {
+            member = membersCached.members.find(m => m.id === recipientId) || null;
+        }
+        if (!member) {
+            const membersResponse = await fetch(`${getApiUrl()}/owner/members`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const membersData = await membersResponse.json();
+            if (membersData.success) {
+                setModuleCache('members', membersData);
+                member = (membersData.members || []).find(m => m.id === recipientId) || null;
+            }
+        }
+
+        const chatHeader = document.getElementById('chatHeader');
+        if (chatHeader) {
+            chatHeader.innerHTML = `
+                <h3 style="margin: 0;">${member ? member.username : 'Member'}</h3>
+                <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">${member ? (member.email || '') : ''}</p>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading recipient info:', error);
+    }
+}
+
+async function loadChatMessages(recipientId) {
+    try {
+        const response = await fetch(`${getApiUrl()}/messages?recipientId=${recipientId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (!data.success) return;
+
+        const chatMessages = document.getElementById('chatMessages');
+        if (!chatMessages) return;
+
+        chatMessages.innerHTML = (data.messages || []).map(msg => `
+            <div class="chat-message ${msg.senderId === currentUserId ? 'sent' : ''}">
+                <div class="chat-message-content">
+                    <p style="margin: 0;">${msg.message}</p>
+                    <div class="chat-message-time">
+                        ${new Date(msg.createdAt).toLocaleTimeString()}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        (data.messages || []).forEach(msg => {
+            if (msg.recipientId === currentUserId && !msg.read) {
+                fetch(`${getApiUrl()}/messages/${msg.id}/read`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            }
+        });
+    } catch (error) {
+        console.error('Error loading chat messages:', error);
+    }
+}
+
+async function sendMessage(e) {
+    e.preventDefault();
+
+    if (!currentChatRecipientId) {
+        showNotification('Please select a recipient', 'error');
+        return;
+    }
+
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput?.value?.trim() || '';
+    if (!message) return;
+
+    try {
+        const response = await fetch(`${getApiUrl()}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                recipientId: currentChatRecipientId,
+                message,
+                type: 'direct'
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            if (messageInput) messageInput.value = '';
+            invalidateModuleCache('messages');
+            loadMessages();
+            await loadChatMessages(currentChatRecipientId);
+        } else {
+            showNotification(data.message || 'Failed to send message', 'error');
+        }
+    } catch (error) {
+        console.error('Error sending message:', error);
+        showNotification('Failed to send message', 'error');
+    }
+}
+
+function bindNewMessageForm() {
+    const form = document.getElementById('newMessageForm');
+    if (!form || form.hasAttribute('data-listener-added')) return;
+    form.setAttribute('data-listener-added', 'true');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const recipientId = parseInt(document.getElementById('recipientSelect')?.value || '', 10);
+        const message = document.getElementById('newMessageText')?.value?.trim() || '';
+        if (!recipientId || !message) {
+            showNotification('Please select recipient and enter message', 'error');
+            return;
+        }
+        try {
+            const response = await fetch(`${getApiUrl()}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ recipientId, message, type: 'direct' })
+            });
+            const data = await response.json();
+            if (data.success) {
+                showNotification('Message sent successfully!', 'success');
+                closeNewMessageModal();
+                invalidateModuleCache('messages');
+                loadMessages();
+                if (currentChatRecipientId === recipientId) {
+                    await loadChatMessages(recipientId);
+                }
+            } else {
+                showNotification(data.message || 'Failed to send message', 'error');
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+            showNotification('Failed to send message', 'error');
+        }
+    });
+}
+
+async function loadMembersForMessage() {
+    try {
+        const cached = getModuleCache('members');
+        if (cached && cached.success) {
+            const select = document.getElementById('recipientSelect');
+            if (select) {
+                select.innerHTML = '<option value="">Choose a member...</option>' +
+                    (cached.members || []).map(m => `<option value="${m.id}">${m.username} (${m.email})</option>`).join('');
+            }
+            return;
+        }
+        const response = await fetch(`${getApiUrl()}/owner/members`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            setModuleCache('members', data);
+            const select = document.getElementById('recipientSelect');
+            if (select) {
+                select.innerHTML = '<option value="">Choose a member...</option>' +
+                    data.members.map(m => `<option value="${m.id}">${m.username} (${m.email})</option>`).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading members:', error);
+    }
+}
+
+function openNewMessageModal() {
+    const modal = document.getElementById('newMessageModal');
+    if (!modal) return;
+    modal.classList.add('active');
+    bindNewMessageForm();
+    loadMembersForMessage();
+}
+
+function closeNewMessageModal() {
+    const modal = document.getElementById('newMessageModal');
+    if (modal) modal.classList.remove('active');
+    const form = document.getElementById('newMessageForm');
+    if (form) form.reset();
 }
 
 // Tooltips are initialized via utils.js

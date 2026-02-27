@@ -91,6 +91,35 @@ body {
     gap: 20px;
 }
 
+.navbar-icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border: 1px solid transparent;
+    background: transparent;
+    transition: transform var(--transition-default), background var(--transition-default), border-color var(--transition-default), box-shadow var(--transition-default);
+    cursor: pointer;
+    padding: 0;
+}
+
+.navbar-icon-btn:hover {
+    background: rgba(15, 118, 110, 0.06);
+    border-color: rgba(15, 118, 110, 0.12);
+}
+
+.navbar-icon-btn:active {
+    transform: scale(0.95);
+}
+
+.navbar-icon-btn i {
+    color: var(--text-2);
+    font-size: 16px;
+}
+
 .notification-bell {
     width: 40px;
     height: 40px;
@@ -3968,6 +3997,11 @@ body {
         gap: 8px;
     }
 
+    .navbar-icon-btn {
+        width: 36px;
+        height: 36px;
+    }
+
     .notification-bell {
         width: 36px;
         height: 36px;
@@ -4426,60 +4460,6 @@ body {
     }
 }
 
-/* ===== DARK MODE ===== */
-/* Dark Mode Toggle */
-.dark-mode-toggle {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    padding: 8px 12px;
-    border-radius: 8px;
-    transition: background 0.3s;
-}
-
-.dark-mode-toggle:hover {
-    background: #f3f4f6;
-}
-
-body.dark-mode .dark-mode-toggle:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.dark-mode-toggle input[type="checkbox"] {
-    display: none;
-}
-
-.toggle-slider {
-    width: 46px;
-    height: 24px;
-    background: #ccc;
-    border-radius: 20px;
-    position: relative;
-    transition: background 0.3s;
-}
-
-.dark-mode-toggle input:checked+.toggle-slider {
-    background: var(--primary-500);
-}
-
-.toggle-slider::after {
-    content: '';
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    background: white;
-    border-radius: 50%;
-    top: 2px;
-    left: 2px;
-    transition: transform 0.3s;
-}
-
-.dark-mode-toggle input:checked+.toggle-slider::after {
-    transform: translateX(22px);
-}
-
 /* ===== CLEAN DARK MODE ===== */
 body.dark-mode {
     background: #0f172a;
@@ -4660,16 +4640,19 @@ body.dark-mode .owner-welcome-text p {
     color: #94a3b8;
 }
 
+body.dark-mode .navbar-icon-btn,
 body.dark-mode .notification-bell {
     background: rgba(255, 255, 255, 0.04);
     border-color: rgba(255, 255, 255, 0.06);
 }
 
+body.dark-mode .navbar-icon-btn:hover,
 body.dark-mode .notification-bell:hover {
     background: rgba(94, 234, 212, 0.08);
     border-color: rgba(94, 234, 212, 0.16);
 }
 
+body.dark-mode .navbar-icon-btn i,
 body.dark-mode .notification-bell i {
     color: #e2e8f0;
 }
