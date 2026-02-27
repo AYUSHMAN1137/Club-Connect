@@ -100,7 +100,7 @@ async function verifyAuth() {
 }
 
 function setClubSwitcherLoading(isLoading) {
-    const switcher = document.querySelector('.club-switcher');
+    const switcher = document.getElementById('clubSwitcher');
     const button = document.getElementById('clubSwitcherBtn');
     const headerClubNameEl = document.getElementById('headerClubName');
     const desktopClubNameEl = document.getElementById('clubName');
@@ -171,10 +171,13 @@ async function loadMyClubs() {
         if (data.success && data.clubs && data.clubs.length > 0) {
             const activeClub = data.clubs.find(c => c.id === data.activeClub) || data.clubs.find(c => c.isActive) || data.clubs[0];
             console.log('✅ Active club found:', activeClub);
-            const desktopClubNameEl = document.getElementById('clubName');
-            const headerClubNameEl = document.getElementById('headerClubName');
-            if (desktopClubNameEl) desktopClubNameEl.textContent = activeClub.name;
-            if (headerClubNameEl) headerClubNameEl.textContent = activeClub.name;
+
+            // Update all club name displays
+            const nameElements = ['clubName', 'headerClubName'];
+            nameElements.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = activeClub.name;
+            });
 
             if (clubList) {
                 clubList.innerHTML = data.clubs.map(club => `
@@ -216,45 +219,46 @@ async function loadMyClubs() {
 }
 
 // Toggle club dropdown
-// Toggle club dropdown
-const clubSwitcherBtn = document.getElementById('clubSwitcherBtn');
-if (clubSwitcherBtn) {
-    clubSwitcherBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const switcher = e.currentTarget.closest('.club-switcher');
-        if (switcher) switcher.classList.toggle('active');
-
-        // Close user dropdown if open
-        const userDropdown = document.querySelector('.user-menu .dropdown');
-        if (userDropdown) userDropdown.classList.remove('active');
-    });
-}
-
-// Toggle User Menu Dropdown (Fix for mobile touch)
-const userDropdownBtn = document.querySelector('.user-menu .dropdown-btn');
-if (userDropdownBtn) {
-    userDropdownBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        e.preventDefault(); // Prevent accidental navigation if it was a link
-        const dropdown = e.currentTarget.closest('.dropdown');
-        dropdown.classList.toggle('active');
-
-        // Close club dropdown if open
-        document.getElementById('clubDropdown').classList.remove('active');
-    });
-}
-
-// Close dropdowns when clicking outside
 document.addEventListener('click', (e) => {
-    const clubSwitcher = document.querySelector('.club-switcher');
-    const userDropdown = document.querySelector('.user-menu .dropdown');
+    const switcher = document.getElementById('clubSwitcher');
+    const switcherBtn = document.getElementById('clubSwitcherBtn');
+    const userMenu = document.querySelector('.user-menu');
+    const userDropdownBtn = document.querySelector('.user-menu .dropdown-btn');
 
-    if (clubSwitcher && !e.target.closest('.club-switcher')) {
-        clubSwitcher.classList.remove('active');
+    // Handle Club Switcher Toggle
+    if (switcherBtn && (e.target === switcherBtn || switcherBtn.contains(e.target))) {
+        e.stopPropagation();
+        const isActive = switcher.classList.contains('active');
+
+        // Close other dropdowns
+        if (userMenu) userMenu.classList.remove('active');
+
+        // Toggle this one
+        switcher.classList.toggle('active');
+        console.log('🔄 Club switcher toggled:', !isActive);
+        return;
     }
 
-    if (userDropdown && !e.target.closest('.user-menu')) {
-        userDropdown.classList.remove('active');
+    // Handle User Menu Toggle
+    if (userDropdownBtn && (e.target === userDropdownBtn || userDropdownBtn.contains(e.target))) {
+        e.stopPropagation();
+        const dropdown = userMenu.querySelector('.dropdown'); // Some versions use .dropdown on parent
+        const parent = userMenu;
+
+        // Close other dropdowns
+        if (switcher) switcher.classList.remove('active');
+
+        // Toggle this one
+        parent.classList.toggle('active');
+        return;
+    }
+
+    // Close all if clicking outside
+    if (switcher && !switcher.contains(e.target)) {
+        switcher.classList.remove('active');
+    }
+    if (userMenu && !userMenu.contains(e.target)) {
+        userMenu.classList.remove('active');
     }
 });
 

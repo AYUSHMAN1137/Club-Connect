@@ -543,7 +543,8 @@ img {
     visibility: hidden;
     transform: translateY(-10px);
     transition: var(--transition);
-    z-index: var(--z-dropdown);
+    z-index: 1100;
+    pointer-events: all;
 }
 
 .club-switcher.active .club-dropdown {
