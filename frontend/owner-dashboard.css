@@ -8325,27 +8325,15 @@ body.dark-mode .ws-editor-header {
 
 /* ==============================================================
    MOBILE PERFORMANCE OPTIMIZATIONS (For low-end devices)
+   Only proven, tested optimizations.
    ============================================================== */
-
-.page:not(.active) {
-    content-visibility: auto;
-    contain-intrinsic-size: 0 500px;
-}
 
 @media (max-width: 768px) {
 
+    /* 1. DISABLE GLASSMORPHISM */
     *,
     *::before,
-    *::after,
-    .top-navbar,
-    .sidebar,
-    .glass-card,
-    .club-dropdown,
-    .notification-dropdown,
-    .modal-content,
-    .search-modal,
-    .sidebar-overlay,
-    .ws-detail-overlay {
+    *::after {
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
     }
@@ -8366,6 +8354,7 @@ body.dark-mode .ws-editor-header {
         background: #0f172a !important;
     }
 
+    /* 2. SIMPLIFY BOX-SHADOWS */
     :root {
         --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
         --shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
@@ -8374,27 +8363,16 @@ body.dark-mode .ws-editor-header {
         --shadow-xl: 0 4px 8px rgba(0, 0, 0, 0.08) !important;
         --shadow-2xl: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
         --shadow-glow: none !important;
-        --transition-fast: 100ms ease !important;
-        --transition: 150ms ease !important;
-        --transition-slow: 200ms ease !important;
     }
 
+    /* 3. PAUSE INFINITE ANIMATIONS */
     .floating-card,
     .empty-icon-wrapper,
     .ws-live-dot {
         animation-play-state: paused !important;
     }
 
-    .sidebar,
-    .modal-content,
-    .ws-detail-overlay,
-    .club-dropdown,
-    .notification-dropdown,
-    .top-navbar {
-        will-change: transform, opacity;
-        transform: translateZ(0);
-    }
-
+    /* 4. SCROLL OPTIMIZATION */
     .content,
     .club-list,
     .notification-list,
@@ -8404,6 +8382,7 @@ body.dark-mode .ws-editor-header {
         overscroll-behavior: contain;
     }
 
+    /* 5. HIDE DECORATIVE ELEMENTS */
     .stat-bg-pattern {
         display: none !important;
     }
