@@ -44,8 +44,12 @@
             <button id="sidebarToggle" class="sidebar-toggle">
                 <i class="fa-solid fa-bars"></i>
             </button>
-            <i class="fa-solid fa-users-between-lines"></i>
-            <span id="clubName">Loading...</span>
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-users-between-lines"></i>
+                </div>
+                <span id="clubName">Loading...</span>
+            </div>
         </div>
         <div class="navbar-right">
             <label class="dark-mode-toggle" data-tooltip="Toggle Dark Mode">
@@ -57,11 +61,6 @@
                 onclick="event.preventDefault(); event.stopPropagation(); const modal = document.getElementById('notificationsModal'); if(modal) { modal.classList.add('active'); loadNotifications(); }">
                 <i class="fa-solid fa-bell"></i>
                 <span class="notification-badge" id="notificationBadge">0</span>
-            </div>
-            <div class="messages-icon" id="messagesIcon" data-tooltip="Messages"
-                onclick="event.preventDefault(); event.stopPropagation(); switchPage('messages');">
-                <i class="fa-solid fa-message"></i>
-                <span class="notification-badge" id="messageBadge">0</span>
             </div>
             <div class="user-menu">
                 <div class="user-avatar">
@@ -123,10 +122,6 @@
                 <li class="menu-item" data-page="analytics" onclick="switchPage('analytics')">
                     <i class="fa-solid fa-chart-line"></i>
                     <span>Analytics</span>
-                </li>
-                <li class="menu-item" data-page="messages" onclick="switchPage('messages')">
-                    <i class="fa-solid fa-message"></i>
-                    <span>Messages</span>
                 </li>
                 <li class="menu-item" data-page="settings" onclick="switchPage('settings')">
                     <i class="fa-solid fa-gear"></i>
@@ -771,51 +766,6 @@
                 </div>
             </div>
 
-            <!-- Messages Page -->
-            <div class="page" id="messages-page">
-                <div class="ws-hero owner-messages-hero">
-                    <div class="ws-hero-content">
-                        <div class="ws-hero-text">
-                            <h1><i class="fa-solid fa-message"></i> Messages</h1>
-                            <p class="ws-hero-subtitle">Chat with members and keep conversations organized</p>
-                        </div>
-                        <button class="ws-create-btn" onclick="openNewMessageModal()">
-                            <i class="fa-solid fa-plus"></i> New Message
-                        </button>
-                    </div>
-                </div>
-
-                <div class="messages-layout">
-                    <!-- Message List -->
-                    <div class="messages-panel">
-                        <h3 class="panel-title">Conversations</h3>
-                        <div id="messageList" class="message-list">
-                            <p class="loading">Loading conversations...</p>
-                        </div>
-                    </div>
-
-                    <!-- Message Chat -->
-                    <div class="chat-panel">
-                        <div id="chatHeader" class="chat-header">
-                            <p class="chat-placeholder">Select a conversation to start messaging</p>
-                        </div>
-                        <div id="chatMessages" class="chat-messages">
-                        </div>
-                        <div id="chatInput" class="chat-input" style="display: none;">
-                            <form id="messageForm" onsubmit="sendMessage(event)">
-                                <div class="chat-row">
-                                    <input type="text" id="messageInput" class="chat-text-input"
-                                        placeholder="Type a message..." required>
-                                    <button type="submit" class="btn-primary">
-                                        <i class="fa-solid fa-paper-plane"></i>
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div class="page" id="workshops-page">
                 <!-- Workshop Hero Header -->
                 <div class="ws-hero">
@@ -1117,33 +1067,6 @@
                 <button onclick="assignRole()" class="btn-primary btn-block">
                     <i class="fa-solid fa-save"></i> Save Role
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- New Message Modal -->
-    <div class="modal" id="newMessageModal">
-        <div class="modal-content modal-md">
-            <div class="modal-header">
-                <h3><i class="fa-solid fa-message"></i> New Message</h3>
-                <button class="modal-close" onclick="closeNewMessageModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="newMessageForm">
-                    <div class="form-group">
-                        <label>Select Recipient</label>
-                        <select id="recipientSelect" class="form-control" required>
-                            <option value="">Choose a member...</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Message</label>
-                        <textarea id="newMessageText" class="form-control" rows="5" required></textarea>
-                    </div>
-                    <button type="submit" class="btn-primary btn-block">
-                        <i class="fa-solid fa-paper-plane"></i> Send Message
-                    </button>
-                </form>
             </div>
         </div>
     </div>

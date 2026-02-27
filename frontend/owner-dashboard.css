@@ -36,10 +36,9 @@ body {
 .navbar-brand {
     display: flex;
     align-items: center;
-    gap: 12px;
-    font-size: 24px;
+    gap: 14px;
     font-weight: 700;
-    color: var(--primary-color);
+    color: var(--text-1);
     cursor: pointer;
     user-select: none;
 }
@@ -59,8 +58,31 @@ body {
     color: var(--primary-color);
 }
 
-.navbar-brand i {
-    font-size: 28px;
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--gradient-primary);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    box-shadow: var(--shadow-primary);
+}
+
+.logo-icon i {
+    font-size: 18px;
+    color: #ffffff;
+}
+
+#clubName {
+    font-size: 20px;
 }
 
 .navbar-right {
@@ -69,8 +91,7 @@ body {
     gap: 20px;
 }
 
-.notification-bell,
-.messages-icon {
+.notification-bell {
     width: 40px;
     height: 40px;
     border-radius: 12px;
@@ -83,19 +104,16 @@ body {
     transition: transform var(--transition-default), background var(--transition-default), border-color var(--transition-default), box-shadow var(--transition-default);
 }
 
-.notification-bell:hover,
-.messages-icon:hover {
+.notification-bell:hover {
     background: rgba(15, 118, 110, 0.06);
     border-color: rgba(15, 118, 110, 0.12);
 }
 
-.notification-bell:active,
-.messages-icon:active {
+.notification-bell:active {
     transform: scale(0.95);
 }
 
-.notification-bell i,
-.messages-icon i {
+.notification-bell i {
     color: var(--text-2);
     font-size: 16px;
 }
@@ -3941,21 +3959,16 @@ body {
 }
 
 @media (max-width: 600px) {
-    .top-navbar {
-        padding: 0 16px;
-    }
-
     .sidebar {
-        top: 64px;
-        height: calc(100vh - 64px);
+        top: var(--owner-navbar-safe-height);
+        height: calc(100vh - var(--owner-navbar-safe-height));
     }
 
     .navbar-right {
         gap: 8px;
     }
 
-    .notification-bell,
-    .messages-icon {
+    .notification-bell {
         width: 36px;
         height: 36px;
     }
@@ -4313,13 +4326,53 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
+    .top-navbar {
+        background: var(--white);
+        border-bottom: 0;
+        box-shadow: none;
+        backdrop-filter: none;
+        padding: calc(var(--safe-top) + 12px) 24px 12px;
+        position: sticky;
+        top: 0;
+    }
+
+    .top-navbar::after {
+        content: '';
+        position: absolute;
+        top: calc(var(--safe-top) + 8px);
+        left: 12px;
+        right: 12px;
+        bottom: 8px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(0, 0, 0, 0.22);
+        box-shadow: var(--shadow-md);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    html body.dark-mode .top-navbar {
+        background: var(--white);
+        border-bottom: 0;
+        box-shadow: none;
+    }
+
+    html body.dark-mode .top-navbar::after {
+        background: rgba(30, 41, 59, 0.92);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .top-navbar>* {
+        position: relative;
+        z-index: 1;
+    }
+
     .sidebar-toggle {
         display: block;
     }
 
-    .navbar-brand span {
+    .logo-container span {
         display: none;
-        /* Hide brand text on smaller screens if needed */
     }
 
     .sidebar {
@@ -4607,20 +4660,17 @@ body.dark-mode .owner-welcome-text p {
     color: #94a3b8;
 }
 
-body.dark-mode .notification-bell,
-body.dark-mode .messages-icon {
+body.dark-mode .notification-bell {
     background: rgba(255, 255, 255, 0.04);
     border-color: rgba(255, 255, 255, 0.06);
 }
 
-body.dark-mode .notification-bell:hover,
-body.dark-mode .messages-icon:hover {
+body.dark-mode .notification-bell:hover {
     background: rgba(94, 234, 212, 0.08);
     border-color: rgba(94, 234, 212, 0.16);
 }
 
-body.dark-mode .notification-bell i,
-body.dark-mode .messages-icon i {
+body.dark-mode .notification-bell i {
     color: #e2e8f0;
 }
 
@@ -5201,8 +5251,7 @@ body.dark-mode .chat-message.sent .chat-message-content {
 }
 
 /* ===== THEME ENHANCEMENTS ===== */
-.notification-bell,
-.messages-icon {
+.notification-bell {
     cursor: pointer;
 }
 
