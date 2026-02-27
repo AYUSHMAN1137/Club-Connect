@@ -372,8 +372,8 @@ img {
     backdrop-filter: blur(var(--blur-lg));
     -webkit-backdrop-filter: blur(var(--blur-lg));
     border-bottom: 1px solid var(--glass-border);
-    border-bottom-left-radius: var(--radius-md);
-    border-bottom-right-radius: var(--radius-md);
+    border-bottom-left-radius: var(--radius-lg);
+    border-bottom-right-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -6982,18 +6982,12 @@ img {
         left: 12px;
         right: 12px;
         bottom: 8px;
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.92);
-        border: 1px solid rgba(15, 23, 42, 0.12);
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+        border-radius: 16px;
+        background: var(--glass-bg);
+        border: 1px solid rgba(0, 0, 0, 0.22);
+        box-shadow: var(--shadow-md);
         pointer-events: none;
         z-index: 0;
-    }
-
-    [data-theme="dark"] .top-navbar::after {
-        background: rgba(15, 23, 42, 0.92);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
     }
 
     .top-navbar>* {
