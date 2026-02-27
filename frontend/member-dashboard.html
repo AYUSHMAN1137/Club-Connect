@@ -58,112 +58,74 @@
     <!-- Top Navbar -->
     <nav class="top-navbar">
         <div class="navbar-brand">
-            <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle Sidebar">
+            <button id="sidebarToggle" class="sidebar-toggle">
                 <i class="fa-solid fa-bars"></i>
             </button>
             <div class="logo-container">
                 <div class="logo-icon">
                     <i class="fa-solid fa-users-between-lines"></i>
                 </div>
-                <span class="logo-text">ClubConnect</span>
+                <!-- Desktop Club Name -->
+                <span id="clubName" class="desktop-only text-xl font-bold ml-2">Loading...</span>
             </div>
         </div>
 
-        <div class="navbar-center">
-            <!-- Club Switcher -->
-            <div class="club-switcher">
-                <button class="club-switcher-btn" id="clubSwitcherBtn">
+        <div class="navbar-center desktop-only">
+            <div class="club-switcher" id="clubSwitcher">
+                <button class="club-switcher-btn" type="button" aria-haspopup="true" aria-expanded="false">
                     <div class="club-avatar">
                         <i class="fa-solid fa-building"></i>
                     </div>
                     <div class="club-info">
-                        <span class="club-label">Current Club</span>
-                        <span id="currentClubName">Select Club</span>
+                        <span class="club-label">CURRENT CLUB</span>
+                        <span id="headerClubName">Loading...</span>
                     </div>
                     <i class="fa-solid fa-chevron-down switcher-arrow"></i>
                 </button>
+
                 <div class="club-dropdown" id="clubDropdown">
                     <div class="club-dropdown-header">
-                        <h4><i class="fa-solid fa-building-user"></i> My Clubs</h4>
-                        <span class="club-count" id="clubCount">0</span>
+                        <h4>Your Clubs <span class="club-count" id="clubDropdownCount">0</span></h4>
+                        <button class="btn-text-sm" onclick="navigateTo('clubs')">Manage</button>
                     </div>
                     <div class="club-search">
                         <i class="fa-solid fa-search"></i>
-                        <input type="text" placeholder="Search clubs..." id="clubSearchInput">
+                        <input type="text" id="clubSearchInput" placeholder="Find club...">
                     </div>
-                    <div class="club-list" id="clubList">
-                        <!-- Clubs loaded dynamically -->
+                    <div class="club-list" id="clubDropdownList">
+                        <!-- Populated by JS -->
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="navbar-right">
-            <!-- Theme Toggle -->
             <button class="navbar-icon-btn" id="themeToggle" title="Toggle Theme">
                 <i class="fa-solid fa-moon"></i>
             </button>
-
-            <!-- Notifications -->
-            <div class="notification-wrapper">
-                <button class="navbar-icon-btn" id="notificationBell" title="Notifications">
-                    <i class="fa-solid fa-bell"></i>
-                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
-                </button>
-                <div class="notification-dropdown" id="notificationDropdown">
-                    <div class="notification-header">
-                        <h4>Notifications</h4>
-                        <button class="mark-all-read" id="markAllRead">Mark all read</button>
-                    </div>
-                    <div class="notification-list" id="notificationList">
-                        <!-- Notifications loaded dynamically -->
-                    </div>
-                    <div class="notification-footer">
-                        <a href="#" onclick="navigateTo('notifications')">View All Notifications</a>
-                    </div>
-                </div>
+            <div class="notification-bell" id="notificationBell" data-tooltip="Notifications">
+                <i class="fa-solid fa-bell"></i>
+                <span class="notification-badge" id="notificationBadge">0</span>
             </div>
 
-            <!-- User Menu -->
             <div class="user-menu">
-                <button class="user-menu-btn" id="userMenuBtn">
-                    <div class="user-avatar" id="navUserAvatar">
-                        <img src="" alt="" id="navUserImg" style="display: none;">
+                <button class="user-menu-btn" id="userMenuBtn" type="button">
+                    <div class="user-avatar" id="headerAvatar">
                         <i class="fa-solid fa-user"></i>
                     </div>
-                    <div class="user-info">
+                    <div class="user-info desktop-only">
                         <span class="user-name" id="memberName">Member</span>
                         <span class="user-role" id="memberRole">Member</span>
                     </div>
-                    <i class="fa-solid fa-chevron-down"></i>
+                    <i class="fa-solid fa-chevron-down desktop-only"></i>
                 </button>
                 <div class="user-dropdown" id="userDropdown">
-                    <div class="user-dropdown-header">
-                        <div class="user-avatar-large">
-                            <img src="" alt="" id="dropdownUserImg" style="display: none;">
-                            <i class="fa-solid fa-user"></i>
-                        </div>
-                        <div class="user-details">
-                            <h4 id="dropdownUserName">Member Name</h4>
-                            <p id="dropdownUserEmail">member@email.com</p>
-                        </div>
-                    </div>
-                    <div class="user-dropdown-body">
-                        <a href="#" onclick="navigateTo('profile')">
-                            <i class="fa-solid fa-user-circle"></i> My Profile
-                        </a>
-                        <a href="#" onclick="navigateTo('settings')">
-                            <i class="fa-solid fa-gear"></i> Settings
-                        </a>
-                        <a href="#" onclick="navigateTo('help')">
-                            <i class="fa-solid fa-circle-question"></i> Help & Support
-                        </a>
-                    </div>
-                    <div class="user-dropdown-footer">
-                        <button id="logoutBtn" class="logout-btn">
-                            <i class="fa-solid fa-right-from-bracket"></i> Logout
-                        </button>
-                    </div>
+                    <a href="#" onclick="navigateTo('profile'); return false;">
+                        <i class="fa-solid fa-user-circle"></i> View Profile
+                    </a>
+                    <button id="logoutBtn" class="logout-btn" type="button">
+                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    </button>
                 </div>
             </div>
         </div>
@@ -332,64 +294,59 @@
                     <!-- Stats Grid -->
                     <div class="stats-grid">
                         <div class="stat-card stat-purple" onclick="navigateTo('leaderboard')">
-                            <div class="stat-icon">
-                                <i class="fa-solid fa-trophy"></i>
-                            </div>
-                            <div class="stat-details">
-                                <span class="stat-value" id="memberPoints">0</span>
+                            <div class="stat-top">
+                                <div class="stat-icon">
+                                    <i class="fa-solid fa-trophy"></i>
+                                </div>
                                 <span class="stat-label">Total Points</span>
                             </div>
-                            <div class="stat-trend up">
-                                <i class="fa-solid fa-arrow-up"></i>
-                                <span>+12%</span>
+                            <div class="stat-value" id="memberPoints">0</div>
+                            <div class="stat-subtext">
+                                <span class="stat-trend up"><i class="fa-solid fa-arrow-up"></i> +12%</span>
                             </div>
-                            <div class="stat-bg-pattern"></div>
                         </div>
 
                         <div class="stat-card stat-blue" onclick="navigateTo('profile')">
-                            <div class="stat-icon">
-                                <i class="fa-solid fa-medal"></i>
-                            </div>
-                            <div class="stat-details">
-                                <span class="stat-value" id="memberRank">Rookie</span>
+                            <div class="stat-top">
+                                <div class="stat-icon">
+                                    <i class="fa-solid fa-medal"></i>
+                                </div>
                                 <span class="stat-label">Current Rank</span>
                             </div>
-                            <div class="stat-progress-mini">
-                                <div class="progress-bar-mini">
-                                    <div class="progress-fill-mini" id="rankProgress" style="width: 30%"></div>
+                            <div class="stat-value stat-value-lg" id="memberRank">Rookie</div>
+                            <div class="stat-subtext">
+                                <div class="stat-progress-mini">
+                                    <div class="progress-bar-mini">
+                                        <div class="progress-fill-mini" id="rankProgress" style="width: 30%"></div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="stat-bg-pattern"></div>
                         </div>
 
                         <div class="stat-card stat-green" onclick="navigateTo('attendance')">
-                            <div class="stat-icon">
-                                <i class="fa-solid fa-calendar-check"></i>
-                            </div>
-                            <div class="stat-details">
-                                <span class="stat-value" id="attendancePercent">0%</span>
+                            <div class="stat-top">
+                                <div class="stat-icon">
+                                    <i class="fa-solid fa-calendar-check"></i>
+                                </div>
                                 <span class="stat-label">Attendance Rate</span>
                             </div>
-                            <div class="stat-subinfo">
-                                <span><span id="attendedEvents">0</span>/<span id="totalEventsCount">0</span>
-                                    events</span>
+                            <div class="stat-value" id="attendancePercent">0%</div>
+                            <div class="stat-subtext">
+                                <span id="attendedEvents">0</span>/<span id="totalEventsCount">0</span> events
                             </div>
-                            <div class="stat-bg-pattern"></div>
                         </div>
 
                         <div class="stat-card stat-orange" onclick="navigateTo('leaderboard')">
-                            <div class="stat-icon">
-                                <i class="fa-solid fa-ranking-star"></i>
-                            </div>
-                            <div class="stat-details">
-                                <span class="stat-value">#<span id="leaderboardPosition">-</span></span>
+                            <div class="stat-top">
+                                <div class="stat-icon">
+                                    <i class="fa-solid fa-ranking-star"></i>
+                                </div>
                                 <span class="stat-label">Leaderboard Rank</span>
                             </div>
-                            <div class="stat-trend up">
-                                <i class="fa-solid fa-arrow-up"></i>
-                                <span>+3</span>
+                            <div class="stat-value">#<span id="leaderboardPosition">-</span></div>
+                            <div class="stat-subtext">
+                                <span class="stat-trend up"><i class="fa-solid fa-arrow-up"></i> +3</span>
                             </div>
-                            <div class="stat-bg-pattern"></div>
                         </div>
                     </div>
 
@@ -641,8 +598,9 @@
                                     class="fa-solid fa-arrow-left"></i></button>
                             <div>
                                 <h2 id="memberInterfaceTitle">Live Workshop</h2>
-                                <div class="ws-live-badge" id="memberLiveBadge"><span class="ws-live-dot"></span> <span
-                                        id="memberLiveStatusLabel">Live</span></div>
+                                <div class="ws-live-badge" id="memberLiveBadge"><span class="ws-live-dot"></span>
+                                    <span id="memberLiveStatusLabel">Live</span>
+                                </div>
                             </div>
                         </div>
                         <div class="ws-interface-toolbar">
@@ -942,7 +900,8 @@
                 </div>
                 <div id="browseProjectIdeasSection" style="margin-top: 24px; display: none;">
                     <h3 style="margin-bottom: 12px;">Browse project ideas</h3>
-                    <p style="color: #6b7280; margin-bottom: 12px;">Choose one to work on. You can change anytime.</p>
+                    <p style="color: #6b7280; margin-bottom: 12px;">Choose one to work on. You can change anytime.
+                    </p>
                     <div id="projectIdeasListMember"></div>
                 </div>
             </div>
@@ -1517,8 +1476,10 @@
                                     <i class="fa-solid fa-chevron-down"></i>
                                 </button>
                                 <div class="faq-answer">
-                                    <p>Click on the "Scan QR Code" button and point your camera at the QR code displayed
-                                        at the event. Make sure you're at the event location for successful check-in.
+                                    <p>Click on the "Scan QR Code" button and point your camera at the QR code
+                                        displayed
+                                        at the event. Make sure you're at the event location for successful
+                                        check-in.
                                     </p>
                                 </div>
                             </div>
@@ -1528,7 +1489,8 @@
                                     <i class="fa-solid fa-chevron-down"></i>
                                 </button>
                                 <div class="faq-answer">
-                                    <p>You earn points by attending events, participating in activities, and completing
+                                    <p>You earn points by attending events, participating in activities, and
+                                        completing
                                         achievements. Different events award different point values.</p>
                                 </div>
                             </div>
@@ -1538,7 +1500,8 @@
                                     <i class="fa-solid fa-chevron-down"></i>
                                 </button>
                                 <div class="faq-answer">
-                                    <p>Go to the Certificates page and click "Upload Certificate". Fill in the details
+                                    <p>Go to the Certificates page and click "Upload Certificate". Fill in the
+                                        details
                                         and upload your certificate file (PDF or image format).</p>
                                 </div>
                             </div>
@@ -1579,6 +1542,23 @@
     </div>
 
     <!-- ==================== MODALS ==================== -->
+
+    <div class="modal" id="notificationsModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-bell"></i> Notifications</h3>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button id="markAllRead" class="btn-secondary" type="button">Mark All Read</button>
+                    <button class="modal-close" onclick="closeNotificationsModal()">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div id="notificationsList">
+                    <p class="loading">Loading notifications...</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- QR Scanner Modal -->
     <div class="modal" id="qrScannerModal">

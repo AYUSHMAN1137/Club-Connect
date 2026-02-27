@@ -102,11 +102,14 @@ async function verifyAuth() {
 function setClubSwitcherLoading(isLoading) {
     const switcher = document.querySelector('.club-switcher');
     const button = document.getElementById('clubSwitcherBtn');
-    const nameEl = document.getElementById('currentClubName');
+    const headerClubNameEl = document.getElementById('headerClubName');
+    const desktopClubNameEl = document.getElementById('clubName');
+
     if (isLoading) {
         if (switcher) switcher.classList.add('switching');
         if (button) button.disabled = true;
-        if (nameEl) nameEl.innerHTML = '<span class="switching-text">Switching...</span>';
+        if (headerClubNameEl) headerClubNameEl.innerHTML = '<span class="switching-text">Switching...</span>';
+        if (desktopClubNameEl) desktopClubNameEl.innerHTML = 'Switching...';
     } else {
         if (switcher) switcher.classList.remove('switching');
         if (button) button.disabled = false;
@@ -145,8 +148,8 @@ function hidePreloaderAfter(startedAt, minMs = 1200) {
 async function loadMyClubs() {
     try {
         console.log('🔄 Loading clubs for member...');
-        const clubList = document.getElementById('clubList');
-        const clubCount = document.getElementById('clubCount');
+        const clubList = document.getElementById('clubDropdownList');
+        const clubCount = document.getElementById('clubDropdownCount');
         if (clubList) {
             clubList.innerHTML = `
                 <div class="loading-spinner">
@@ -168,31 +171,41 @@ async function loadMyClubs() {
         if (data.success && data.clubs && data.clubs.length > 0) {
             const activeClub = data.clubs.find(c => c.id === data.activeClub) || data.clubs.find(c => c.isActive) || data.clubs[0];
             console.log('✅ Active club found:', activeClub);
-            document.getElementById('currentClubName').textContent = activeClub.name;
+            const desktopClubNameEl = document.getElementById('clubName');
+            const headerClubNameEl = document.getElementById('headerClubName');
+            if (desktopClubNameEl) desktopClubNameEl.textContent = activeClub.name;
+            if (headerClubNameEl) headerClubNameEl.textContent = activeClub.name;
 
-            clubList.innerHTML = data.clubs.map(club => `
-                <div class="club-item ${(club.id === data.activeClub || club.isActive) ? 'active' : ''}" onclick="switchClub(${club.id})">
-                    <i class="fa-solid fa-building"></i>
-                    <div class="club-item-info">
-                        <h5>${club.name}</h5>
-                        <p>${club.tagline || 'No tagline'}</p>
+            if (clubList) {
+                clubList.innerHTML = data.clubs.map(club => `
+                    <div class="club-item ${(club.id === data.activeClub || club.isActive) ? 'active' : ''}" onclick="switchClub(${club.id})">
+                        <i class="fa-solid fa-building"></i>
+                        <div class="club-item-info">
+                            <h5>${club.name}</h5>
+                            <p>${club.tagline || 'No tagline'}</p>
+                        </div>
+                        ${(club.id === data.activeClub || club.isActive) ? '<i class="fa-solid fa-check" style="color: #10b981; margin-left: auto;"></i>' : ''}
                     </div>
-                    ${(club.id === data.activeClub || club.isActive) ? '<i class="fa-solid fa-check" style="color: #10b981; margin-left: auto;"></i>' : ''}
-                </div>
-            `).join('');
+                `).join('');
+            }
             if (clubCount) clubCount.textContent = data.clubs.length;
             setClubSwitcherLoading(false);
         } else {
             // No clubs - show message
             console.log('⚠️ No clubs found for member');
-            document.getElementById('currentClubName').textContent = 'No Club';
-            clubList.innerHTML = `
-                <div style="padding: 20px; text-align: center; color: #6b7280;">
-                    <i class="fa-solid fa-info-circle" style="font-size: 24px; margin-bottom: 10px;"></i>
-                    <p style="margin: 0; font-size: 14px;">You are not part of any club yet.</p>
-                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #9ca3af;">Wait for club head to add you.</p>
-                </div>
-            `;
+            const desktopClubNameEl = document.getElementById('clubName');
+            const headerClubNameEl = document.getElementById('headerClubName');
+            if (desktopClubNameEl) desktopClubNameEl.textContent = 'No Club';
+            if (headerClubNameEl) headerClubNameEl.textContent = 'No Club';
+            if (clubList) {
+                clubList.innerHTML = `
+                    <div style="padding: 20px; text-align: center; color: #6b7280;">
+                        <i class="fa-solid fa-info-circle" style="font-size: 24px; margin-bottom: 10px;"></i>
+                        <p style="margin: 0; font-size: 14px;">You are not part of any club yet.</p>
+                        <p style="margin: 5px 0 0 0; font-size: 12px; color: #9ca3af;">Wait for club head to add you.</p>
+                    </div>
+                `;
+            }
             if (clubCount) clubCount.textContent = '0';
             setClubSwitcherLoading(false);
         }
@@ -204,15 +217,18 @@ async function loadMyClubs() {
 
 // Toggle club dropdown
 // Toggle club dropdown
-document.getElementById('clubSwitcherBtn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    const switcher = e.currentTarget.closest('.club-switcher');
-    if (switcher) switcher.classList.toggle('active');
+const clubSwitcherBtn = document.getElementById('clubSwitcherBtn');
+if (clubSwitcherBtn) {
+    clubSwitcherBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const switcher = e.currentTarget.closest('.club-switcher');
+        if (switcher) switcher.classList.toggle('active');
 
-    // Close user dropdown if open
-    const userDropdown = document.querySelector('.user-menu .dropdown');
-    if (userDropdown) userDropdown.classList.remove('active');
-});
+        // Close user dropdown if open
+        const userDropdown = document.querySelector('.user-menu .dropdown');
+        if (userDropdown) userDropdown.classList.remove('active');
+    });
+}
 
 // Toggle User Menu Dropdown (Fix for mobile touch)
 const userDropdownBtn = document.querySelector('.user-menu .dropdown-btn');
@@ -241,6 +257,26 @@ document.addEventListener('click', (e) => {
         userDropdown.classList.remove('active');
     }
 });
+
+// Club Search Filter
+const clubSearchInput = document.getElementById('clubSearchInput');
+if (clubSearchInput) {
+    clubSearchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const clubItems = document.querySelectorAll('#clubDropdownList .club-item');
+
+        clubItems.forEach(item => {
+            const clubName = item.querySelector('h5').textContent.toLowerCase();
+            const tagline = item.querySelector('p').textContent.toLowerCase();
+
+            if (clubName.includes(searchTerm) || tagline.includes(searchTerm)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+}
 
 // Switch active club
 async function switchClub(clubId) {
@@ -3377,12 +3413,20 @@ function updateThemeIcon(theme) {
 const notificationBell = document.getElementById('notificationBell');
 const notificationWrapper = document.querySelector('.notification-wrapper');
 
-if (notificationBell && notificationWrapper) {
+if (notificationBell) {
     notificationBell.addEventListener('click', async (e) => {
         e.stopPropagation();
-        notificationWrapper.classList.toggle('active');
-        if (notificationWrapper.classList.contains('active')) {
-            await loadNotificationDropdown();
+        if (notificationWrapper) {
+            notificationWrapper.classList.toggle('active');
+            if (notificationWrapper.classList.contains('active')) {
+                await loadNotificationDropdown();
+            }
+            return;
+        }
+        const modal = document.getElementById('notificationsModal');
+        if (modal) {
+            modal.classList.add('active');
+            await loadNotifications();
         }
     });
 }
@@ -3998,7 +4042,12 @@ if (markAllReadBtn) {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             updateNotificationBadge(0);
-            loadNotificationDropdown();
+            const modal = document.getElementById('notificationsModal');
+            if (modal && modal.classList.contains('active')) {
+                loadNotifications();
+            } else {
+                loadNotificationDropdown();
+            }
             showNotification('All notifications marked as read', 'success');
         } catch (error) {
             console.error('Error marking notifications as read:', error);

@@ -4,6 +4,7 @@
   "description": "Club Connect - College Club Management Platform",
   "private": true,
   "scripts": {
+    "build": "echo \"No build required\"",
     "cap:sync": "npx cap sync",
     "cap:open": "npx cap open android",
     "cap:build": "npx cap sync && cd android && gradlew assembleDebug",
