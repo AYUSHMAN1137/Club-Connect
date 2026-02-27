@@ -10,6 +10,13 @@
       "*.supabase.com"
     ]
   },
+  "plugins": {
+    "StatusBar": {
+      "overlaysWebView": false,
+      "style": "DARK",
+      "backgroundColor": "#17a38b"
+    }
+  },
   "android": {
     "allowMixedContent": true,
     "captureInput": true,
