@@ -3815,19 +3815,36 @@ body {
 }
 
 @media (max-width: 768px) {
+    :root {
+        --fs-page-title: 22px;
+        --fs-section-title: 18px;
+        --fs-stat-number: 22px;
+        --fs-body: 14px;
+        --fs-caption: 12px;
+    }
+
     .content {
         padding: 24px 16px;
+    }
+
+    .owner-home {
+        gap: 20px;
     }
 
     .owner-welcome {
         flex-direction: column;
         align-items: flex-start;
         padding: 16px;
+        gap: 14px;
     }
 
     .owner-welcome-text h1 {
-        font-size: 28px;
-        line-height: 36px;
+        font-size: var(--fs-page-title);
+        line-height: 1.25;
+    }
+
+    .owner-welcome-text p {
+        font-size: var(--fs-caption);
     }
 
     .owner-welcome-actions {
@@ -3838,16 +3855,45 @@ body {
     .owner-welcome-actions .btn-secondary {
         width: 100%;
         justify-content: center;
+        min-height: 40px;
+        padding: 8px 16px;
+        font-size: 13px;
     }
 
     .owner-stats-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
-        padding: 12px;
-        background: var(--white);
-        border-radius: var(--radius-card);
-        box-shadow: var(--shadow-sm);
-        border: 1px solid var(--border);
+        gap: 12px;
+        padding: 0;
+        background: transparent;
+        border-radius: 0;
+        box-shadow: none;
+        border: none;
+    }
+
+    .owner-stat-card {
+        padding: 14px 16px;
+        min-height: 0;
+    }
+
+    .owner-stat-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        font-size: 18px;
+    }
+
+    .owner-stat-label {
+        font-size: 12px;
+    }
+
+    .owner-stat-value {
+        line-height: 1.2;
+        margin-top: 8px;
+    }
+
+    .owner-stat-value-lg {
+        font-size: var(--fs-stat-number);
+        line-height: 1.2;
     }
 
     .owner-home-grid {
@@ -3883,8 +3929,8 @@ body {
     }
 
     .owner-stats-grid {
-        gap: 10px;
-        padding: 10px;
+        gap: 12px;
+        padding: 0;
     }
 }
 
@@ -3926,7 +3972,7 @@ body {
     }
 
     .owner-stat-card {
-        padding: 16px;
+        padding: 14px 16px;
     }
 
     .owner-dashboard-card {
