@@ -4,6 +4,12 @@
     box-sizing: border-box;
 }
 
+:root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --owner-navbar-height: 70px;
+    --owner-navbar-safe-height: calc(var(--owner-navbar-height) + var(--safe-top));
+}
+
 body {
     font-family: var(--font-body);
     background: var(--bg-gradient);
@@ -14,11 +20,11 @@ body {
 /* Top Navbar */
 .top-navbar {
     background: rgba(255, 255, 255, 0.9);
-    height: 70px;
+    height: var(--owner-navbar-safe-height);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 30px;
+    padding: var(--safe-top) 30px 0;
     box-shadow: var(--shadow-sm);
     position: sticky;
     top: 0;
@@ -219,7 +225,7 @@ body {
 /* Dashboard Container */
 .dashboard-container {
     display: flex;
-    min-height: calc(100vh - 70px);
+    min-height: calc(100vh - var(--owner-navbar-safe-height));
     position: relative;
     align-items: flex-start;
 }
@@ -227,10 +233,10 @@ body {
 .sidebar-overlay {
     display: none;
     position: fixed;
-    top: 70px;
+    top: var(--owner-navbar-safe-height);
     left: 0;
     width: 100%;
-    height: calc(100% - 70px);
+    height: calc(100% - var(--owner-navbar-safe-height));
     background: rgba(0, 0, 0, 0.5);
     z-index: 90;
     opacity: 0;
@@ -250,8 +256,8 @@ body {
     box-shadow: 2px 0 12px rgba(15, 23, 42, 0.06);
     border-right: 1px solid var(--border);
     position: sticky;
-    top: 70px;
-    height: calc(100vh - 70px);
+    top: var(--owner-navbar-safe-height);
+    height: calc(100vh - var(--owner-navbar-safe-height));
     overflow-y: auto;
     align-self: flex-start;
 }
@@ -3783,9 +3789,9 @@ body {
     .sidebar {
         position: fixed;
         left: -100%;
-        top: 70px;
+        top: var(--owner-navbar-safe-height);
         width: 280px;
-        height: calc(100vh - 70px);
+        height: calc(100vh - var(--owner-navbar-safe-height));
         z-index: 120;
         transition: var(--transition-slow);
         box-shadow: var(--shadow-lg);
@@ -4319,8 +4325,8 @@ body {
     .sidebar {
         position: fixed;
         left: -280px;
-        top: 70px;
-        height: calc(100vh - 70px);
+        top: var(--owner-navbar-safe-height);
+        height: calc(100vh - var(--owner-navbar-safe-height));
         z-index: 99;
         transition: left var(--transition-default);
         width: 260px;

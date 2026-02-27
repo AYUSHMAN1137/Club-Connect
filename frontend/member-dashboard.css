@@ -66,7 +66,8 @@
     --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
 
     /* Layout */
-    --navbar-height: 65px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --navbar-height: calc(65px + var(--safe-top));
     --sidebar-width: 280px;
     --sidebar-collapsed-width: 80px;
 
@@ -374,7 +375,7 @@ img {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 24px;
+    padding: var(--safe-top) 24px 0;
     z-index: var(--z-fixed);
     box-shadow: var(--shadow-md);
     transition: background var(--transition-slow), border-color var(--transition-slow), box-shadow var(--transition-slow);
