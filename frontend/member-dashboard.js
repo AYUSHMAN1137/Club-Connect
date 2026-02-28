@@ -2570,15 +2570,15 @@ async function loadProfileAchievements() {
 
         if (data.success && data.achievements && data.achievements.length > 0) {
             container.innerHTML = data.achievements.map(ach => `
-                <div class="achievement-item ${ach.unlocked ? '' : 'locked'}" style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #f9fafb; border-radius: 8px; margin-bottom: 10px;">
-                    <div class="achievement-icon" style="min-width: 40px; height: 40px; border-radius: 50%; background: ${ach.unlocked ? '#ecfdf5' : '#f3f4f6'}; display: flex; align-items: center; justify-content: center; color: ${ach.unlocked ? '#10b981' : '#9ca3af'}; font-size: 18px;">
+                <div class="achievement-card ${ach.unlocked ? 'unlocked' : 'locked'}">
+                    <div class="ach-icon-wrapper">
                         <i class="${ach.icon}"></i>
                     </div>
-                    <div class="achievement-info">
-                        <h4 style="margin: 0; font-size: 15px; color: ${ach.unlocked ? '#1f2937' : '#9ca3af'};">${ach.title}</h4>
-                        <p style="margin: 2px 0 0 0; font-size: 12px; color: #6b7280;">${ach.description}</p>
+                    <div class="ach-content">
+                        <h4>${ach.title}</h4>
+                        <p>${ach.description}</p>
                     </div>
-                    ${ach.unlocked ? '<i class="fa-solid fa-check-circle" style="margin-left: auto; color: #10b981;"></i>' : '<i class="fa-solid fa-lock" style="margin-left: auto; color: #d1d5db;"></i>'}
+                    ${ach.unlocked ? '<div class="ach-status"><i class="fa-solid fa-circle-check"></i></div>' : '<div class="ach-status"><i class="fa-solid fa-lock"></i></div>'}
                 </div>
             `).join('');
         } else {
