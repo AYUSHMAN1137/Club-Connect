@@ -298,6 +298,10 @@ async function switchClub(clubId) {
         const data = await response.json();
 
         if (data.success) {
+            window.activeClubId = clubId;
+            if (typeof socket !== 'undefined' && socket) {
+                socket.emit('join-club', clubId);
+            }
             showNotification(data.message, 'success');
             const clubDropdown = document.getElementById('clubDropdown');
             if (clubDropdown) clubDropdown.classList.remove('active');
@@ -4753,6 +4757,25 @@ function initializeSocket() {
             const decoded = parseJwt(token);
             if (decoded && decoded.id) {
                 socket.emit('join-user', decoded.id);
+
+                // Get the currently active club to join its room
+                const clubNameEl = document.getElementById('clubName');
+                if (clubNameEl && clubNameEl.textContent && clubNameEl.textContent !== 'No Club' && window.activeClubId) {
+                    socket.emit('join-club', window.activeClubId);
+                } else {
+                    // Try to fetch active club if not readily available
+                    fetch(`${API_URL}/member/my-clubs`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }).then(res => res.json()).then(data => {
+                        if (data.success && data.clubs && data.clubs.length > 0) {
+                            const activeClub = data.clubs.find(c => c.id === data.activeClub) || data.clubs.find(c => c.isActive) || data.clubs[0];
+                            if (activeClub && activeClub.id) {
+                                window.activeClubId = activeClub.id;
+                                socket.emit('join-club', activeClub.id);
+                            }
+                        }
+                    }).catch(console.error);
+                }
             }
         });
 
