@@ -86,6 +86,10 @@ async function verifyAuth() {
         switchPage(initialPage, { replaceHistory: true });
         initHistoryNavigation();
 
+        if (typeof initializeSocket === 'function') {
+            initializeSocket();
+        }
+
         // Auth success - hide preloader
         hidePreloader();
     } catch (error) {
@@ -4763,6 +4767,14 @@ function initializeSocket() {
 
         socket.on('message-sent', (message) => {
             console.log('✅ Message sent confirmation:', message);
+        });
+
+        socket.on('new-announcement', (announcement) => {
+            console.log('📢 New announcement:', announcement);
+            if (getActivePageName() === 'announcements') {
+                loadAnnouncements();
+            }
+            showNotification('New Announcement: ' + announcement.title, 'info');
         });
 
         bindMemberWorkshopSocketHandlers();

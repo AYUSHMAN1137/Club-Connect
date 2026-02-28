@@ -1612,6 +1612,9 @@ app.post('/owner/send-announcement', verifyToken, isOwner, async (req, res) => {
 
         console.log(`💾 Announcement saved (ID: ${newAnnouncement.id})`);
 
+        // Emit new announcement to everyone in the club
+        io.to(`club-${ownerClub.id}`).emit('new-announcement', newAnnouncement);
+
         res.json({ success: true, message: 'Announcement sent!', announcement: newAnnouncement });
     } catch (error) {
         console.error('❌ Error sending announcement:', error);

@@ -3703,6 +3703,15 @@ function initSocketIO() {
         }
     });
 
+    socket.on('new-announcement', (announcement) => {
+        invalidateModuleCache('announcements');
+        if (getActivePageName() === 'announcements') {
+            loadAnnouncements();
+        }
+        // Optionally show a notification
+        showNotification('New announcement: ' + announcement.title, 'info');
+    });
+
     bindWorkshopSocketHandlers();
 }
 
