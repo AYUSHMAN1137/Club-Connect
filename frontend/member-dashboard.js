@@ -437,6 +437,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Setup Capacitor App Back Button if available
+if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    const App = window.Capacitor.Plugins.App;
+    App.addListener('backButton', ({ canGoBack }) => {
+        const activePage = getActivePageName();
+        // If we are not on the home page, go back to home instead of exiting the app
+        if (activePage && activePage !== 'home') {
+            switchPage('home');
+        } else {
+            // If already on home, we can let capacitor handle the default exit if it wants to,
+            // or we could force a prompt.
+            App.exitApp();
+        }
+    });
+}
+
 function navigateTo(pageName) {
     switchPage(pageName);
     // Close user dropdown if open
