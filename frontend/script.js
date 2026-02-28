@@ -330,6 +330,15 @@ signUpForm.addEventListener('submit', async (e) => {
         submitBtn.classList.add('loading');
         submitBtn.disabled = true;
 
+        // AbortController for 45s timeout matching Render's cold start
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+        // Show waking up info if taking long
+        const wakeupWarningId = setTimeout(() => {
+            showNotification('Server is waking up (might take up to 50s). Please wait...', 'info', 'Connecting...');
+        }, 6000);
+
         try {
             // Real API call
             const response = await fetch(`${API_URL}/auth/register`, {
@@ -342,9 +351,12 @@ signUpForm.addEventListener('submit', async (e) => {
                     studentId: studentId.value,
                     email: email.value,
                     password: password.value
-                })
+                }),
+                signal: controller.signal
             });
 
+            clearTimeout(wakeupWarningId);
+            clearTimeout(timeoutId);
             const data = await response.json();
 
             // Remove loading state
@@ -370,12 +382,18 @@ signUpForm.addEventListener('submit', async (e) => {
             }
 
         } catch (error) {
+            clearTimeout(wakeupWarningId);
+            clearTimeout(timeoutId);
             // Remove loading state
             submitBtn.classList.remove('loading');
             submitBtn.disabled = false;
 
             console.error('Registration error:', error);
-            showNotification('Server error! Make sure backend is running.', 'error');
+            if (error.name === 'AbortError') {
+                showNotification('Connection timed out! Database might be sleeping or server is unresponsive.', 'error', 'Timeout');
+            } else {
+                showNotification('Server error! Make sure backend is running.', 'error');
+            }
         }
     }
 });
@@ -396,6 +414,15 @@ signInForm.addEventListener('submit', async (e) => {
         submitBtn.classList.add('loading');
         submitBtn.disabled = true;
 
+        // AbortController for 45s timeout matching Render's cold start
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+        // Show waking up info if taking long
+        const wakeupWarningId = setTimeout(() => {
+            showNotification('Server is waking up (might take up to 50s). Please wait...', 'info', 'Connecting...');
+        }, 6000);
+
         try {
             // Real API call
             const response = await fetch(`${API_URL}/auth/login`, {
@@ -406,9 +433,12 @@ signInForm.addEventListener('submit', async (e) => {
                 body: JSON.stringify({
                     username: String(username.value || '').trim(),
                     password: String(password.value || '')
-                })
+                }),
+                signal: controller.signal
             });
 
+            clearTimeout(wakeupWarningId);
+            clearTimeout(timeoutId);
             const data = await response.json();
 
             // Remove loading state
@@ -435,12 +465,16 @@ signInForm.addEventListener('submit', async (e) => {
             }
 
         } catch (error) {
+            clearTimeout(wakeupWarningId);
+            clearTimeout(timeoutId);
             // Remove loading state
             submitBtn.classList.remove('loading');
             submitBtn.disabled = false;
 
             console.error('Login error:', error);
-            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            if (error.name === 'AbortError') {
+                showNotification('Connection timed out! Database might be sleeping or server is unresponsive.', 'error', 'Timeout');
+            } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
                 showNotification(`Cannot connect to server! Please make sure backend server is running on ${API_URL}`, 'error');
             } else {
                 showNotification('Server error! Please try again. ' + error.message, 'error');
