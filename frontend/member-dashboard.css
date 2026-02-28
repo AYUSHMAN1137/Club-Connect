@@ -213,6 +213,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
 }
 
 html {
@@ -1376,30 +1377,31 @@ img {
 }
 
 .menu-badge {
-    padding: 2px 8px;
-    min-width: 20px;
-    height: 20px;
+    padding: 0;
+    width: 8px;
+    height: 8px;
+    min-width: auto;
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--primary-color);
-    color: white;
-    font-size: 11px;
+    color: transparent;
+    font-size: 0;
     font-weight: 600;
-    border-radius: 99px;
-    box-shadow: var(--shadow-sm);
+    border-radius: 50%;
+    box-shadow: none;
     line-height: normal;
     margin-left: auto;
 }
 
 .menu-badge.new {
-    background: var(--success-color);
-    box-shadow: var(--shadow-success);
+    background: var(--danger-color);
+    box-shadow: none;
 }
 
 /* Sidebar Footer */
 .sidebar-footer {
-    padding: 16px;
+    padding: 12px 14px;
     border-top: 1px solid var(--gray-100);
     background: var(--white);
 }
@@ -1407,7 +1409,7 @@ img {
 .member-card {
     background: var(--gray-50);
     border-radius: var(--radius-md);
-    padding: 12px;
+    padding: 10px;
     border: 1px solid var(--gray-200);
     box-shadow: none;
 }
@@ -1415,20 +1417,20 @@ img {
 .member-card-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: 10px;
+    margin-bottom: 8px;
 }
 
 .rank-badge {
-    width: 42px;
-    height: 42px;
+    width: 32px;
+    height: 32px;
     background: var(--gradient-orange);
     border-radius: var(--radius-full);
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--white);
-    font-size: 18px;
+    font-size: 14px;
 }
 
 .member-card-info {
@@ -1437,23 +1439,23 @@ img {
 
 .member-rank {
     display: block;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--gray-800);
 }
 
 .member-points {
     display: block;
-    font-size: 12px;
+    font-size: 11px;
     color: var(--gray-500);
 }
 
 .rank-progress {
-    margin-top: 8px;
+    margin-top: 6px;
 }
 
 .rank-progress-bar {
-    height: 6px;
+    height: 4px;
     background: var(--gray-200);
     border-radius: var(--radius-full);
     overflow: hidden;
@@ -1468,9 +1470,9 @@ img {
 
 .rank-progress-text {
     display: block;
-    font-size: 11px;
+    font-size: 10px;
     color: var(--gray-500);
-    margin-top: 6px;
+    margin-top: 4px;
     text-align: center;
 }
 
@@ -1478,12 +1480,12 @@ img {
 .quick-actions {
     display: flex;
     gap: 8px;
-    margin-top: 12px;
+    margin-top: 10px;
 }
 
 .quick-action-btn {
     flex: 1;
-    height: 40px;
+    height: 32px;
     background: var(--gray-100);
     border-radius: var(--radius);
     display: flex;
