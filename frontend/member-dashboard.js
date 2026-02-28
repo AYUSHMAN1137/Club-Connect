@@ -4796,6 +4796,10 @@ function initializeSocket() {
             console.log('📢 New announcement:', announcement);
             if (getActivePageName() === 'announcements') {
                 loadAnnouncements();
+            } else if (getActivePageName() === 'home') {
+                if (typeof loadLatestAnnouncements === 'function') {
+                    loadLatestAnnouncements();
+                }
             }
             showNotification('New Announcement: ' + announcement.title, 'info');
         });
