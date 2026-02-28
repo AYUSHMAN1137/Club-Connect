@@ -5304,6 +5304,18 @@ async function startServer() {
     if (shouldAutoStartNgrok()) {
         await startNgrok(PORT);
     }
+
+    // Smart Keep-Awake for Render free tier (Prevents sleeping after 15 mins)
+    setInterval(() => {
+        const pingUrl = process.env.APP_URL || 'https://club-connect-hvsz.onrender.com';
+        if (pingUrl) {
+            fetch(`${pingUrl}/health`)
+                .then(res => {
+                    if (res.ok) console.log(`💓 Keep-awake ping successful at ${new Date().toLocaleTimeString()}`);
+                })
+                .catch(() => console.error('💓 Keep-awake ping failed'));
+        }
+    }, 14 * 60 * 1000); // 14 mins
 }
 
 function stopNgrok() {
