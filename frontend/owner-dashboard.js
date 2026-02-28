@@ -22,7 +22,6 @@ function getFullImageUrl(path) {
     if (!path) return '';
     const normalized = String(path).replace(/\\/g, '/').trim();
     if (!normalized) return '';
-    if (normalized.startsWith('data:')) return normalized;
     if (normalized.startsWith('http')) return normalized;
     if (normalized.startsWith('/')) return `${getApiUrl()}${normalized}`;
     return `${getApiUrl()}/${normalized}`;
@@ -3711,8 +3710,9 @@ function initSocketIO() {
         invalidateModuleCache('announcements');
         if (getActivePageName() === 'announcements') {
             loadAnnouncements();
+        } else if (getActivePageName() === 'home') {
+            loadDashboardStats();
         }
-        // Optionally show a notification
         showNotification('New announcement: ' + announcement.title, 'info');
     });
 
@@ -3720,6 +3720,8 @@ function initSocketIO() {
         invalidateModuleCache('events');
         if (getActivePageName() === 'events') {
             loadEvents();
+        } else if (getActivePageName() === 'home') {
+            loadDashboardStats();
         }
         showNotification('New Event scheduled: ' + eventData.title, 'info');
     });
@@ -3728,6 +3730,8 @@ function initSocketIO() {
         invalidateModuleCache('polls');
         if (getActivePageName() === 'polls') {
             loadPolls();
+        } else if (getActivePageName() === 'home') {
+            loadDashboardStats();
         }
         showNotification('New poll created!', 'info');
     });
@@ -3736,6 +3740,8 @@ function initSocketIO() {
         invalidateModuleCache('workshops');
         if (getActivePageName() === 'workshops') {
             loadWorkshops();
+        } else if (getActivePageName() === 'home') {
+            loadDashboardStats();
         }
         showNotification('New workshop created: ' + workshopData.title, 'info');
     });

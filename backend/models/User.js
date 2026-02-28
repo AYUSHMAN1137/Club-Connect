@@ -49,7 +49,7 @@ const User = sequelize.define('User', {
     },
     // Profile details
     profilePic: {
-        type: DataTypes.TEXT,
+        type: DataTypes.STRING,
         defaultValue: ''
     },
     bio: {
