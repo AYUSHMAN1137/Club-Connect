@@ -956,6 +956,9 @@ async function loadDashboardStats() {
             }
             currentClubId = stats.clubId || null;
             console.log('✅ Current club ID set to:', currentClubId);
+            if (currentClubId && typeof socket !== 'undefined' && socket) {
+                socket.emit('join-club', currentClubId);
+            }
             initOwnerChecklist({ forceRestore: true });
 
             // Update basic stats

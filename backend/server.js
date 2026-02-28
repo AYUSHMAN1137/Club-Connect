@@ -3241,6 +3241,9 @@ app.post('/workshops', verifyToken, isOwner, async (req, res) => {
             requiredTools: normalizeTools(toolsPayload)
         });
 
+        // Emit new workshop to everyone in the club
+        io.to(`club-${ownerClub.id}`).emit('new-workshop', workshop);
+
         res.json({ success: true, workshop });
     } catch (error) {
         console.error('Error creating workshop:', error);
