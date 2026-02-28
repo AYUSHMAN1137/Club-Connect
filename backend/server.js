@@ -14,6 +14,37 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 const bcrypt = require('bcryptjs');
 
+// ========== SUPABASE STORAGE CONFIG ==========
+const { createClient } = require('@supabase/supabase-js');
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+let supabase = null;
+if (supabaseUrl && supabaseKey) {
+    supabase = createClient(supabaseUrl, supabaseKey);
+    console.log('✅ Supabase Storage logic initialized');
+}
+
+async function uploadFileToSupabase(file, folder) {
+    if (!supabase) return null;
+    try {
+        const fileContent = fs.readFileSync(file.path);
+        const fileName = `${folder}/${file.filename}`;
+        const { data, error } = await supabase.storage.from('uploads').upload(fileName, fileContent, {
+            contentType: file.mimetype,
+            upsert: true
+        });
+        if (error) {
+            console.error('Supabase upload error:', error);
+            return null;
+        }
+        try { fs.unlinkSync(file.path); } catch (e) { } // delete local file
+        const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(fileName);
+        return publicUrl;
+    } catch (e) {
+        console.error('Failed to upload to supabase:', e);
+        return null;
+    }
+}
 
 // ========== GLOBAL ERROR HANDLERS (prevent silent crashes) ==========
 process.on('uncaughtException', (err) => {
@@ -1746,7 +1777,7 @@ app.get('/owner/certificates', verifyToken, isOwner, async (req, res) => {
             success: true,
             certificates: certificates.map(c => ({
                 ...c.toJSON(),
-                filepath: `${baseUrl}${c.filepath}`,
+                filepath: c.filepath.startsWith('http') ? c.filepath : `${baseUrl}${c.filepath}`,
                 member: c.User ? { id: c.User.id, username: c.User.username, email: c.User.email } : null,
                 event: c.Event ? { id: c.Event.id, title: c.Event.title } : null
             }))
@@ -2032,14 +2063,22 @@ app.post('/owner/upload-gallery', verifyToken, isOwner, upload.array('photos'), 
             });
         }
 
-        const photosToCreate = newFiles.map(file => ({
-            eventId: parseInt(eventId),
-            filename: file.filename,
-            originalName: file.originalname,
-            fileSize: file.size,
-            url: `/uploads/${file.filename}`,
-            uploadedAt: new Date()
-        }));
+        const photosToCreate = [];
+        for (const file of newFiles) {
+            let fileUrl = `/uploads/${file.filename}`;
+            if (supabase) {
+                const sbUrl = await uploadFileToSupabase(file, 'gallery');
+                if (sbUrl) fileUrl = sbUrl;
+            }
+            photosToCreate.push({
+                eventId: parseInt(eventId),
+                filename: file.filename,
+                originalName: file.originalname,
+                fileSize: file.size,
+                url: fileUrl,
+                uploadedAt: new Date()
+            });
+        }
 
         const created = await db.GalleryPhoto.bulkCreate(photosToCreate);
 
@@ -2050,7 +2089,7 @@ app.post('/owner/upload-gallery', verifyToken, isOwner, upload.array('photos'), 
             filename: p.filename,
             originalName: p.originalName,
             url: p.url,
-            fullUrl: `${baseUrl}${p.url}`,
+            fullUrl: p.url.startsWith('http') ? p.url : `${baseUrl}${p.url}`,
             uploadedAt: p.uploadedAt
         }));
 
@@ -2661,7 +2700,12 @@ app.post('/member/upload-profile-pic', verifyToken, isMember, upload.single('pro
             }
         }
 
-        const newPicPath = `/uploads/${req.file.filename}`;
+        let newPicPath = `/uploads/${req.file.filename}`;
+        if (supabase) {
+            const sbUrl = await uploadFileToSupabase(req.file, 'profile-pics');
+            if (sbUrl) newPicPath = sbUrl;
+        }
+
         await db.updateUser(member.id, { profilePic: newPicPath });
 
         console.log(`📸 [SQL] Profile pic updated for: ${member.username}`);
@@ -2669,7 +2713,7 @@ app.post('/member/upload-profile-pic', verifyToken, isMember, upload.single('pro
         res.json({
             success: true,
             message: 'Profile picture updated!',
-            profilePic: `${getBaseUrl(req)}${newPicPath}`
+            profilePic: newPicPath.startsWith('http') ? newPicPath : `${getBaseUrl(req)}${newPicPath}`
         });
     } catch (error) {
         console.error('Error uploading profile pic:', error);
@@ -2967,7 +3011,12 @@ app.post('/member/upload-certificate', verifyToken, isMember, uploadCertificate.
             }
         }
 
-        const filepath = `/uploads/certificates/${req.file.filename}`;
+        let filepath = `/uploads/certificates/${req.file.filename}`;
+        if (supabase) {
+            const sbUrl = await uploadFileToSupabase(req.file, 'certificates');
+            if (sbUrl) filepath = sbUrl;
+        }
+
         const created = await db.MemberCertificate.create({
             memberId: req.user.id,
             clubId: parsedClubId,
@@ -2988,7 +3037,7 @@ app.post('/member/upload-certificate', verifyToken, isMember, uploadCertificate.
                 ...created.toJSON(),
                 clubName: club?.name || 'Unknown Club',
                 eventTitle: event?.title || null,
-                fullpath: `${getBaseUrl(req)}${filepath}`
+                fullpath: filepath.startsWith('http') ? filepath : `${getBaseUrl(req)}${filepath}`
             }
         });
     } catch (error) {
@@ -3010,7 +3059,7 @@ app.get('/member/certificates', verifyToken, isMember, async (req, res) => {
             success: true,
             certificates: certificates.map(c => ({
                 ...c.toJSON(),
-                filepath: `${baseUrl}${c.filepath}`
+                filepath: c.filepath.startsWith('http') ? c.filepath : `${baseUrl}${c.filepath}`
             }))
         });
     } catch (error) {
