@@ -22,6 +22,7 @@ function getFullImageUrl(path) {
     if (!path) return '';
     const normalized = String(path).replace(/\\/g, '/').trim();
     if (!normalized) return '';
+    if (normalized.startsWith('data:')) return normalized;
     if (normalized.startsWith('http')) return normalized;
     if (normalized.startsWith('/')) return `${getApiUrl()}${normalized}`;
     return `${getApiUrl()}/${normalized}`;

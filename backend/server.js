@@ -2160,6 +2160,16 @@ async function ensureActiveClubColumn() {
     if (!table.activeClubId) {
         await qi.addColumn('Users', 'activeClubId', { type: DataTypes.INTEGER, allowNull: true });
     }
+
+    // Change profilePic type to TEXT on Postgres to support Base64 strings
+    if (db.sequelize.options.dialect === 'postgres') {
+        try {
+            await db.sequelize.query('ALTER TABLE "Users" ALTER COLUMN "profilePic" TYPE TEXT;');
+            console.log('✅ Altered profilePic column to TEXT');
+        } catch (e) {
+            console.error('⚠️ Could not alter profilePic column:', e.message);
+        }
+    }
 }
 
 // Get member dashboard - NOW USING SQL DATABASE
@@ -2648,31 +2658,40 @@ app.post('/member/upload-profile-pic', verifyToken, isMember, upload.single('pro
             return res.status(400).json({ success: false, message: 'No file uploaded!' });
         }
 
+        // Check file limits (Postgres can easily store huge base64 blocks, but better to keep it reasonable)
+        if (req.file.size > 2 * 1024 * 1024) { // 2MB limit roughly
+            safeUnlink(req.file.path);
+            return res.status(400).json({ success: false, message: 'File too large. Max size is 2MB.' });
+        }
+
         const member = await db.findUserById(req.user.id);
         if (!member) {
+            safeUnlink(req.file.path);
             return res.status(404).json({ success: false, message: 'Member not found!' });
         }
 
-        // Delete old profile pic if exists
-        if (member.profilePic) {
-            const oldPath = path.join(uploadsDir, path.basename(member.profilePic));
-            if (fs.existsSync(oldPath)) {
-                fs.unlinkSync(oldPath);
-            }
-        }
+        // Convert the newly uploaded temporary file to Base64
+        const fileData = fs.readFileSync(req.file.path);
+        const base64Data = fileData.toString('base64');
+        const mimeType = req.file.mimetype || 'image/jpeg';
+        const base64Url = `data:${mimeType};base64,${base64Data}`;
 
-        const newPicPath = `/uploads/${req.file.filename}`;
-        await db.updateUser(member.id, { profilePic: newPicPath });
+        // Save the base64 string to the database
+        await db.updateUser(member.id, { profilePic: base64Url });
 
-        console.log(`📸 [SQL] Profile pic updated for: ${member.username}`);
+        // Remove the local ephemeral file since it's now safely in the SQL database
+        safeUnlink(req.file.path);
+
+        console.log(`📸 [SQL] Profile pic updated to Base64 for: ${member.username}`);
 
         res.json({
             success: true,
-            message: 'Profile picture updated!',
-            profilePic: `${getBaseUrl(req)}${newPicPath}`
+            message: 'Profile picture updated successfully!',
+            profilePic: base64Url
         });
     } catch (error) {
         console.error('Error uploading profile pic:', error);
+        if (req.file) safeUnlink(req.file.path);
         res.status(500).json({ success: false, message: 'Server error!' });
     }
 });
