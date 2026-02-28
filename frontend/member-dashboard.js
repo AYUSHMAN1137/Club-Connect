@@ -4804,6 +4804,32 @@ function initializeSocket() {
             showNotification('New Announcement: ' + announcement.title, 'info');
         });
 
+        socket.on('new-event', (eventData) => {
+            console.log('📅 New event:', eventData);
+            if (getActivePageName() === 'events') {
+                loadEvents();
+            } else if (getActivePageName() === 'home') {
+                if (typeof loadDashboardStats === 'function') loadDashboardStats();
+            }
+            showNotification('New Event scheduled: ' + eventData.title, 'info');
+        });
+
+        socket.on('new-poll', (pollData) => {
+            console.log('📊 New poll:', pollData);
+            if (getActivePageName() === 'polls') {
+                loadMemberPolls();
+            }
+            showNotification('New Poll posted!', 'info');
+        });
+
+        socket.on('new-workshop', (workshopData) => {
+            console.log('💻 New workshop:', workshopData);
+            if (getActivePageName() === 'workshops') {
+                loadMemberWorkshops();
+            }
+            showNotification('New Workshop scheduled: ' + workshopData.title, 'info');
+        });
+
         bindMemberWorkshopSocketHandlers();
     }
 }

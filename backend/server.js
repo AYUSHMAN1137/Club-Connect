@@ -1222,6 +1222,9 @@ app.post('/owner/create-event', verifyToken, isOwner, async (req, res) => {
 
         console.log(`📅 [SQL] Created event: ${title} for club: ${ownerClub.name}`);
 
+        // Emit new event to everyone in the club
+        io.to(`club-${ownerClub.id}`).emit('new-event', newEvent);
+
         res.json({
             success: true,
             message: 'Event created successfully!',
@@ -1664,6 +1667,10 @@ app.post('/owner/polls', verifyToken, isOwner, async (req, res) => {
         }
         const poll = await db.createPoll(ownerClub.id, req.user.id, normalizedQuestion, options, endDate || null);
         const full = await db.getPollById(poll.id, { includeVoteCounts: true });
+
+        // Emit new poll to everyone in the club
+        io.to(`club-${ownerClub.id}`).emit('new-poll', full);
+
         res.status(201).json({ success: true, message: 'Poll created!', poll: full });
     } catch (error) {
         console.error('Error creating poll:', error);

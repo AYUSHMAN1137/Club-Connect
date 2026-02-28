@@ -3712,6 +3712,30 @@ function initSocketIO() {
         showNotification('New announcement: ' + announcement.title, 'info');
     });
 
+    socket.on('new-event', (eventData) => {
+        invalidateModuleCache('events');
+        if (getActivePageName() === 'events') {
+            loadEvents();
+        }
+        showNotification('New Event scheduled: ' + eventData.title, 'info');
+    });
+
+    socket.on('new-poll', (pollData) => {
+        invalidateModuleCache('polls');
+        if (getActivePageName() === 'polls') {
+            loadPolls();
+        }
+        showNotification('New poll created!', 'info');
+    });
+
+    socket.on('new-workshop', (workshopData) => {
+        invalidateModuleCache('workshops');
+        if (getActivePageName() === 'workshops') {
+            loadWorkshops();
+        }
+        showNotification('New workshop created: ' + workshopData.title, 'info');
+    });
+
     bindWorkshopSocketHandlers();
 }
 
