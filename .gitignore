@@ -15,10 +15,11 @@ android/capacitor-cordova-android-plugins/build/
 *.aab
 
 # Database (optional: uncomment if each dev should have their own DB)
-# backend/database.sqlite
+backend/database.sqlite
+backend/backups/
 
 # Uploads (optional: uncomment if you don't want to commit uploaded files)
-# backend/uploads/
+backend/uploads/
 
 # OS and editor
 .DS_Store
