@@ -203,7 +203,7 @@ app.use(express.static(frontendDir));
 
 function getBaseUrl(req) {
     // Prefer explicit APP_URL in production; fallback to request host.
-    return process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    return process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || `${req.protocol}://${req.get('host')}`;
 }
 
 function normalizeTools(tools) {
@@ -5369,7 +5369,7 @@ async function startServer() {
 
     // Smart Keep-Awake for Render free tier (Prevents sleeping after 15 mins)
     setInterval(() => {
-        const pingUrl = process.env.APP_URL || 'https://club-connect-hvsz.onrender.com';
+        const pingUrl = process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || 'https://club-connect-hvsz.onrender.com';
         if (pingUrl) {
             fetch(`${pingUrl}/health`)
                 .then(res => {
