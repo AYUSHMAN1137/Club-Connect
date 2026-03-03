@@ -442,9 +442,9 @@ if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App
     const App = window.Capacitor.Plugins.App;
     App.addListener('backButton', ({ canGoBack }) => {
         const activePage = getActivePageName();
-        // If we are not on the home page, go back to home instead of exiting the app
+        // If we are not on the home page, go back to the previous page in history
         if (activePage && activePage !== 'home') {
-            switchPage('home');
+            window.history.back();
         } else {
             // If already on home, we can let capacitor handle the default exit if it wants to,
             // or we could force a prompt.
