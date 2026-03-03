@@ -22,19 +22,29 @@
             const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
             const isFile = window.location.protocol === 'file:' || !hostname;
             const isNgrok = hostname.endsWith('ngrok-free.app') || hostname.endsWith('ngrok.app') || hostname.endsWith('ngrok.dev');
+
             if (isCapacitor) {
+                // If it's the Android app, we can use a system to detect if it's production or test 
+                // but for now, we'll point it to your production or set up a manual toggle.
                 window.API_URL = 'https://club-connect-hvsz.onrender.com';
                 return;
             }
-            if (isFile) {
+
+            if (isLocal || isNgrok || isFile) {
                 window.API_URL = 'http://localhost:4000';
                 return;
             }
-            if (isLocal || isNgrok) {
-                window.API_URL = window.location.origin;
-                return;
+
+            // AUTO-DETECT STAGING VS PRODUCTION
+            if (hostname.includes('test') || hostname.includes('staging') || hostname.includes('sable')) {
+                // Point to your NEW Render Testing URL
+                window.API_URL = 'https://club-connect-test-backend.onrender.com';
+            } else {
+                // Point to your LIVE Render Production URL
+                window.API_URL = 'https://club-connect-hvsz.onrender.com';
             }
-            window.API_URL = 'https://club-connect-hvsz.onrender.com';
+
+            console.log(`🚀 Env: ${hostname} | API: ${window.API_URL}`);
         })();
     </script>
 </head>
