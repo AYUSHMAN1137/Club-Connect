@@ -475,9 +475,11 @@ function switchPage(pageName, options = {}) {
         case 'home':
             loadDashboardStats();
             break;
+        /* 
         case 'events':
             loadEvents();
-            break;
+            break; 
+        */
         case 'workshops':
             loadMemberWorkshops();
             break;
