@@ -4601,7 +4601,7 @@ app.get('/messages/contacts', verifyToken, async (req, res) => {
             });
 
             const unreadCount = await db.Message.count({
-                where: { senderId: owner.id, recipientId: currentUser.id, type: 'direct', isRead: false }
+                where: { senderId: owner.id, recipientId: currentUser.id, type: 'direct', isRead: false, deletedByRecipient: false }
             });
 
             contacts.push({
@@ -4632,7 +4632,7 @@ app.get('/messages/contacts', verifyToken, async (req, res) => {
                 });
 
                 const unreadCount = await db.Message.count({
-                    where: { senderId: member.id, recipientId: currentUser.id, type: 'direct', isRead: false }
+                    where: { senderId: member.id, recipientId: currentUser.id, type: 'direct', isRead: false, deletedByRecipient: false }
                 });
 
                 contacts.push({

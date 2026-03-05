@@ -3355,9 +3355,6 @@ async function clearMemberChat() {
     const confirmed = confirm(`Clear chat with ${currentChatRecipient.username}?\n\nThis will only clear it from your side. The owner can still see the conversation.`);
     if (!confirmed) return;
 
-    const btn = document.getElementById('clearMemberChatBtn');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Clearing...'; }
-
     // --- OPTIMISTIC CLEAR ---
     const chatMessages = document.getElementById('chatMessages');
     const oldHtml = chatMessages ? chatMessages.innerHTML : '';
@@ -5075,9 +5072,6 @@ async function clearMemberChatById(recipientId, username) {
     const confirmed = confirm(`Clear chat with ${username}?\n\nThis will only clear it from your side. The owner can still see the conversation.`);
     if (!confirmed) return;
 
-    const btn = document.getElementById('memberClearChatBtnId');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Clearing...'; }
-
     // --- OPTIMISTIC UI CLEAR ---
     const chatMessages = document.getElementById('chatMessages');
     const oldHtml = chatMessages ? chatMessages.innerHTML : '';
@@ -5197,11 +5191,11 @@ async function sendMessage(event) {
         chatMessages.innerHTML = ''; // Remove empty/loading state
     }
     const messageHtml = `
-        <div class="message-group sent" id="${tempId}" style="opacity: 0.7;">
+        <div class="message-group sent" id="${tempId}">
             <div class="message-bubble">
                 <p class="message-text">${escapeHtml(message)}</p>
             </div>
-            <div class="message-time">Sending...</div>
+            <div class="message-time">Just now</div>
         </div>
     `;
     if (chatMessages) {
@@ -5226,13 +5220,9 @@ async function sendMessage(event) {
         const data = await response.json();
 
         if (data.success) {
-            // Confirm message sent (remove temp styling)
+            // Confirm message sent
             const sentMsg = document.getElementById(tempId);
-            if (sentMsg) {
-                sentMsg.style.opacity = '1';
-                const timeEl = sentMsg.querySelector('.message-time');
-                if (timeEl) timeEl.textContent = 'Just now';
-            }
+            // Optionally could add a delivered tick here if needed later
         } else {
             const sentMsg = document.getElementById(tempId);
             if (sentMsg) sentMsg.remove();

@@ -3955,10 +3955,10 @@ async function sendMessage(e) {
     }
 
     const tempHtml = `
-        <div class="chat-message sent temp-msg" id="${tempId}" style="opacity: 0.7;">
+        <div class="chat-message sent temp-msg" id="${tempId}">
             <div class="chat-message-content">
                 <p style="margin: 0;">${escapeHtml(message)}</p>
-                <div class="chat-message-time temp-time">Sending...</div>
+                <div class="chat-message-time temp-time">Just now</div>
             </div>
         </div>
     `;
@@ -3982,13 +3982,10 @@ async function sendMessage(e) {
         });
         const data = await response.json();
         if (data.success) {
-            // Confirm message sent (remove temp styling)
+            // Confirm message sent
             const sentMsg = document.getElementById(tempId);
             if (sentMsg) {
-                sentMsg.style.opacity = '1';
                 sentMsg.classList.remove('temp-msg');
-                const timeEl = sentMsg.querySelector('.temp-time');
-                if (timeEl) timeEl.textContent = new Date().toLocaleTimeString();
             }
             // Trigger background reload to ensure contact preview updates
             invalidateModuleCache('messages');
@@ -4016,7 +4013,6 @@ async function clearOwnerChat(memberId) {
     if (!confirmed) return;
 
     const btn = document.getElementById('clearOwnerChatBtn');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Clearing...'; }
 
     // --- OPTIMISTIC UI CLEAR ---
     const chatMessages = document.getElementById('chatMessages');
@@ -4055,8 +4051,6 @@ async function clearOwnerChat(memberId) {
         if (chatMessages) chatMessages.innerHTML = oldHtml;
         console.error('Error clearing chat:', error);
         showNotification('Failed to clear chat', 'error');
-    } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Clear Chat'; }
     }
 }
 
