@@ -4964,45 +4964,46 @@ async function loadContacts() {
             }
 
             contactsList.innerHTML = data.contacts.map(contact => {
-                const roleLabel = contact.role || 'Club Owner';
+                const subtitle = contact.email || contact.role || 'Club Owner';
                 const lastMessageText = contact.lastMessage?.message || '';
                 const preview = lastMessageText.length > 50 ? `${lastMessageText.substring(0, 50)}...` : lastMessageText;
+                const timeLine = contact.lastMessage ? `<p class="message-item-time">${formatMessageListTime(contact.lastMessage.createdAt)}</p>` : '';
+                const unreadHtml = contact.unreadCount > 0 ? `<div class="message-item-unread">${contact.unreadCount}</div>` : '';
                 return `
-                    <div class="contact-item"
+                    <div class="message-item ${currentRecipientId === contact.id ? 'active' : ''}"
                         data-contact-id="${contact.id}"
-                        data-contact-name="${escapeHtml(contact.username)}"
-                        data-contact-role="${escapeHtml(roleLabel)}">
-                        <div class="contact-avatar">
-                            ${contact.username.charAt(0).toUpperCase()}
+                        data-contact-name="${escapeAttr(contact.username || 'Contact')}"
+                        data-contact-subtitle="${escapeAttr(subtitle)}">
+                        <div class="message-avatar">
+                            ${(contact.username || 'C').charAt(0).toUpperCase()}
                         </div>
-                        <div class="contact-info">
-                            <div class="contact-name">${escapeHtml(contact.username)}</div>
-                            <div class="contact-last-message">
+                        <div class="message-item-main">
+                            <p class="message-item-name">${escapeHtml(contact.username || 'Contact')}</p>
+                            <p class="message-item-preview">
                                 ${contact.lastMessage ? escapeHtml(preview) : 'No messages yet'}
-                            </div>
+                            </p>
+                            ${timeLine}
                         </div>
-                        <div class="contact-meta">
-                            ${contact.lastMessage ? `<div class="contact-time">${formatMessageTime(contact.lastMessage.createdAt)}</div>` : ''}
-                            ${contact.unreadCount > 0 ? `<div class="contact-unread">${contact.unreadCount}</div>` : ''}
-                        </div>
+                        ${unreadHtml ? `<div class="message-item-right">${unreadHtml}</div>` : ''}
                     </div>
                 `;
             }).join('');
 
-            contactsList.querySelectorAll('.contact-item').forEach(item => {
+            contactsList.querySelectorAll('.message-item').forEach(item => {
                 item.addEventListener('click', () => {
                     const recipientId = parseInt(item.dataset.contactId, 10);
                     const username = item.dataset.contactName || 'Contact';
-                    const role = item.dataset.contactRole || 'Club Owner';
-                    selectContact(recipientId, username, role, item);
+                    const subtitle = item.dataset.contactSubtitle || 'Club Owner';
+                    selectContact(recipientId, username, subtitle, item);
                 });
             });
 
             // Auto-select first contact if available
             if (data.contacts.length > 0 && window.innerWidth > 900) {
                 const firstContact = data.contacts[0];
-                const firstEl = contactsList.querySelector('.contact-item');
-                selectContact(firstContact.id, firstContact.username, firstContact.role, firstEl);
+                const firstEl = contactsList.querySelector('.message-item');
+                const subtitle = firstContact.email || firstContact.role || 'Club Owner';
+                selectContact(firstContact.id, firstContact.username, subtitle, firstEl);
             }
         }
     } catch (error) {
@@ -5021,46 +5022,37 @@ function setMessagesChatOpen(isOpen) {
     }
 }
 
-async function selectContact(recipientId, username, role, element) {
+async function selectContact(recipientId, username, subtitle, element) {
     currentRecipientId = recipientId;
 
-    // Update UI
-    document.getElementById('messagesEmpty').style.display = 'none';
-    document.getElementById('messagesActive').style.display = 'flex';
-
-    // Update header: name, role, and Clear Chat button
-    const nameEl = document.getElementById('chatContactName');
-    const roleEl = document.getElementById('chatContactRole');
-    if (nameEl) nameEl.textContent = username;
-    if (roleEl) roleEl.textContent = role || 'Club Owner';
-
-    // Inject Clear Chat button into chat header actions area (if exists)
-    const chatHeaderActions = document.getElementById('chatHeaderActions');
-    if (chatHeaderActions) {
-        // Remove existing clear button if it exists
-        const existingBtn = document.getElementById('memberClearChatBtnId');
-        if (existingBtn) existingBtn.remove();
-
-        chatHeaderActions.insertAdjacentHTML('afterbegin', `
-            <button id="memberClearChatBtnId" onclick="clearMemberChatById(${recipientId}, '${username.replace(/'/g, "\\'")}')"
-                title="Clear chat (only for you)"
-                style="background: none; border: 1px solid #fca5a5; color: #ef4444; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: all 0.2s; white-space: nowrap;"
-                onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='none'">
-                <i class="fa-solid fa-trash-can"></i> Clear Chat
-            </button>
-        `);
+    const chatHeader = document.getElementById('chatHeader');
+    if (chatHeader) {
+        chatHeader.innerHTML = `
+            <div class="chat-header-row">
+                <div class="chat-header-title">
+                    <h3>${escapeHtml(username)}</h3>
+                    <p class="chat-header-subtitle">${escapeHtml(subtitle || '')}</p>
+                </div>
+                <button id="memberClearChatBtnId" class="chat-clear-btn" type="button" title="Clear chat (only for you)">
+                    <i class="fa-solid fa-trash-can"></i> Clear Chat
+                </button>
+            </div>
+        `;
+        const btn = document.getElementById('memberClearChatBtnId');
+        if (btn) {
+            btn.addEventListener('click', () => clearMemberChatById(recipientId, username));
+        }
     }
 
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) chatInput.style.display = 'block';
+
     // Highlight selected contact
-    document.querySelectorAll('.contact-item').forEach(item => {
+    document.querySelectorAll('.message-item').forEach(item => {
         item.classList.remove('active');
     });
     if (element) {
         element.classList.add('active');
-    }
-
-    if (window.innerWidth <= 900) {
-        setMessagesChatOpen(true);
     }
 
     // Load messages
@@ -5071,6 +5063,12 @@ async function selectContact(recipientId, username, role, element) {
 async function clearMemberChatById(recipientId, username) {
     const confirmed = confirm(`Clear chat with ${username}?\n\nThis will only clear it from your side. The owner can still see the conversation.`);
     if (!confirmed) return;
+
+    const btn = document.getElementById('memberClearChatBtnId');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Clearing...';
+    }
 
     // --- OPTIMISTIC UI CLEAR ---
     const chatMessages = document.getElementById('chatMessages');
@@ -5109,7 +5107,10 @@ async function clearMemberChatById(recipientId, username) {
         console.error('Error clearing chat:', error);
         showNotification('Failed to clear chat', 'error');
     } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Clear Chat'; }
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Clear Chat';
+        }
     }
 }
 
@@ -5156,11 +5157,11 @@ function displayMessages(messages) {
     chatMessages.innerHTML = messages.map(msg => {
         const isSent = msg.senderId === currentUserId;
         return `
-            <div class="message-group ${isSent ? 'sent' : 'received'}">
-                <div class="message-bubble">
-                    <p class="message-text">${escapeHtml(msg.message)}</p>
+            <div class="chat-message ${isSent ? 'sent' : ''}">
+                <div class="chat-message-content">
+                    <p style="margin: 0;">${escapeHtml(msg.message)}</p>
+                    <div class="chat-message-time">${formatMessageClockTime(msg.createdAt)}</div>
                 </div>
-                <div class="message-time">${formatMessageTime(msg.createdAt)}</div>
             </div>
         `;
     }).join('');
@@ -5182,8 +5183,6 @@ async function sendMessage(event) {
 
     // --- OPTIMISTIC UI UPDATE (Instant feedback) ---
     messageInput.value = '';
-    const charCount = document.getElementById('charCount');
-    if (charCount) charCount.textContent = '0';
 
     const chatMessages = document.getElementById('chatMessages');
     const tempId = 'msg-' + Date.now();
@@ -5191,11 +5190,11 @@ async function sendMessage(event) {
         chatMessages.innerHTML = ''; // Remove empty/loading state
     }
     const messageHtml = `
-        <div class="message-group sent" id="${tempId}">
-            <div class="message-bubble">
-                <p class="message-text">${escapeHtml(message)}</p>
+        <div class="chat-message sent" id="${tempId}">
+            <div class="chat-message-content">
+                <p style="margin: 0;">${escapeHtml(message)}</p>
+                <div class="chat-message-time">Just now</div>
             </div>
-            <div class="message-time">Just now</div>
         </div>
     `;
     if (chatMessages) {
@@ -5244,11 +5243,11 @@ function handleNewMessage(message) {
     if (currentRecipientId === message.senderId) {
         const chatMessages = document.getElementById('chatMessages');
         const messageHtml = `
-            <div class="message-group received">
-                <div class="message-bubble">
-                    <p class="message-text">${escapeHtml(message.message)}</p>
+            <div class="chat-message">
+                <div class="chat-message-content">
+                    <p style="margin: 0;">${escapeHtml(message.message)}</p>
+                    <div class="chat-message-time">${formatMessageClockTime(message.createdAt)}</div>
                 </div>
-                <div class="message-time">${formatMessageTime(message.createdAt)}</div>
             </div>
         `;
         chatMessages.insertAdjacentHTML('beforeend', messageHtml);
@@ -5295,6 +5294,16 @@ function formatMessageTime(timestamp) {
     return date.toLocaleDateString();
 }
 
+function formatMessageListTime(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleString();
+}
+
+function formatMessageClockTime(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+}
+
 // Escape HTML to prevent XSS
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -5302,57 +5311,35 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function escapeAttr(text) {
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
 // Character counter for message input
 document.addEventListener('DOMContentLoaded', () => {
     const messageInput = document.getElementById('messageInput');
-    const charCount = document.getElementById('charCount');
-    const backToListBtn = document.getElementById('backToListBtn');
     const newMessageBtn = document.getElementById('newMessageBtn');
-    const messagesSearch = document.getElementById('messagesSearch');
     const contactsList = document.getElementById('contactsList');
-
-    if (messageInput && charCount) {
-        messageInput.addEventListener('input', () => {
-            charCount.textContent = messageInput.value.length;
-
-            // Auto-resize textarea
-            messageInput.style.height = 'auto';
-            messageInput.style.height = messageInput.scrollHeight + 'px';
-        });
-    }
-
-    if (backToListBtn) {
-        backToListBtn.addEventListener('click', () => {
-            setMessagesChatOpen(false);
-        });
-    }
 
     if (newMessageBtn) {
         newMessageBtn.addEventListener('click', () => {
-            setMessagesChatOpen(false);
-            if (messagesSearch) {
-                messagesSearch.focus();
+            if (currentRecipientId && messageInput) {
+                messageInput.focus();
+                return;
+            }
+
+            const firstContact = contactsList?.querySelector('.message-item');
+            if (firstContact) {
+                firstContact.click();
+                setTimeout(() => messageInput?.focus(), 0);
             }
         });
     }
-
-    if (messagesSearch && contactsList) {
-        messagesSearch.addEventListener('input', () => {
-            const query = messagesSearch.value.trim().toLowerCase();
-            contactsList.querySelectorAll('.contact-item').forEach(item => {
-                const name = (item.dataset.contactName || '').toLowerCase();
-                const lastMessage = item.querySelector('.contact-last-message')?.textContent?.toLowerCase() || '';
-                const matches = name.includes(query) || lastMessage.includes(query);
-                item.style.display = matches ? '' : 'none';
-            });
-        });
-    }
-
-    window.addEventListener('resize', () => {
-        if (window.innerWidth > 900) {
-            setMessagesChatOpen(false);
-        }
-    });
 });
 
 console.log('✅ Messaging system initialized');

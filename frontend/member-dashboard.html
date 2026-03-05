@@ -1135,87 +1135,41 @@
 
             <!-- ==================== MESSAGES PAGE ==================== -->
             <div class="page" id="messages-page">
-                <div class="messages-hero">
-                    <div class="messages-hero-content">
-                        <h1><i class="fa-solid fa-envelope"></i> Messages</h1>
-                        <p>Chat with your club owner</p>
+                <div class="ws-hero member-messages-hero">
+                    <div class="ws-hero-content">
+                        <div class="ws-hero-text">
+                            <h1><i class="fa-solid fa-envelope"></i> Messages</h1>
+                            <p class="ws-hero-subtitle">Chat with your club owner</p>
+                        </div>
+                        <button class="ws-create-btn" id="newMessageBtn">
+                            <i class="fa-solid fa-plus"></i> New Message
+                        </button>
                     </div>
-                    <button class="messages-hero-btn" id="newMessageBtn">
-                        <i class="fa-solid fa-plus"></i> New Message
-                    </button>
                 </div>
 
-                <div class="messages-container">
-                    <!-- Contacts Sidebar -->
-                    <div class="messages-sidebar">
-                        <div class="messages-sidebar-header">
-                            <h3><i class="fa-solid fa-user-group"></i> Contacts</h3>
-                        </div>
-                        <div class="messages-search">
-                            <i class="fa-solid fa-magnifying-glass"></i>
-                            <input type="text" id="messagesSearch" placeholder="Search conversations...">
-                        </div>
-                        <div class="contacts-list" id="contactsList">
-                            <!-- Contacts loaded dynamically -->
-                            <div class="loading-state">
-                                <i class="fa-solid fa-spinner fa-spin"></i>
-                                <p>Loading contacts...</p>
-                            </div>
+                <div class="messages-layout">
+                    <div class="messages-panel">
+                        <h3 class="panel-title">Conversations</h3>
+                        <div id="contactsList" class="message-list">
+                            <p class="loading">Loading conversations...</p>
                         </div>
                     </div>
 
-                    <!-- Chat Area -->
-                    <div class="messages-chat">
-                        <div class="messages-empty" id="messagesEmpty">
-                            <div class="empty-icon">
-                                <i class="fa-solid fa-comments"></i>
-                            </div>
-                            <h3>Select a Contact</h3>
-                            <p>Choose a contact from the sidebar to start messaging</p>
+                    <div class="chat-panel">
+                        <div id="chatHeader" class="chat-header">
+                            <p class="chat-placeholder">Select a conversation to start messaging</p>
                         </div>
-
-                        <div class="messages-active" id="messagesActive" style="display: none;">
-                            <!-- Chat Header -->
-                            <div class="chat-header" id="chatHeader">
-                                <div class="chat-header-info">
-                                    <div class="chat-avatar">
-                                        <i class="fa-solid fa-user"></i>
-                                    </div>
-                                    <div class="chat-details">
-                                        <h3 id="chatContactName">Contact Name</h3>
-                                        <p id="chatContactRole">Club Owner</p>
-                                    </div>
-                                </div>
-                                <div class="chat-header-actions" id="chatHeaderActions">
-                                    <button class="btn-icon" id="backToListBtn" title="Back to list">
-                                        <i class="fa-solid fa-arrow-left"></i>
-                                    </button>
-                                    <button class="btn-icon" title="Refresh">
-                                        <i class="fa-solid fa-rotate"></i>
+                        <div id="chatMessages" class="chat-messages"></div>
+                        <div id="chatInput" class="chat-input" style="display: none;">
+                            <form id="messageForm" onsubmit="sendMessage(event)">
+                                <div class="chat-row">
+                                    <input type="text" id="messageInput" class="chat-text-input"
+                                        placeholder="Type a message..." maxlength="1000" required>
+                                    <button type="submit" class="btn-send" id="sendButton" aria-label="Send message">
+                                        <i class="fa-solid fa-paper-plane"></i>
                                     </button>
                                 </div>
-                            </div>
-
-                            <!-- Messages List -->
-                            <div class="chat-messages" id="chatMessages">
-                                <!-- Messages loaded dynamically -->
-                            </div>
-
-                            <!-- Message Input -->
-                            <div class="chat-input">
-                                <form id="messageForm" onsubmit="sendMessage(event)">
-                                    <div class="input-wrapper">
-                                        <textarea id="messageInput" placeholder="Type your message..." rows="1"
-                                            maxlength="1000"></textarea>
-                                        <button type="submit" class="btn-send" id="sendButton">
-                                            <i class="fa-solid fa-paper-plane"></i>
-                                        </button>
-                                    </div>
-                                    <div class="input-info">
-                                        <span class="char-count"><span id="charCount">0</span>/1000</span>
-                                    </div>
-                                </form>
-                            </div>
+                            </form>
                         </div>
                     </div>
                 </div>
