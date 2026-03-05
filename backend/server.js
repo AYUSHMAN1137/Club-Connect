@@ -2694,26 +2694,50 @@ app.post('/member/upload-profile-pic', verifyToken, isMember, upload.single('pro
 
         // Delete old profile pic if exists
         if (member.profilePic) {
-            const oldPath = path.join(uploadsDir, path.basename(member.profilePic));
-            if (fs.existsSync(oldPath)) {
-                fs.unlinkSync(oldPath);
+            if (member.profilePic.startsWith('http')) {
+                // Old pic is on Supabase — try to delete it from Supabase storage
+                if (supabase) {
+                    try {
+                        // Extract path after bucket name e.g. 'uploads/profile-pics/filename.jpg'
+                        const urlObj = new URL(member.profilePic);
+                        // Supabase public URL format: /storage/v1/object/public/<bucket>/<path>
+                        const match = urlObj.pathname.match(/\/storage\/v1\/object\/public\/uploads\/(.+)/);
+                        if (match) {
+                            await supabase.storage.from('uploads').remove([match[1]]);
+                        }
+                    } catch (delErr) {
+                        console.warn('⚠️ Could not delete old Supabase profile pic:', delErr.message);
+                    }
+                }
+            } else {
+                // Old pic is on local disk — delete it
+                const oldPath = path.join(uploadsDir, path.basename(member.profilePic));
+                if (fs.existsSync(oldPath)) {
+                    fs.unlinkSync(oldPath);
+                }
             }
         }
 
         let newPicPath = `/uploads/${req.file.filename}`;
         if (supabase) {
             const sbUrl = await uploadFileToSupabase(req.file, 'profile-pics');
-            if (sbUrl) newPicPath = sbUrl;
+            if (sbUrl) {
+                newPicPath = sbUrl;
+            } else {
+                // ⚠️ Supabase upload failed — file stays on local disk (will be lost on Render restart!)
+                console.warn(`⚠️ Supabase upload failed for ${member.username} — stored locally (ephemeral!). Check Supabase keys/bucket.`);
+            }
         }
 
         await db.updateUser(member.id, { profilePic: newPicPath });
 
-        console.log(`📸 [SQL] Profile pic updated for: ${member.username}`);
+        console.log(`📸 [SQL] Profile pic updated for: ${member.username} → ${newPicPath.startsWith('http') ? 'Supabase ✅' : 'Local disk ⚠️'}`);
 
+        const responseUrl = newPicPath.startsWith('http') ? newPicPath : `${getBaseUrl(req)}${newPicPath}`;
         res.json({
             success: true,
             message: 'Profile picture updated!',
-            profilePic: newPicPath.startsWith('http') ? newPicPath : `${getBaseUrl(req)}${newPicPath}`
+            profilePic: responseUrl
         });
     } catch (error) {
         console.error('Error uploading profile pic:', error);
@@ -2841,7 +2865,13 @@ app.get('/member/profile', verifyToken, isMember, async (req, res) => {
                 bio: member.bio || '',
                 phone: member.phone || '',
                 department: member.department || '',
-                profilePic: member.profilePic ? `${getBaseUrl(req)}${member.profilePic}` : '',
+                // Smart URL: if profilePic is already an absolute URL (Supabase), return as-is;
+                // if it's a relative path (/uploads/...), prepend the base URL.
+                profilePic: member.profilePic
+                    ? (member.profilePic.startsWith('http')
+                        ? member.profilePic
+                        : `${getBaseUrl(req)}${member.profilePic}`)
+                    : '',
 
                 // Active context
                 points: activeClubPoints,
