@@ -1,7 +1,7 @@
 // Utility Functions
 // Make API_URL globally accessible
 window.API_URL = window.API_URL || 'http://localhost:4000';
-const API_URL = window.API_URL;
+const UTIL_API_URL = window.API_URL;
 
 // ===== NGROK INTERSTITIAL BYPASS =====
 // When using ngrok free tier, it injects an HTML warning page before the actual response.
@@ -103,7 +103,7 @@ async function apiCall(url, options = {}) {
         if (isNgrokEnv) {
             headers['ngrok-skip-browser-warning'] = 'true';
         }
-        const response = await fetch(`${API_URL}${url}`, {
+        const response = await fetch(`${UTIL_API_URL}${url}`, {
             ...options,
             headers
         });
