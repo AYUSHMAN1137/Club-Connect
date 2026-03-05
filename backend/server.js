@@ -92,6 +92,8 @@ const corsOrigin = (origin, callback) => {
 };
 
 db.ClubOwner.sync().catch(() => null);
+// Auto-add new soft-delete columns to Messages table if they don't exist
+db.Message.sync({ alter: true }).catch((e) => console.warn('⚠️ Message table alter failed (safe to ignore if columns already exist):', e.message));
 
 const app = express();
 const server = http.createServer(app);
@@ -4656,13 +4658,16 @@ app.get('/messages', verifyToken, async (req, res) => {
     try {
         const recipientId = req.query.recipientId ? parseInt(req.query.recipientId) : null;
         const clubId = req.query.clubId ? parseInt(req.query.clubId) : null;
+        const myId = req.user.id;
 
         let where;
         if (recipientId) {
             where = {
                 [Op.or]: [
-                    { senderId: req.user.id, recipientId, type: 'direct' },
-                    { senderId: recipientId, recipientId: req.user.id, type: 'direct' }
+                    // I sent it — only show if I haven't cleared it
+                    { senderId: myId, recipientId, type: 'direct', deletedBySender: false },
+                    // They sent it — only show if I (recipient) haven't cleared it
+                    { senderId: recipientId, recipientId: myId, type: 'direct', deletedByRecipient: false }
                 ]
             };
         } else if (clubId) {
@@ -4670,8 +4675,8 @@ app.get('/messages', verifyToken, async (req, res) => {
         } else {
             where = {
                 [Op.or]: [
-                    { senderId: req.user.id },
-                    { recipientId: req.user.id }
+                    { senderId: myId, deletedBySender: false },
+                    { recipientId: myId, deletedByRecipient: false }
                 ]
             };
         }
@@ -4696,6 +4701,35 @@ app.get('/messages', verifyToken, async (req, res) => {
         res.json({ success: true, messages: result });
     } catch (error) {
         console.error('Error fetching messages:', error);
+        res.status(500).json({ success: false, message: 'Server error!' });
+    }
+});
+
+// Clear conversation — only clears for the requester, not the other side
+app.delete('/messages/conversation/:recipientId', verifyToken, async (req, res) => {
+    try {
+        const myId = req.user.id;
+        const otherId = parseInt(req.params.recipientId);
+        if (!otherId || isNaN(otherId)) {
+            return res.status(400).json({ success: false, message: 'Invalid recipient ID' });
+        }
+
+        // Messages I sent in this conversation → mark deletedBySender
+        await db.Message.update(
+            { deletedBySender: true },
+            { where: { senderId: myId, recipientId: otherId, type: 'direct' } }
+        );
+
+        // Messages they sent to me → mark deletedByRecipient
+        await db.Message.update(
+            { deletedByRecipient: true },
+            { where: { senderId: otherId, recipientId: myId, type: 'direct' } }
+        );
+
+        console.log(`🗑️  Chat cleared by user ${myId} with user ${otherId}`);
+        res.json({ success: true, message: 'Chat cleared successfully!' });
+    } catch (error) {
+        console.error('Error clearing chat:', error);
         res.status(500).json({ success: false, message: 'Server error!' });
     }
 });

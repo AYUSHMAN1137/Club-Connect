@@ -54,6 +54,15 @@ const Message = sequelize.define('Message', {
         type: DataTypes.DATE,
         allowNull: true
     },
+    // Soft-delete: per-user "clear chat" — only hides from that user's view
+    deletedBySender: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    deletedByRecipient: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
     createdAt: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW

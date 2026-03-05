@@ -3875,8 +3875,18 @@ async function openChat(recipientId) {
         const chatHeader = document.getElementById('chatHeader');
         if (chatHeader) {
             chatHeader.innerHTML = `
-                <h3 style="margin: 0;">${member ? member.username : 'Member'}</h3>
-                <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">${member ? (member.email || '') : ''}</p>
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <div>
+                        <h3 style="margin: 0;">${member ? member.username : 'Member'}</h3>
+                        <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">${member ? (member.email || '') : ''}</p>
+                    </div>
+                    <button onclick="clearOwnerChat(${recipientId})" title="Clear chat (only for you)"
+                        style="background: none; border: 1px solid #fca5a5; color: #ef4444; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: all 0.2s; white-space: nowrap;"
+                        onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='none'"
+                        id="clearOwnerChatBtn">
+                        <i class="fa-solid fa-trash-can"></i> Clear Chat
+                    </button>
+                </div>
             `;
         }
     } catch (error) {
@@ -3958,6 +3968,39 @@ async function sendMessage(e) {
     } catch (error) {
         console.error('Error sending message:', error);
         showNotification('Failed to send message', 'error');
+    }
+}
+
+// Clear chat (owner side only) — the member can still see the conversation
+async function clearOwnerChat(memberId) {
+    if (!memberId) return;
+    const memberName = document.querySelector('#chatHeader h3')?.textContent || 'this member';
+    const confirmed = confirm(`Clear chat with ${memberName}?\n\nThis will only clear it from your side. The member can still see the conversation.`);
+    if (!confirmed) return;
+
+    const btn = document.getElementById('clearOwnerChatBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Clearing...'; }
+
+    try {
+        const response = await fetch(`${getApiUrl()}/messages/conversation/${memberId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Chat cleared!', 'success');
+            invalidateModuleCache('messages');
+            // Refresh chat + contact list
+            await loadChatMessages(memberId);
+            loadMessages();
+        } else {
+            showNotification(data.message || 'Failed to clear chat', 'error');
+        }
+    } catch (error) {
+        console.error('Error clearing chat:', error);
+        showNotification('Failed to clear chat', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Clear Chat'; }
     }
 }
 

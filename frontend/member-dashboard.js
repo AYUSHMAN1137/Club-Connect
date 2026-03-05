@@ -3131,9 +3131,16 @@ async function loadMessages() {
             modal.className = 'modal';
             modal.innerHTML = `
                 <div class="modal-content" style="max-width: 700px;">
-                    <div class="modal-header">
+                    <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between;">
                         <h3><i class="fa-solid fa-envelope"></i> Messages with Club Owner</h3>
-                        <button class="modal-close" onclick="closeMessagesModal()">&times;</button>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button id="clearMemberChatBtn" onclick="clearMemberChat()" title="Clear chat (only for you)"
+                                style="background: none; border: 1px solid #fca5a5; color: #ef4444; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: all 0.2s;"
+                                onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='none'">
+                                <i class="fa-solid fa-trash-can"></i> Clear Chat
+                            </button>
+                            <button class="modal-close" onclick="closeMessagesModal()">&times;</button>
+                        </div>
                     </div>
                     <div class="modal-body" style="padding: 0;">
                         <div id="chatMessages" style="height: 400px; overflow-y: auto; padding: 20px; background: #f9fafb;">
@@ -3337,6 +3344,39 @@ function closeMessagesModal() {
     if (modal) modal.classList.remove('active');
     stopRealTimeUpdates(); // Properly stop polling
     currentChatRecipient = null;
+}
+
+// Clear chat — only removes from THIS member's view; owner still sees it
+async function clearMemberChat() {
+    if (!currentChatRecipient) {
+        showNotification('No chat selected', 'error');
+        return;
+    }
+    const confirmed = confirm(`Clear chat with ${currentChatRecipient.username}?\n\nThis will only clear it from your side. The owner can still see the conversation.`);
+    if (!confirmed) return;
+
+    const btn = document.getElementById('clearMemberChatBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Clearing...'; }
+
+    try {
+        const response = await fetch(`${API_URL}/messages/conversation/${currentChatRecipient.id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Chat cleared!', 'success');
+            // Refresh chat (will be empty now for this user)
+            await loadChatHistory();
+        } else {
+            showNotification(data.message || 'Failed to clear chat', 'error');
+        }
+    } catch (error) {
+        console.error('Error clearing chat:', error);
+        showNotification('Failed to clear chat', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Clear Chat'; }
+    }
 }
 
 // Clean up on page unload (prevent memory leaks)
@@ -4970,8 +5010,29 @@ async function selectContact(recipientId, username, role, element) {
     // Update UI
     document.getElementById('messagesEmpty').style.display = 'none';
     document.getElementById('messagesActive').style.display = 'flex';
-    document.getElementById('chatContactName').textContent = username;
-    document.getElementById('chatContactRole').textContent = role || 'Club Owner';
+
+    // Update header: name, role, and Clear Chat button
+    const nameEl = document.getElementById('chatContactName');
+    const roleEl = document.getElementById('chatContactRole');
+    if (nameEl) nameEl.textContent = username;
+    if (roleEl) roleEl.textContent = role || 'Club Owner';
+
+    // Inject Clear Chat button into chat header actions area (if exists)
+    const chatHeaderActions = document.getElementById('chatHeaderActions');
+    if (chatHeaderActions) {
+        // Remove existing clear button if it exists
+        const existingBtn = document.getElementById('memberClearChatBtnId');
+        if (existingBtn) existingBtn.remove();
+
+        chatHeaderActions.insertAdjacentHTML('afterbegin', `
+            <button id="memberClearChatBtnId" onclick="clearMemberChatById(${recipientId}, '${username.replace(/'/g, "\\'")}')"
+                title="Clear chat (only for you)"
+                style="background: none; border: 1px solid #fca5a5; color: #ef4444; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: all 0.2s; white-space: nowrap;"
+                onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='none'">
+                <i class="fa-solid fa-trash-can"></i> Clear Chat
+            </button>
+        `);
+    }
 
     // Highlight selected contact
     document.querySelectorAll('.contact-item').forEach(item => {
@@ -4987,6 +5048,30 @@ async function selectContact(recipientId, username, role, element) {
 
     // Load messages
     await loadChatMessages(recipientId);
+}
+
+// Clear chat from member messages-page — only clears for this member
+async function clearMemberChatById(recipientId, username) {
+    const confirmed = confirm(`Clear chat with ${username}?\n\nThis will only clear it from your side. The owner can still see the conversation.`);
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`${API_URL}/messages/conversation/${recipientId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Chat cleared!', 'success');
+            await loadChatMessages(recipientId); // Will show empty now
+            await loadContacts();                 // Refresh sidebar preview
+        } else {
+            showNotification(data.message || 'Failed to clear chat', 'error');
+        }
+    } catch (error) {
+        console.error('Error clearing chat:', error);
+        showNotification('Failed to clear chat', 'error');
+    }
 }
 
 // Load Chat Messages
