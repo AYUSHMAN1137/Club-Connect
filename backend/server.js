@@ -4593,8 +4593,8 @@ app.get('/messages/contacts', verifyToken, async (req, res) => {
             const lastMessage = await db.Message.findOne({
                 where: {
                     [Op.or]: [
-                        { senderId: currentUser.id, recipientId: owner.id, type: 'direct' },
-                        { senderId: owner.id, recipientId: currentUser.id, type: 'direct' }
+                        { senderId: currentUser.id, recipientId: owner.id, type: 'direct', deletedBySender: false },
+                        { senderId: owner.id, recipientId: currentUser.id, type: 'direct', deletedByRecipient: false }
                     ]
                 },
                 order: [['createdAt', 'DESC']]
@@ -4624,8 +4624,8 @@ app.get('/messages/contacts', verifyToken, async (req, res) => {
                 const lastMessage = await db.Message.findOne({
                     where: {
                         [Op.or]: [
-                            { senderId: currentUser.id, recipientId: member.id, type: 'direct' },
-                            { senderId: member.id, recipientId: currentUser.id, type: 'direct' }
+                            { senderId: currentUser.id, recipientId: member.id, type: 'direct', deletedBySender: false },
+                            { senderId: member.id, recipientId: currentUser.id, type: 'direct', deletedByRecipient: false }
                         ]
                     },
                     order: [['createdAt', 'DESC']]
