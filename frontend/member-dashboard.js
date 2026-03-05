@@ -3358,6 +3358,17 @@ async function clearMemberChat() {
     const btn = document.getElementById('clearMemberChatBtn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Clearing...'; }
 
+    // --- OPTIMISTIC CLEAR ---
+    const chatMessages = document.getElementById('chatMessages');
+    const oldHtml = chatMessages ? chatMessages.innerHTML : '';
+    if (chatMessages) {
+        chatMessages.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #6b7280; font-style: italic;">
+                Clearing messages...
+            </div>
+        `;
+    }
+
     try {
         const response = await fetch(`${API_URL}/messages/conversation/${currentChatRecipient.id}`, {
             method: 'DELETE',
@@ -3366,12 +3377,21 @@ async function clearMemberChat() {
         const data = await response.json();
         if (data.success) {
             showNotification('Chat cleared!', 'success');
-            // Refresh chat (will be empty now for this user)
-            await loadChatHistory();
+            if (chatMessages) {
+                chatMessages.innerHTML = `
+                    <div style="text-align: center; color: #6b7280; padding: 20px;">
+                        <i class="fa-solid fa-comments" style="font-size: 2rem; color: #d1d5db; display: block; margin-bottom: 10px;"></i>
+                        No messages yet. Start the conversation!
+                    </div>
+                `;
+            }
+            // Background refresh to sync state fully if needed
         } else {
+            if (chatMessages) chatMessages.innerHTML = oldHtml;
             showNotification(data.message || 'Failed to clear chat', 'error');
         }
     } catch (error) {
+        if (chatMessages) chatMessages.innerHTML = oldHtml;
         console.error('Error clearing chat:', error);
         showNotification('Failed to clear chat', 'error');
     } finally {
@@ -5055,6 +5075,20 @@ async function clearMemberChatById(recipientId, username) {
     const confirmed = confirm(`Clear chat with ${username}?\n\nThis will only clear it from your side. The owner can still see the conversation.`);
     if (!confirmed) return;
 
+    const btn = document.getElementById('memberClearChatBtnId');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Clearing...'; }
+
+    // --- OPTIMISTIC UI CLEAR ---
+    const chatMessages = document.getElementById('chatMessages');
+    const oldHtml = chatMessages ? chatMessages.innerHTML : '';
+    if (chatMessages) {
+        chatMessages.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #6b7280; font-style: italic;">
+                Clearing messages...
+            </div>
+        `;
+    }
+
     try {
         const response = await fetch(`${API_URL}/messages/conversation/${recipientId}`, {
             method: 'DELETE',
@@ -5063,14 +5097,25 @@ async function clearMemberChatById(recipientId, username) {
         const data = await response.json();
         if (data.success) {
             showNotification('Chat cleared!', 'success');
-            await loadChatMessages(recipientId); // Will show empty now
-            await loadContacts();                 // Refresh sidebar preview
+            if (chatMessages) {
+                chatMessages.innerHTML = `
+                    <div style="text-align: center; color: #6b7280; padding: 20px;">
+                        <i class="fa-solid fa-comments" style="font-size: 2rem; color: #d1d5db; display: block; margin-bottom: 10px;"></i>
+                        No messages yet. Start the conversation!
+                    </div>
+                `;
+            }
+            loadContacts(); // Refresh sidebar preview in background
         } else {
+            if (chatMessages) chatMessages.innerHTML = oldHtml;
             showNotification(data.message || 'Failed to clear chat', 'error');
         }
     } catch (error) {
+        if (chatMessages) chatMessages.innerHTML = oldHtml;
         console.error('Error clearing chat:', error);
         showNotification('Failed to clear chat', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Clear Chat'; }
     }
 }
 
@@ -5141,6 +5186,29 @@ async function sendMessage(event) {
         return;
     }
 
+    // --- OPTIMISTIC UI UPDATE (Instant feedback) ---
+    messageInput.value = '';
+    const charCount = document.getElementById('charCount');
+    if (charCount) charCount.textContent = '0';
+
+    const chatMessages = document.getElementById('chatMessages');
+    const tempId = 'msg-' + Date.now();
+    if (chatMessages && chatMessages.querySelector('.loading-state')) {
+        chatMessages.innerHTML = ''; // Remove empty/loading state
+    }
+    const messageHtml = `
+        <div class="message-group sent" id="${tempId}" style="opacity: 0.7;">
+            <div class="message-bubble">
+                <p class="message-text">${escapeHtml(message)}</p>
+            </div>
+            <div class="message-time">Sending...</div>
+        </div>
+    `;
+    if (chatMessages) {
+        chatMessages.insertAdjacentHTML('beforeend', messageHtml);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
     try {
         const response = await fetch(`${API_URL}/messages`, {
             method: 'POST',
@@ -5158,28 +5226,25 @@ async function sendMessage(event) {
         const data = await response.json();
 
         if (data.success) {
-            // Clear input
-            messageInput.value = '';
-            document.getElementById('charCount').textContent = '0';
-
-            // Add message to chat
-            const chatMessages = document.getElementById('chatMessages');
-            const messageHtml = `
-                <div class="message-group sent">
-                    <div class="message-bubble">
-                        <p class="message-text">${escapeHtml(message)}</p>
-                    </div>
-                    <div class="message-time">Just now</div>
-                </div>
-            `;
-            chatMessages.insertAdjacentHTML('beforeend', messageHtml);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            // Confirm message sent (remove temp styling)
+            const sentMsg = document.getElementById(tempId);
+            if (sentMsg) {
+                sentMsg.style.opacity = '1';
+                const timeEl = sentMsg.querySelector('.message-time');
+                if (timeEl) timeEl.textContent = 'Just now';
+            }
         } else {
+            const sentMsg = document.getElementById(tempId);
+            if (sentMsg) sentMsg.remove();
             showNotification(data.message || 'Failed to send message', 'error');
+            messageInput.value = message; // Restore text
         }
     } catch (error) {
         console.error('Error sending message:', error);
         showNotification('Failed to send message', 'error');
+        const sentMsg = document.getElementById(tempId);
+        if (sentMsg) sentMsg.remove();
+        messageInput.value = message; // Restore text
     }
 }
 
