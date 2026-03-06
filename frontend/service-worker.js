@@ -1,13 +1,13 @@
-const CACHE_NAME = 'club-connect-cache-v1';
-const API_CACHE = 'club-connect-api-v1';
+const CACHE_NAME = 'club-connect-cache-v2';
+const API_CACHE = 'club-connect-api-v2';
 
 const STATIC_ASSETS = [
     './',
     './index.html',
-    './login.html',
     './member-dashboard.html',
     './owner-dashboard.html',
-    './global.css',
+    './admin-dashboard.html',
+    './style.css',
     './member-dashboard.css',
     './owner-dashboard.css',
     './ui-base.css',
@@ -15,7 +15,9 @@ const STATIC_ASSETS = [
     './data-store.js',
     './sync-engine.js',
     './member-dashboard.js',
-    './owner-dashboard.js'
+    './owner-dashboard.js',
+    './admin-dashboard.js',
+    './script.js'
 ];
 
 self.addEventListener('install', event => {
