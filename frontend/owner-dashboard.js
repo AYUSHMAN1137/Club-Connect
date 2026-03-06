@@ -509,17 +509,34 @@ if (!token) {
 async function verifyAuth() {
     console.log('verifyAuth() called');
     try {
-        console.log('Fetching user data from API...');
-        const response = await fetch(`${getApiUrl()}/auth/me`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
+        let networkFailed = false;
+        let data = null;
+        try {
+            console.log('Fetching user data from API...');
+            const response = await fetch(`${getApiUrl()}/auth/me`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            data = await response.json();
+            console.log('Auth response:', data);
+            if (data.success && data.user) {
+                localStorage.setItem('user', JSON.stringify(data.user)); // cache for offline
             }
-        });
+        } catch (fetchErr) {
+            networkFailed = true;
+            console.warn('Network error checking auth - using offline fallback if available.', fetchErr);
+        }
 
-        const data = await response.json();
-        console.log('Auth response:', data);
+        if (networkFailed) {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    data = { success: true, user: user };
+                } catch (e) { }
+            }
+        }
 
-        if (!data.success || data.user.role !== 'owner') {
+        if (!data || !data.success || data.user.role !== 'owner') {
             console.log('Access denied - not owner or auth failed');
             showNotification('Access denied! Owner only.', 'error');
             setTimeout(() => {
