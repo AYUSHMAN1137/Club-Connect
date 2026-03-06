@@ -516,10 +516,20 @@ async function verifyAuth() {
             const response = await fetch(`${getApiUrl()}/auth/me`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            data = await response.json();
-            console.log('Auth response:', data);
-            if (data.success && data.user) {
-                localStorage.setItem('user', JSON.stringify(data.user)); // cache for offline
+
+            if (response.status === 401 || response.status === 403) {
+                // Known auth rejection - process normally
+                data = await response.json();
+                console.log('Auth rejected by server:', data);
+            } else if (!response.ok) {
+                // Treat other errors (500, 503, etc) as network failures to trigger cache fallback
+                networkFailed = true;
+            } else {
+                data = await response.json();
+                console.log('Auth response:', data);
+                if (data.success && data.user) {
+                    localStorage.setItem('user', JSON.stringify(data.user)); // cache for offline
+                }
             }
         } catch (fetchErr) {
             networkFailed = true;
@@ -536,7 +546,7 @@ async function verifyAuth() {
             }
         }
 
-        if (!data || !data.success || data.user.role !== 'owner') {
+        if (!data || !data.success || !data.user || data.user.role !== 'owner') {
             console.log('Access denied - not owner or auth failed');
             showNotification('Access denied! Owner only.', 'error');
             setTimeout(() => {

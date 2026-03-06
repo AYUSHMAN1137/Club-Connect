@@ -230,10 +230,22 @@ async function redirectIfAuthenticated() {
             const response = await fetch(`${API_URL}/auth/me`, {
                 headers: { 'Authorization': `Bearer ${storedToken}` }
             });
-            data = await response.json();
+
+            if (response.status === 401 || response.status === 403) {
+                // Known auth rejection
+                data = await response.json();
+            } else if (!response.ok) {
+                // Server or SW error while fetching - trigger fallback
+                networkFailed = true;
+            } else {
+                data = await response.json();
+                if (data.success && data.user) {
+                    localStorage.setItem('user', JSON.stringify(data.user)); // cache for offline
+                }
+            }
         } catch (fetchErr) {
             networkFailed = true;
-            console.warn('Network error checking auth - using offline fallback if available.');
+            console.warn('Network error checking auth - using offline fallback if available.', fetchErr);
         }
 
         if (networkFailed) {
@@ -247,10 +259,7 @@ async function redirectIfAuthenticated() {
                     return;
                 } catch (e) { }
             }
-            // If offline but we have no cached user, we just reveal the login page, but DO NOT remove the token
-            // so if they go back online they can refresh and auto-login.
         } else if (data && data.success && data.user && data.user.role) {
-            localStorage.setItem('user', JSON.stringify(data.user)); // cache for offline
             const target = data.user.role === 'owner' ? 'owner-dashboard.html' : (data.user.role === 'admin' ? 'admin-dashboard.html' : 'member-dashboard.html');
             redirected = true;
             window.location.replace(target);

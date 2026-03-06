@@ -75,9 +75,16 @@ async function verifyAuth() {
             const response = await fetch(`${API_URL}/auth/me`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            data = await response.json();
-            if (data.success && data.user) {
-                localStorage.setItem('user', JSON.stringify(data.user)); // cache for offline
+
+            if (response.status === 401 || response.status === 403) {
+                data = await response.json();
+            } else if (!response.ok) {
+                networkFailed = true;
+            } else {
+                data = await response.json();
+                if (data.success && data.user) {
+                    localStorage.setItem('user', JSON.stringify(data.user)); // cache for offline
+                }
             }
         } catch (fetchErr) {
             networkFailed = true;
@@ -94,7 +101,7 @@ async function verifyAuth() {
             }
         }
 
-        if (!data || !data.success || data.user.role !== 'member') {
+        if (!data || !data.success || !data.user || data.user.role !== 'member') {
             showNotification('Access denied! Members only.', 'error');
             setTimeout(() => {
                 localStorage.removeItem('token');
