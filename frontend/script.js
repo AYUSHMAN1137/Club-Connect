@@ -224,26 +224,45 @@ async function redirectIfAuthenticated() {
     showAuthLoader();
     let redirected = false;
     try {
-        const response = await fetch(`${API_URL}/auth/me`, {
-            headers: {
-                'Authorization': `Bearer ${storedToken}`
+        let networkFailed = false;
+        let data = null;
+        try {
+            const response = await fetch(`${API_URL}/auth/me`, {
+                headers: { 'Authorization': `Bearer ${storedToken}` }
+            });
+            data = await response.json();
+        } catch (fetchErr) {
+            networkFailed = true;
+            console.warn('Network error checking auth - using offline fallback if available.');
+        }
+
+        if (networkFailed) {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    const target = user.role === 'owner' ? 'owner-dashboard.html' : (user.role === 'admin' ? 'admin-dashboard.html' : 'member-dashboard.html');
+                    redirected = true;
+                    window.location.replace(target);
+                    return;
+                } catch (e) { }
             }
-        });
-        const data = await response.json();
-        if (data.success && data.user && data.user.role) {
-            const target = data.user.role === 'owner'
-                ? 'owner-dashboard.html'
-                : (data.user.role === 'admin' ? 'admin-dashboard.html' : 'member-dashboard.html');
+            // If offline but we have no cached user, we just reveal the login page, but DO NOT remove the token
+            // so if they go back online they can refresh and auto-login.
+        } else if (data && data.success && data.user && data.user.role) {
+            localStorage.setItem('user', JSON.stringify(data.user)); // cache for offline
+            const target = data.user.role === 'owner' ? 'owner-dashboard.html' : (data.user.role === 'admin' ? 'admin-dashboard.html' : 'member-dashboard.html');
             redirected = true;
             window.location.replace(target);
             return;
         } else {
+            // Invalid token return from server (online)
             localStorage.removeItem('token');
             localStorage.removeItem('user');
         }
     } catch (error) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        // Unexpected processing error
+        console.error('Unexpected auth check error:', error);
     } finally {
         if (!redirected) revealLogin();
     }

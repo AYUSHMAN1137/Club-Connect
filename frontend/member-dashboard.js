@@ -69,15 +69,32 @@ function getFullImageUrl(path) {
 // Verify token and role
 async function verifyAuth() {
     try {
-        const response = await fetch(`${API_URL}/auth/me`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
+        let networkFailed = false;
+        let data = null;
+        try {
+            const response = await fetch(`${API_URL}/auth/me`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            data = await response.json();
+            if (data.success && data.user) {
+                localStorage.setItem('user', JSON.stringify(data.user)); // cache for offline
             }
-        });
+        } catch (fetchErr) {
+            networkFailed = true;
+            console.warn('Network error checking auth - using offline fallback if available.', fetchErr);
+        }
 
-        const data = await response.json();
+        if (networkFailed) {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    data = { success: true, user: user };
+                } catch (e) { }
+            }
+        }
 
-        if (!data.success || data.user.role !== 'member') {
+        if (!data || !data.success || data.user.role !== 'member') {
             showNotification('Access denied! Members only.', 'error');
             setTimeout(() => {
                 localStorage.removeItem('token');
