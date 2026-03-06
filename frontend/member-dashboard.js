@@ -51,6 +51,61 @@ function setMemberCache(moduleName, data) {
     }
 }
 
+/**
+ * Stale-While-Revalidate cache for member dashboard.
+ * Checks in-memory first, then IndexedDB.
+ */
+async function getMemberCacheOrIDB(moduleName, ttl = _MEMBER_CACHE_TTL) {
+    const memCached = getMemberCache(moduleName, ttl);
+    if (memCached) return { data: memCached, fromIDB: false };
+
+    if (window.DataStore) {
+        try {
+            const uid = parseJwt(token)?.id || null;
+            const cid = window.activeClubId || null;
+            const idbRecord = await window.DataStore.loadFromCache(moduleName, uid, cid);
+            if (idbRecord && idbRecord.data) {
+                const key = _memberCacheKey(moduleName);
+                _memberModuleCache.set(key, { data: idbRecord.data, ts: Date.now() });
+                console.log(`📦 ${moduleName}: loaded from IndexedDB (member cache)`);
+                if (window.Telemetry) window.Telemetry.logCacheHit(moduleName, 'idb_cache');
+                return { data: idbRecord.data, fromIDB: true };
+            }
+        } catch (e) {
+            console.warn('IndexedDB fallback failed for', moduleName, e);
+        }
+    }
+    return null;
+}
+
+function revalidateMemberInBackground(moduleName, url, renderFn) {
+    console.log(`🔄 Background revalidating (member): ${moduleName}`);
+    fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-cache'
+    })
+        .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        })
+        .then(freshData => {
+            if (!freshData.success) return;
+            const existingCached = getMemberCache(moduleName);
+            const existingJSON = existingCached ? JSON.stringify(existingCached) : '';
+            const freshJSON = JSON.stringify(freshData);
+            if (existingJSON !== freshJSON) {
+                console.log(`✅ ${moduleName}: fresh data differs, updating member UI`);
+                setMemberCache(moduleName, freshData);
+                if (typeof renderFn === 'function') renderFn(freshData);
+            } else {
+                console.log(`✅ ${moduleName}: data unchanged, no re-render needed`);
+            }
+        })
+        .catch(err => {
+            console.warn(`Background revalidation failed for ${moduleName}:`, err.message);
+        });
+}
+
 // Check authentication
 if (!token) {
     window.location.href = 'index.html';
@@ -670,16 +725,43 @@ async function loadDashboard() {
 async function loadDashboardStats() {
     if (window.Telemetry) window.Telemetry.start('loadDashboardStats_member_all');
     try {
-        // Try cache first for instant render
-        const cachedDash = getMemberCache('dashboard');
-        const cachedLeader = getMemberCache('leaderboard');
-        const cachedAttend = getMemberCache('attendance');
+        // Try cache first for instant render (memory → IndexedDB)
+        const cachedDash = await getMemberCacheOrIDB('dashboard');
+        const cachedLeader = await getMemberCacheOrIDB('leaderboard');
+        const cachedAttend = await getMemberCacheOrIDB('attendance');
 
         if (cachedDash && cachedLeader && cachedAttend) {
-            _renderDashboardStats(cachedDash, cachedLeader, cachedAttend);
+            _renderDashboardStats(cachedDash.data, cachedLeader.data, cachedAttend.data);
             if (window.Telemetry) {
                 const dur = window.Telemetry.end('loadDashboardStats_member_all');
                 if (dur) console.log(`⏱️ Dashboard rendered from cache in ${dur}ms`);
+            }
+            // If any came from IDB, revalidate in background
+            if (cachedDash.fromIDB || cachedLeader.fromIDB || cachedAttend.fromIDB) {
+                (async () => {
+                    try {
+                        const [dR, lR, aR] = await Promise.all([
+                            fetch(`${API_URL}/member/dashboard`, { headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-cache' }),
+                            fetch(`${API_URL}/member/leaderboard`, { headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-cache' }),
+                            fetch(`${API_URL}/member/attendance`, { headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-cache' })
+                        ]);
+                        if (!dR.ok || !lR.ok || !aR.ok) return;
+                        const dD = await dR.json(), lD = await lR.json(), aD = await aR.json();
+                        setMemberCache('dashboard', dD);
+                        setMemberCache('leaderboard', lD);
+                        setMemberCache('attendance', aD);
+                        latestAttendance = aD.success ? (aD.attendance || []) : [];
+                        // Only re-render if something changed
+                        if (JSON.stringify(cachedDash.data) !== JSON.stringify(dD) ||
+                            JSON.stringify(cachedLeader.data) !== JSON.stringify(lD) ||
+                            JSON.stringify(cachedAttend.data) !== JSON.stringify(aD)) {
+                            console.log('✅ Member dashboard: fresh data differs, updating UI');
+                            _renderDashboardStats(dD, lD, aD);
+                        } else {
+                            console.log('✅ Member dashboard: data unchanged');
+                        }
+                    } catch (e) { console.warn('BG revalidate member dashboard failed:', e); }
+                })();
             }
             return;
         }
@@ -1347,11 +1429,16 @@ async function loadEvents() {
     if (window.Telemetry) window.Telemetry.start('loadEvents_member');
     initEventsUi();
     try {
-        const cached = getMemberCache('events');
-        if (cached && cached.success) {
-            if (window.Telemetry) window.Telemetry.logCacheHit('events', 'mem_cache');
-            eventsAll = Array.isArray(cached.events) ? cached.events : [];
+        const cached = await getMemberCacheOrIDB('events');
+        if (cached && cached.data.success) {
+            eventsAll = Array.isArray(cached.data.events) ? cached.data.events : [];
             renderEvents();
+            if (cached.fromIDB) {
+                revalidateMemberInBackground('events', `${API_URL}/member/events`, (freshData) => {
+                    eventsAll = Array.isArray(freshData.events) ? freshData.events : [];
+                    renderEvents();
+                });
+            }
             if (window.Telemetry) window.Telemetry.end('loadEvents_member');
             return;
         }
@@ -1661,9 +1748,12 @@ async function markAttendanceFromScanner(eventIdParam) {
 // Load Attendance
 async function loadAttendance() {
     try {
-        const cached = getMemberCache('attendance');
-        if (cached && cached.success) {
-            _renderAttendance(cached);
+        const cached = await getMemberCacheOrIDB('attendance');
+        if (cached && cached.data.success) {
+            _renderAttendance(cached.data);
+            if (cached.fromIDB) {
+                revalidateMemberInBackground('attendance', `${API_URL}/member/attendance`, _renderAttendance);
+            }
             return;
         }
 
@@ -1752,10 +1842,12 @@ function _renderAttendance(data) {
 async function loadLeaderboard() {
     if (window.Telemetry) window.Telemetry.start('loadLeaderboard_member');
     try {
-        const cached = getMemberCache('leaderboard');
-        if (cached && cached.success) {
-            if (window.Telemetry) window.Telemetry.logCacheHit('leaderboard', 'mem_cache');
-            _renderLeaderboard(cached);
+        const cached = await getMemberCacheOrIDB('leaderboard');
+        if (cached && cached.data.success) {
+            _renderLeaderboard(cached.data);
+            if (cached.fromIDB) {
+                revalidateMemberInBackground('leaderboard', `${API_URL}/member/leaderboard`, _renderLeaderboard);
+            }
             if (window.Telemetry) window.Telemetry.end('loadLeaderboard_member');
             return;
         }
@@ -1892,9 +1984,12 @@ function updateYourPositionCard(leaderboard) {
 // Load Announcements
 async function loadAnnouncements() {
     try {
-        const cached = getMemberCache('announcements');
-        if (cached && cached.success) {
-            _renderAnnouncements(cached);
+        const cached = await getMemberCacheOrIDB('announcements');
+        if (cached && cached.data.success) {
+            _renderAnnouncements(cached.data);
+            if (cached.fromIDB) {
+                revalidateMemberInBackground('announcements', `${API_URL}/member/announcements`, _renderAnnouncements);
+            }
             return;
         }
 

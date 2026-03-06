@@ -491,6 +491,71 @@ function invalidateModuleCacheGroup(prefix) {
     });
 }
 
+/**
+ * Stale-While-Revalidate cache lookup.
+ * 1. Check in-memory Map (instant)
+ * 2. Fall back to IndexedDB (fast, persists across app restarts)
+ * Returns { data, fromIDB } or null.
+ */
+async function getModuleCacheOrIDB(moduleName, ttl = MODULE_CACHE_TTL) {
+    // 1. Try in-memory cache first (instant)
+    const memCached = getModuleCache(moduleName, ttl);
+    if (memCached) return { data: memCached, fromIDB: false };
+
+    // 2. Fall back to IndexedDB (persists across app restart/close)
+    if (window.DataStore) {
+        try {
+            const idbRecord = await window.DataStore.loadFromCache(moduleName, currentUserId, currentClubId);
+            if (idbRecord && idbRecord.data) {
+                // Seed the in-memory cache so subsequent calls are instant
+                const key = getModuleCacheKey(moduleName);
+                moduleCache.set(key, { data: idbRecord.data, timestamp: Date.now() });
+                console.log(`📦 ${moduleName}: loaded from IndexedDB (persisted cache)`);
+                if (window.Telemetry) window.Telemetry.logCacheHit(moduleName, 'idb_cache');
+                return { data: idbRecord.data, fromIDB: true };
+            }
+        } catch (e) {
+            console.warn('IndexedDB fallback failed for', moduleName, e);
+        }
+    }
+    return null;
+}
+
+/**
+ * Background revalidation: silently fetches fresh data from the API,
+ * updates the cache, and re-renders ONLY if something changed.
+ * This runs after stale cached data has already been shown to the user.
+ */
+function revalidateInBackground(moduleName, url, renderFn) {
+    console.log(`🔄 Background revalidating: ${moduleName}`);
+    fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-cache'
+    })
+        .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        })
+        .then(freshData => {
+            if (!freshData.success) return;
+            // Compare with existing cache to avoid unnecessary re-renders
+            const existingCached = getModuleCache(moduleName);
+            const existingJSON = existingCached ? JSON.stringify(existingCached) : '';
+            const freshJSON = JSON.stringify(freshData);
+            if (existingJSON !== freshJSON) {
+                console.log(`✅ ${moduleName}: fresh data differs, updating UI`);
+                setModuleCache(moduleName, freshData);
+                if (typeof renderFn === 'function') renderFn(freshData);
+            } else {
+                console.log(`✅ ${moduleName}: data unchanged, no re-render needed`);
+            }
+        })
+        .catch(err => {
+            // Silent fail - user already has stale data displayed
+            console.warn(`Background revalidation failed for ${moduleName}:`, err.message);
+        });
+}
+
 // Get token from localStorage
 const token = localStorage.getItem('token');
 
@@ -1685,17 +1750,22 @@ function renderMembersFromData(data) {
 
 async function loadMembers() {
     try {
-        const cached = getModuleCache('members');
+        // 1. Instant render from cache (memory or IndexedDB)
+        const cached = await getModuleCacheOrIDB('members');
         if (cached) {
-            renderMembersFromData(cached);
+            renderMembersFromData(cached.data);
+            // If data came from IDB (app was restarted), revalidate in background
+            if (cached.fromIDB) {
+                revalidateInBackground('members', `${getApiUrl()}/owner/members`, renderMembersFromData);
+            }
             return;
         }
+
+        // 2. No cache at all - fetch from network (first-time load)
         console.log('🔄 Loading members for current club...');
         const response = await fetch(`${getApiUrl()}/owner/members`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
-            cache: 'no-cache' // Ensure fresh data
+            headers: { 'Authorization': `Bearer ${token}` },
+            cache: 'no-cache'
         });
 
         if (!response.ok) {
@@ -1706,7 +1776,6 @@ async function loadMembers() {
         }
 
         const data = await response.json();
-
         if (data.success) {
             setModuleCache('members', data);
         }
@@ -1881,9 +1950,12 @@ async function loadEvents() {
     if (eventsLoadInFlight) return;
     eventsLoadInFlight = true;
     try {
-        const cached = getModuleCache('events');
+        const cached = await getModuleCacheOrIDB('events');
         if (cached) {
-            renderEventsFromData(cached);
+            renderEventsFromData(cached.data);
+            if (cached.fromIDB) {
+                revalidateInBackground('events', `${getApiUrl()}/owner/events`, renderEventsFromData);
+            }
             return;
         }
         const response = await fetch(`${getApiUrl()}/owner/events`, {
@@ -2113,9 +2185,12 @@ function renderAnnouncementsFromData(data) {
 
 async function loadAnnouncements() {
     try {
-        const cached = getModuleCache('announcements');
+        const cached = await getModuleCacheOrIDB('announcements');
         if (cached) {
-            renderAnnouncementsFromData(cached);
+            renderAnnouncementsFromData(cached.data);
+            if (cached.fromIDB) {
+                revalidateInBackground('announcements', `${getApiUrl()}/owner/announcements`, renderAnnouncementsFromData);
+            }
             return;
         }
         const response = await fetch(`${getApiUrl()}/owner/announcements`, {
@@ -2424,10 +2499,18 @@ async function loadPolls() {
     if (!list) return;
     list.innerHTML = '<p class="loading">Loading polls...</p>';
     try {
-        const cached = getModuleCache('polls');
+        const cached = await getModuleCacheOrIDB('polls');
         if (cached) {
-            ownerPollsCache = Array.isArray(cached) ? cached : [];
+            ownerPollsCache = Array.isArray(cached.data) ? cached.data : [];
             applyOwnerPollFiltersAndRender();
+            if (cached.fromIDB) {
+                revalidateInBackground('polls', `${getApiUrl()}/owner/polls`, (freshData) => {
+                    if (freshData.polls) {
+                        ownerPollsCache = freshData.polls;
+                        applyOwnerPollFiltersAndRender();
+                    }
+                });
+            }
             return;
         }
         const response = await fetch(`${getApiUrl()}/owner/polls`, {
@@ -2689,9 +2772,12 @@ async function loadOwnerCertificates() {
     if (!grid) return;
     grid.innerHTML = '<p class="loading">Loading certificates...</p>';
     try {
-        const cached = getModuleCache('certificates');
+        const cached = await getModuleCacheOrIDB('certificates');
         if (cached) {
-            renderOwnerCertificatesFromData(cached);
+            renderOwnerCertificatesFromData(cached.data);
+            if (cached.fromIDB) {
+                revalidateInBackground('certificates', `${getApiUrl()}/owner/certificates`, renderOwnerCertificatesFromData);
+            }
             return;
         }
         const response = await fetch(`${getApiUrl()}/owner/certificates`, {
@@ -2801,9 +2887,26 @@ async function loadProjectProgress() {
     if (!grid) return;
     grid.innerHTML = '<p class="loading">Loading...</p>';
     try {
-        const cached = getModuleCache('project-progress');
+        const cached = await getModuleCacheOrIDB('project-progress');
         if (cached) {
-            renderProjectProgressData(cached.progressData, cached.ideasData);
+            renderProjectProgressData(cached.data.progressData, cached.data.ideasData);
+            if (cached.fromIDB) {
+                // Background revalidation for project progress (needs 2 API calls)
+                (async () => {
+                    try {
+                        const [pRes, iRes] = await Promise.all([
+                            fetch(`${getApiUrl()}/owner/project-progress`, { headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-cache' }),
+                            fetch(`${getApiUrl()}/owner/project-ideas`, { headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-cache' })
+                        ]);
+                        const pData = await pRes.json();
+                        const iData = await iRes.json();
+                        if (pData.success) {
+                            setModuleCache('project-progress', { progressData: pData, ideasData: iData });
+                            renderProjectProgressData(pData, iData);
+                        }
+                    } catch (e) { console.warn('BG revalidate project-progress failed:', e); }
+                })();
+            }
             return;
         }
         const response = await fetch(`${getApiUrl()}/owner/project-progress`, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -3016,9 +3119,12 @@ async function loadAdvancedAnalytics() {
     try {
         showLoading('analyticsContent');
         const cacheKey = `analytics:${period}`;
-        const cached = getModuleCache(cacheKey);
+        const cached = await getModuleCacheOrIDB(cacheKey);
         if (cached) {
-            renderAdvancedAnalyticsFromData(cached);
+            renderAdvancedAnalyticsFromData(cached.data);
+            if (cached.fromIDB) {
+                revalidateInBackground(cacheKey, `${getApiUrl()}/owner/analytics?period=${period}`, renderAdvancedAnalyticsFromData);
+            }
             return;
         }
 
@@ -4824,9 +4930,12 @@ async function loadOwnerWorkshops() {
         `;
     }
     try {
-        const cached = getModuleCache('workshops');
+        const cached = await getModuleCacheOrIDB('workshops');
         if (cached) {
-            renderOwnerWorkshopsFromData(cached);
+            renderOwnerWorkshopsFromData(cached.data);
+            if (cached.fromIDB) {
+                revalidateInBackground('workshops', `${getApiUrl()}/workshops`, renderOwnerWorkshopsFromData);
+            }
             return;
         }
         const response = await fetch(`${getApiUrl()}/workshops`, {
