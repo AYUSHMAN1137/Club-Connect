@@ -20,6 +20,7 @@ const WorkshopSession = require('./WorkshopSession');
 const CodeBundle = require('./CodeBundle');
 const CodeSection = require('./CodeSection');
 const RealtimeEventLog = require('./RealtimeEventLog');
+const SyncState = require('./SyncState');
 
 // ========== RELATIONSHIPS ==========
 
@@ -186,5 +187,6 @@ module.exports = {
     WorkshopSession,
     CodeBundle,
     CodeSection,
-    RealtimeEventLog
+    RealtimeEventLog,
+    SyncState
 };

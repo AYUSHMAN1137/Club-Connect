@@ -3,6 +3,34 @@
 window.API_URL = window.API_URL || 'http://localhost:4000';
 const UTIL_API_URL = window.API_URL;
 
+// ========== TELEMETRY & LOGGING (Phase 5) ==========
+window.Telemetry = {
+    logs: [],
+    record(event, prefix = '📊') {
+        const payload = { timestamp: Date.now(), ...event };
+        this.logs.push(payload);
+        console.log(`${prefix} [Telemetry] ${event.type} —`, event.details || event);
+    },
+    logCacheHit: (module, method) => window.Telemetry.record({ type: 'cache_hit', details: { module, method } }, '⚡'),
+    logCacheMiss: (module, method) => window.Telemetry.record({ type: 'cache_miss', details: { module, method } }, '🌐'),
+    logSync: (module, status) => window.Telemetry.record({ type: 'bg_sync', details: { module, status } }, '🔄'),
+    logError: (module, error) => window.Telemetry.record({ type: 'error', details: { module, error: error.message || error } }, '❌'),
+
+    // Performance benchmarking
+    benchmarks: new Map(),
+    start(label) {
+        this.benchmarks.set(label, performance.now());
+    },
+    end(label) {
+        if (!this.benchmarks.has(label)) return;
+        const start = this.benchmarks.get(label);
+        const duration = Math.round(performance.now() - start);
+        this.benchmarks.delete(label);
+        this.record({ type: 'performance_metric', details: { label, durationMs: duration } }, '⏱️');
+        return duration;
+    }
+};
+
 // ===== NGROK INTERSTITIAL BYPASS =====
 // When using ngrok free tier, it injects an HTML warning page before the actual response.
 // This global fetch interceptor adds the bypass header to ALL fetch requests automatically.
@@ -138,3 +166,55 @@ function formatTime(dateString) {
         minute: '2-digit'
     });
 }
+
+// ========== OFFLINE & SERVICE WORKER ==========
+window.addEventListener('load', () => {
+    // 1. Service Worker Registration
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./service-worker.js')
+            .then(reg => {
+                console.log('✅ ServiceWorker registered with scope:', reg.scope);
+                // Listen to coming back online to trigger sync
+                window.addEventListener('online', () => {
+                    if (reg.sync) {
+                        reg.sync.register('sync-mutations').catch(console.error);
+                    }
+                });
+            })
+            .catch(err => {
+                console.warn('❌ ServiceWorker registration failed:', err);
+            });
+    }
+
+    // 2. Offline Banner Update
+    function updateOnlineStatus() {
+        const banner = document.getElementById('offlineBanner');
+        if (banner) {
+            if (navigator.onLine) {
+                banner.classList.remove('visible');
+            } else {
+                banner.classList.add('visible');
+            }
+        }
+    }
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    // Initial check
+    updateOnlineStatus();
+
+    // 3. Listen for Telemetry from SW
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', event => {
+            if (event.data && event.data.type === 'SW_TELEMETRY' && window.Telemetry) {
+                const payload = event.data.payload;
+                if (payload.type === 'error') {
+                    window.Telemetry.logError(payload.location || 'SW', payload.error || payload);
+                } else if (payload.type === 'bg_sync') {
+                    window.Telemetry.logSync(payload.url || 'SW', payload.status || 'unknown');
+                } else {
+                    window.Telemetry.record(payload, '🤖');
+                }
+            }
+        });
+    }
+});

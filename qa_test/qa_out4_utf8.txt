@@ -1,0 +1,121 @@
+﻿≡ƒÜÇ Starting Offline QA Test with Puppeteer...
+≡ƒôî Navigating to login page...
+PAGE LOG: %c≡ƒÄë Welcome to the Enhanced Login Form! color: #667eea; font-size: 20px; font-weight: bold;
+PAGE LOG: %cΓ£¿ Features: Form Validation, Password Strength, Smooth Animations, and more! color: #764ba2; font-size: 14px;
+PAGE LOG: [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o
+PAGE LOG: [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o
+PAGE LOG: Failed to load resource: the server responded with a status of 404 (Not Found)
+≡ƒôî Logging in...
+PAGE LOG: ≡ƒöº Initializing fallback functions...
+PAGE LOG: Γ£à Fallback functions initialized
+PAGE LOG: === Owner Dashboard JavaScript Loading ===
+PAGE LOG: Token exists: true
+PAGE LOG: Γ£à Logout handler attached
+PAGE LOG: Γ£à switchPage exposed to window immediately
+PAGE LOG: Γ£à addMemberByStudentId exposed to window immediately
+PAGE LOG: Γ£à Owner dashboard script loaded!
+PAGE LOG: ≡ƒôï Document ready state: loading
+PAGE LOG: ≡ƒöæ Token exists: true
+PAGE LOG: ΓÅ│ Waiting for DOM to load...
+PAGE LOG: Γ£à All functions exposed to window object for onclick handlers!
+PAGE LOG: Γ£à Logout handler attached
+PAGE LOG: ≡ƒÜÇ Initializing dashboard...
+PAGE LOG: verifyAuth() called
+PAGE LOG: Fetching user data from API...
+PAGE LOG: Γ£à Page fully loaded!
+PAGE LOG: ≡ƒöì switchPage available: function
+PAGE LOG: ≡ƒöì addMemberByStudentId available: function
+PAGE LOG: ≡ƒöì Menu items found: 11
+PAGE LOG: ≡ƒöì Pages found: 11
+PAGE LOG: Γ£à Backend server is running
+PAGE LOG: Auth response: [object Object]
+PAGE LOG: Auth successful, user: tdh_owner ID: 2
+PAGE LOG: Γ£à ServiceWorker registered with scope: http://localhost:4000/
+PAGE LOG: ≡ƒôª DataStore initialised (IndexedDB)
+PAGE LOG: Initializing navigation...
+PAGE LOG: Found menu items: 11
+PAGE LOG: Found pages: 11
+PAGE LOG: ≡ƒÜÇ switchPage called with: home
+PAGE LOG: Loading dashboard with fresh data...
+PAGE LOG: Initializing features...
+PAGE LOG: Dashboard initialization complete!
+PAGE LOG: Connected to server
+Γ£à Logged in to dashboard.
+ΓÅ│ Waiting 3s for Service Worker to activate...
+PAGE LOG: ΓÜá∩╕Å Club name still loading, reloading stats...
+PAGE LOG: ≡ƒôè Loading dashboard stats for current owner...
+PAGE LOG: Γ£à Club name updated to: TDH
+PAGE LOG: Γ£à Current club ID set to: 1
+PAGE LOG: ΓÅ▒∩╕Å [Telemetry] performance_metric ΓÇö [object Object]
+PAGE LOG: ΓÅ▒∩╕Å loadDashboardStats finished in 118ms
+Γ£à Service Worker should be ACTIVE.
+≡ƒôî Switching to Members page...
+PAGE LOG: ≡ƒÜÇ switchPage called with: members
+PAGE LOG: Found menu items: 11 Found pages: 11
+PAGE LOG: Γ£à Menu item activated
+PAGE LOG: Γ£à Page activated: members
+PAGE LOG: ≡ƒîÉ [Telemetry] cache_miss ΓÇö [object Object]
+PAGE LOG: ≡ƒöä Loading members for current club...
+PAGE LOG: ≡ƒôè Loading dashboard stats for current owner...
+PAGE LOG: Γ£à Loaded 50 members for current club
+PAGE LOG: Members: Bhumika Bhatt, muskan, Shiv Gaur, Aditi Jain, bipasha, diviya negi, Bhupendra  Singh Thapa, Rakshit sharma, Ambika Bisht, Sanchita Mehra, soumya singh, Samriddhi Soni, Aditi Sharma, Bhaskar, Daksh pundir , Khushal Ahuja , Paridhi Gupta, uttkarsh rawat, vaishnavi, Aman Singh, Siddhant Tiwari, Bilawal Ansari, KARAN BADHANI, Ananya jain, Shubh Pandey, Yashasvi Nawani, Saumya Rathore, Gajanand Yadav, Shan Mohammad, Parth Mishra, Harshita agrawal, Saloni Rawat, Muskan Sultana, Palak Jain, Nupoor pandey, Palak Dobhal, Archit Pandey , ananya, Arjun Rana , ayushman, vansh sharma, Vidushi Mohan, Somil Bhatt, Palak Jain1, Janhvi Singhal, Lakshya Baliyan1, Priyanshi Tamta, Rajat Rathore, Aditi Jain1, vedansh gusain
+PAGE LOG: Γ£à Club name updated to: TDH
+PAGE LOG: Γ£à Current club ID set to: 1
+PAGE LOG: ΓÅ▒∩╕Å [Telemetry] performance_metric ΓÇö [object Object]
+PAGE LOG: ΓÅ▒∩╕Å loadDashboardStats finished in 121ms
+≡ƒôî Testing points for member ID: 27
+≡ƒôè Initial Points: 50
+≡ƒôí Toggling Mock Offline ON...
+PAGE LOG: ≡ƒº¬ QA: Mock Offline is now true
+Γ£à Mock Offline is ON (Banner visible).
+≡ƒôî Clicking "Award Points" 5 times while offline...
+PAGE LOG: ≡ƒº¬ QA: Blocking mutation fetch due to mock offline: http://localhost:4000/owner/award-points
+PAGE LOG: Error awarding points: TypeError: Failed to fetch (Mock Offline)
+   > Awarded +50 points (iteration 1)
+PAGE LOG: ≡ƒº¬ QA: Blocking mutation fetch due to mock offline: http://localhost:4000/owner/award-points
+PAGE LOG: Error awarding points: TypeError: Failed to fetch (Mock Offline)
+   > Awarded +50 points (iteration 2)
+PAGE LOG: ≡ƒº¬ QA: Blocking mutation fetch due to mock offline: http://localhost:4000/owner/award-points
+PAGE LOG: Error awarding points: TypeError: Failed to fetch (Mock Offline)
+   > Awarded +50 points (iteration 3)
+PAGE LOG: ≡ƒº¬ QA: Blocking mutation fetch due to mock offline: http://localhost:4000/owner/award-points
+PAGE LOG: Error awarding points: TypeError: Failed to fetch (Mock Offline)
+   > Awarded +50 points (iteration 4)
+PAGE LOG: ≡ƒº¬ QA: Blocking mutation fetch due to mock offline: http://localhost:4000/owner/award-points
+PAGE LOG: Error awarding points: TypeError: Failed to fetch (Mock Offline)
+   > Awarded +50 points (iteration 5)
+≡ƒôª Pending Queue length: 0
+node : ΓÜá∩╕Å Warning: 
+Expected queue count ~5, got 
+0. SW might not be queuing 
+correctly or QA widget 
+hasn't updated.
+At line:1 char:1
++ node offline_test.js > 
+qa_out4.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (ΓÜá∩╕Å   
+  Warning:...hasn't update   
+ d.:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+≡ƒÄ¿ UI shows pending-sync format: Γ£à Yes
+≡ƒôí Toggling Mock Offline OFF (Back to Online)...
+PAGE LOG: ≡ƒº¬ QA: Mock Offline is now false
+PAGE LOG: InvalidStateError: Failed to execute 'register' on 'SyncManager': Registration failed - no active Service Worker
+≡ƒöä Forcing Sync...
+ΓÅ│ Waiting 5 seconds for sync to complete...
+PAGE LOG: ≡ƒôè Loading dashboard stats for current owner...
+PAGE LOG: Γ£à Club name updated to: TDH
+PAGE LOG: Γ£à Current club ID set to: 1
+PAGE LOG: ΓÅ▒∩╕Å [Telemetry] performance_metric ΓÇö [object Object]
+PAGE LOG: ΓÅ▒∩╕Å loadDashboardStats finished in 30ms
+≡ƒôè Final Points (Optimistic/UI): 300
+≡ƒôê Point Difference: 250
+≡ƒÄë SUCCESS: Offline Mutation Queue replay test passed!
+≡ƒô╕ Saved screenshot to qa-test-result.png
+≡ƒÅü Test completed.

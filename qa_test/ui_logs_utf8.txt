@@ -1,0 +1,99 @@
+﻿≡ƒÜÇ Starting Offline QA Test with Puppeteer...
+≡ƒôî Navigating to login page...
+PAGE LOG: %c≡ƒÄë Welcome to the Enhanced Login Form! color: #667eea; font-size: 20px; font-weight: bold;
+PAGE LOG: %cΓ£¿ Features: Form Validation, Password Strength, Smooth Animations, and more! color: #764ba2; font-size: 14px;
+PAGE LOG: [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o
+PAGE LOG: [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o
+PAGE LOG: Failed to load resource: the server responded with a status of 404 (Not Found)
+≡ƒôî Logging in...
+PAGE LOG: ≡ƒöº Initializing fallback functions...
+PAGE LOG: Γ£à Fallback functions initialized
+PAGE LOG: === Owner Dashboard JavaScript Loading ===
+PAGE LOG: Token exists: true
+PAGE LOG: Γ£à Logout handler attached
+PAGE LOG: Γ£à switchPage exposed to window immediately
+PAGE LOG: Γ£à addMemberByStudentId exposed to window immediately
+PAGE LOG: Γ£à Owner dashboard script loaded!
+PAGE LOG: ≡ƒôï Document ready state: loading
+PAGE LOG: ≡ƒöæ Token exists: true
+PAGE LOG: ΓÅ│ Waiting for DOM to load...
+PAGE LOG: Γ£à All functions exposed to window object for onclick handlers!
+PAGE LOG: Γ£à Logout handler attached
+PAGE LOG: ≡ƒÜÇ Initializing dashboard...
+PAGE LOG: verifyAuth() called
+PAGE LOG: Fetching user data from API...
+PAGE LOG: Γ£à Page fully loaded!
+PAGE LOG: ≡ƒöì switchPage available: function
+PAGE LOG: ≡ƒöì addMemberByStudentId available: function
+PAGE LOG: ≡ƒöì Menu items found: 11
+PAGE LOG: ≡ƒöì Pages found: 11
+PAGE LOG: Auth response: [object Object]
+PAGE LOG: Auth successful, user: tdh_owner ID: 2
+PAGE LOG: Γ£à Backend server is running
+PAGE LOG: Γ£à ServiceWorker registered with scope: http://localhost:4000/
+PAGE LOG: ≡ƒôª DataStore initialised (IndexedDB)
+PAGE LOG: Initializing navigation...
+PAGE LOG: Found menu items: 11
+PAGE LOG: Found pages: 11
+PAGE LOG: ≡ƒÜÇ switchPage called with: home
+PAGE LOG: Loading dashboard with fresh data...
+PAGE LOG: Initializing features...
+PAGE LOG: Dashboard initialization complete!
+PAGE LOG: Connected to server
+Γ£à Logged in to dashboard.
+ΓÅ│ Waiting for Service Worker to activate...
+PAGE LOG: ΓÜá∩╕Å Club name still loading, reloading stats...
+PAGE LOG: ≡ƒôè Loading dashboard stats for current owner...
+PAGE LOG: Γ£à Club name updated to: TDH
+PAGE LOG: Γ£à Current club ID set to: 1
+PAGE LOG: ΓÅ▒∩╕Å [Telemetry] performance_metric ΓÇö [object Object]
+PAGE LOG: ΓÅ▒∩╕Å loadDashboardStats finished in 48ms
+node : Γ¥î TEST ERROR: 
+TimeoutError: Waiting 
+failed: 15000ms exceeded
+At line:1 char:1
++ node offline_test.js > 
+ui_logs.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (Γ¥î TES  
+  T ERROR:...5000ms exceed   
+ ed:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+    at new WaitTask (C:\Users
+\ayush_lr8ru2y\Desktop\Club C
+onnect\qa_test\node_modules\p
+uppeteer-core\lib\cjs\puppete
+er\common\WaitTask.js:49:34)
+    at IsolatedWorld.waitForF
+unction (C:\Users\ayush_lr8ru
+2y\Desktop\Club Connect\qa_te
+st\node_modules\puppeteer-cor
+e\lib\cjs\puppeteer\api\Realm
+.js:25:26)
+    at 
+CdpFrame.waitForFunction (C:\
+Users\ayush_lr8ru2y\Desktop\C
+lub Connect\qa_test\node_modu
+les\puppeteer-core\lib\cjs\pu
+ppeteer\api\Frame.js:583:43)
+    at CdpFrame.<anonymous> (
+C:\Users\ayush_lr8ru2y\Deskto
+p\Club Connect\qa_test\node_m
+odules\puppeteer-core\lib\cjs
+\puppeteer\util\decorators.js
+:109:27)
+    at 
+CdpPage.waitForFunction (C:\U
+sers\ayush_lr8ru2y\Desktop\Cl
+ub Connect\qa_test\node_modul
+es\puppeteer-core\lib\cjs\pup
+peteer\api\Page.js:1451:37)
+    at C:\Users\ayush_lr8ru2y
+\Desktop\Club Connect\qa_test
+\offline_test.js:30:20
+≡ƒÅü Test completed.

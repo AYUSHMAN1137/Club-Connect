@@ -1,0 +1,105 @@
+﻿≡ƒÜÇ Starting Offline QA Test with Puppeteer...
+≡ƒôî Navigating to login page...
+PAGE LOG: %c≡ƒÄë Welcome to the Enhanced Login Form! color: #667eea; font-size: 20px; font-weight: bold;
+PAGE LOG: %cΓ£¿ Features: Form Validation, Password Strength, Smooth Animations, and more! color: #764ba2; font-size: 14px;
+PAGE LOG: [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o
+PAGE LOG: [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o
+PAGE LOG: Failed to load resource: the server responded with a status of 404 (Not Found)
+≡ƒôî Logging in...
+PAGE LOG: ≡ƒöº Initializing fallback functions...
+PAGE LOG: Γ£à Fallback functions initialized
+PAGE LOG: === Owner Dashboard JavaScript Loading ===
+PAGE LOG: Token exists: true
+PAGE LOG: Γ£à Logout handler attached
+PAGE LOG: Γ£à switchPage exposed to window immediately
+PAGE LOG: Γ£à addMemberByStudentId exposed to window immediately
+PAGE LOG: Γ£à Owner dashboard script loaded!
+PAGE LOG: ≡ƒôï Document ready state: loading
+PAGE LOG: ≡ƒöæ Token exists: true
+PAGE LOG: ΓÅ│ Waiting for DOM to load...
+PAGE LOG: Γ£à All functions exposed to window object for onclick handlers!
+PAGE LOG: Γ£à Logout handler attached
+PAGE LOG: ≡ƒÜÇ Initializing dashboard...
+PAGE LOG: verifyAuth() called
+PAGE LOG: Fetching user data from API...
+PAGE LOG: Γ£à Page fully loaded!
+PAGE LOG: ≡ƒöì switchPage available: function
+PAGE LOG: ≡ƒöì addMemberByStudentId available: function
+PAGE LOG: ≡ƒöì Menu items found: 11
+PAGE LOG: ≡ƒöì Pages found: 11
+PAGE LOG: Γ£à Backend server is running
+PAGE LOG: Auth response: [object Object]
+PAGE LOG: Auth successful, user: tdh_owner ID: 2
+PAGE LOG: Γ£à ServiceWorker registered with scope: http://localhost:4000/
+PAGE LOG: ≡ƒôª DataStore initialised (IndexedDB)
+PAGE LOG: Initializing navigation...
+PAGE LOG: Found menu items: 11
+PAGE LOG: Found pages: 11
+PAGE LOG: ≡ƒÜÇ switchPage called with: home
+PAGE LOG: Loading dashboard with fresh data...
+PAGE LOG: Initializing features...
+PAGE LOG: Dashboard initialization complete!
+PAGE LOG: Connected to server
+Γ£à Logged in to dashboard.
+ΓÅ│ Waiting 3s for Service Worker to activate...
+PAGE LOG: ΓÜá∩╕Å Club name still loading, reloading stats...
+PAGE LOG: ≡ƒôè Loading dashboard stats for current owner...
+PAGE LOG: Γ£à Club name updated to: TDH
+PAGE LOG: Γ£à Current club ID set to: 1
+PAGE LOG: ΓÅ▒∩╕Å [Telemetry] performance_metric ΓÇö [object Object]
+PAGE LOG: ΓÅ▒∩╕Å loadDashboardStats finished in 141ms
+Γ£à Service Worker should be ACTIVE.
+≡ƒôî Switching to Members page...
+node : Γ¥î TEST ERROR: 
+Error: Node is either not 
+clickable or not an Element
+At line:1 char:1
++ node offline_test.js > 
+qa_out3.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (Γ¥î TES  
+  T ERROR:... not an Eleme   
+ nt:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+    at CdpElementHandle.click
+ablePoint (C:\Users\ayush_lr8
+ru2y\Desktop\Club Connect\qa_
+test\node_modules\puppeteer-c
+ore\lib\cjs\puppeteer\api\Ele
+mentHandle.js:696:23)
+    at async 
+CdpElementHandle.<anonymous> 
+(C:\Users\ayush_lr8ru2y\Deskt
+op\Club Connect\qa_test\node_
+modules\puppeteer-core\lib\cj
+s\puppeteer\api\ElementHandle
+.js:122:20)
+    at async 
+CdpElementHandle.click (C:\Us
+ers\ayush_lr8ru2y\Desktop\Clu
+b Connect\qa_test\node_module
+s\puppeteer-core\lib\cjs\pupp
+eteer\api\ElementHandle.js:72
+6:30)
+    at async 
+CdpElementHandle.<anonymous> 
+(C:\Users\ayush_lr8ru2y\Deskt
+op\Club Connect\qa_test\node_
+modules\puppeteer-core\lib\cj
+s\puppeteer\api\ElementHandle
+.js:133:24)
+    at async CdpFrame.click (
+C:\Users\ayush_lr8ru2y\Deskto
+p\Club Connect\qa_test\node_m
+odules\puppeteer-core\lib\cjs
+\puppeteer\api\Frame.js:752:1
+7)
+    at async C:\Users\ayush_l
+r8ru2y\Desktop\Club Connect\q
+a_test\offline_test.js:35:9
+≡ƒÅü Test completed.
