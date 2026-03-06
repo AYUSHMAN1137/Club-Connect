@@ -1,5 +1,5 @@
-const CACHE_NAME = 'club-connect-cache-v2';
-const API_CACHE = 'club-connect-api-v2';
+const CACHE_NAME = 'club-connect-cache-v3';
+const API_CACHE = 'club-connect-api-v3';
 
 const STATIC_ASSETS = [
     './',
@@ -111,9 +111,21 @@ self.addEventListener('fetch', event => {
     }
 
     // Static assets -> Navigation/HTML Network-First, Assets Cache-First (stale-while-revalidate)
-    if (event.request.mode === 'navigate' || url.pathname.endsWith('.html')) {
+    if (event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname === '/') {
         event.respondWith(
-            fetch(event.request).catch(() => caches.match(event.request))
+            fetch(event.request).catch(async () => {
+                // If offline, try to match the exact request
+                const exactMatch = await caches.match(event.request);
+                if (exactMatch) return exactMatch;
+
+                // If the root '/' was requested and we're offline, return index.html from cache
+                if (url.pathname === '/') {
+                    return await caches.match('./index.html');
+                }
+
+                // Fallback to offline handling
+                return new Response('Offline - No cache available for this page.', { status: 503 });
+            })
         );
         return;
     }
