@@ -31,6 +31,7 @@ const {
     CodeBundle,
     CodeSection,
     RealtimeEventLog,
+    SyncState,
     sequelize
 } = require('../models');
 const { Op } = require('sequelize');
@@ -1098,6 +1099,7 @@ module.exports = {
     MemberProjectHistory,
     AttendanceSession,
     AttendanceRecord,
+    SyncState,
     sequelize,
     markAttendanceWithPoints
 };

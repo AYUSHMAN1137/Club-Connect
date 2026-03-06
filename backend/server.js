@@ -383,6 +383,17 @@ async function isAdmin(req, res, next) {
     }
 }
 
+// ========== SYNC ROUTER ==========
+const syncRouterFactory = require('./routes/sync');
+const { router: syncRouter, invalidateModules, bumpModuleVersions } = syncRouterFactory({
+    verifyToken,
+    isMember,
+    isOwner,
+    db,
+    SyncState: db.SyncState
+});
+app.use(syncRouter);
+
 // ========== ROUTES ==========
 
 // Test route
@@ -1118,6 +1129,8 @@ app.post('/owner/award-points', verifyToken, isOwner, async (req, res) => {
 
         console.log(`🏆 [SQL] Awarded ${points} points to ${member.username} in ${ownerClub.name}`);
 
+        invalidateModules(io, ownerClub.id, ['dashboardStats', 'leaderboard', 'dashboard', 'profile']);
+
         res.json({
             success: true,
             message: `Awarded ${points} points to ${member.username} in ${ownerClub.name}!`,
@@ -1159,6 +1172,8 @@ app.post('/owner/remove-member', verifyToken, isOwner, async (req, res) => {
         }
 
         console.log(`🚫 [SQL] Removed ${member.username} from ${ownerClub.name}`);
+
+        invalidateModules(io, ownerClub.id, ['members', 'dashboardStats', 'dashboard', 'leaderboard']);
 
         return res.json({ success: true, message: 'Member removed from club successfully!' });
     } catch (error) {
@@ -1257,6 +1272,7 @@ app.post('/owner/create-event', verifyToken, isOwner, async (req, res) => {
 
         // Emit new event to everyone in the club
         io.to(`club-${ownerClub.id}`).emit('new-event', newEvent);
+        invalidateModules(io, ownerClub.id, ['events', 'dashboardStats', 'dashboard']);
 
         res.json({
             success: true,
@@ -1354,6 +1370,9 @@ app.delete('/owner/events/:id', verifyToken, isOwner, async (req, res) => {
         try {
             await deleteEventWithRelations(eventId, t);
             await t.commit();
+
+            invalidateModules(io, ownerClub.id, ['events', 'dashboardStats', 'dashboard']);
+
             res.json({ success: true, message: 'Event deleted!' });
         } catch (error) {
             await t.rollback();
@@ -1589,6 +1608,9 @@ app.delete('/owner/announcements/:id', verifyToken, isOwner, async (req, res) =>
             return res.status(403).json({ success: false, message: 'Access denied!' });
         }
         await announcement.destroy();
+
+        invalidateModules(io, ownerClub.id, ['announcements', 'dashboard']);
+
         res.json({ success: true, message: 'Announcement deleted!' });
     } catch (error) {
         console.error('Error deleting announcement:', error);
@@ -1650,6 +1672,7 @@ app.post('/owner/send-announcement', verifyToken, isOwner, async (req, res) => {
 
         // Emit new announcement to everyone in the club
         io.to(`club-${ownerClub.id}`).emit('new-announcement', newAnnouncement);
+        invalidateModules(io, ownerClub.id, ['announcements', 'dashboard']);
 
         res.json({ success: true, message: 'Announcement sent!', announcement: newAnnouncement });
     } catch (error) {
@@ -1703,6 +1726,7 @@ app.post('/owner/polls', verifyToken, isOwner, async (req, res) => {
 
         // Emit new poll to everyone in the club
         io.to(`club-${ownerClub.id}`).emit('new-poll', full);
+        invalidateModules(io, ownerClub.id, ['polls', 'dashboard']);
 
         res.status(201).json({ success: true, message: 'Poll created!', poll: full });
     } catch (error) {
@@ -1732,6 +1756,9 @@ app.patch('/owner/polls/:id/close', verifyToken, isOwner, async (req, res) => {
         if (!ownerClub || poll.clubId !== ownerClub.id) return res.status(403).json({ success: false, message: 'Access denied!' });
         await db.closePoll(poll.id);
         const updated = await db.getPollById(poll.id, { includeVoteCounts: true });
+
+        invalidateModules(io, poll.clubId, ['polls', 'dashboard']);
+
         res.json({ success: true, message: 'Poll closed!', poll: updated });
     } catch (error) {
         console.error('Error closing poll:', error);
@@ -1751,6 +1778,9 @@ app.delete('/owner/polls/:id', verifyToken, isOwner, async (req, res) => {
         try {
             await deletePollWithRelations(pollId, t);
             await t.commit();
+
+            invalidateModules(io, poll.clubId, ['polls', 'dashboard']);
+
             res.json({ success: true, message: 'Poll deleted!' });
         } catch (error) {
             await t.rollback();
@@ -2329,6 +2359,12 @@ app.post('/member/rsvp', verifyToken, isMember, async (req, res) => {
 
         console.log(`🎟️ [SQL] RSVP successful for event ${eventId} by user ${req.user.username}`);
 
+        // Finding event club to invalidate
+        const event = await db.findEventById(eventId);
+        if (event && event.clubId) {
+            invalidateModules(io, event.clubId, ['events', 'dashboardStats', 'dashboard']);
+        }
+
         res.json({ success: true, message: 'RSVP successful!' });
     } catch (error) {
         console.error('Error RSVP:', error);
@@ -2371,6 +2407,10 @@ app.post('/member/scan-attendance', verifyToken, isMember, async (req, res) => {
         const points = result.success ? result.newPoints : 0;
 
         console.log(`✅ [SQL] Attendance marked for ${req.user.username} (Event: ${event.title})`);
+
+        if (event && event.clubId) {
+            invalidateModules(io, event.clubId, ['attendance', 'leaderboard', 'dashboardStats', 'dashboard', 'profile']);
+        }
 
         res.json({ success: true, message: 'Attendance marked! +10 points', points });
     } catch (error) {

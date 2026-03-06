@@ -447,15 +447,26 @@ function getModuleCacheKey(moduleName) {
 function getModuleCache(moduleName, ttl = MODULE_CACHE_TTL) {
     const key = getModuleCacheKey(moduleName);
     const entry = moduleCache.get(key);
-    if (!entry) return null;
-    if (Date.now() - entry.timestamp < ttl) return entry.data;
+    if (!entry) {
+        if (window.Telemetry) window.Telemetry.logCacheMiss(moduleName, 'mem_cache');
+        return null;
+    }
+    if (Date.now() - entry.timestamp < ttl) {
+        if (window.Telemetry) window.Telemetry.logCacheHit(moduleName, 'mem_cache');
+        return entry.data;
+    }
     moduleCache.delete(key);
+    if (window.Telemetry) window.Telemetry.logCacheMiss(moduleName, 'mem_cache_expired');
     return null;
 }
 
 function setModuleCache(moduleName, data) {
     const key = getModuleCacheKey(moduleName);
     moduleCache.set(key, { data, timestamp: Date.now() });
+    // Persist to IndexedDB in background
+    if (window.DataStore) {
+        window.DataStore.saveToCache(moduleName, data, null, currentUserId, currentClubId).catch(() => { });
+    }
 }
 
 function invalidateModuleCache(moduleName) {
@@ -530,6 +541,14 @@ async function verifyAuth() {
         }
         currentUserId = data.user.id;
         moduleCache.clear();
+
+        // Restore IndexedDB cache into in-memory Map for instant rendering
+        if (window.DataStore) {
+            try {
+                await window.DataStore.init();
+            } catch (e) { console.warn('DataStore init warning:', e); }
+        }
+
         initOwnerChecklist({ forceRestore: true });
 
         // Clear any cached data when new user logs in
@@ -582,6 +601,38 @@ async function verifyAuth() {
         loadNotifications();
         updateNotificationBadge();
 
+        // Initialise SyncEngine for background sync + socket invalidation
+        if (window.SyncEngine && currentClubId) {
+            try {
+                await window.SyncEngine.init({
+                    role: 'owner',
+                    userId: currentUserId,
+                    clubId: currentClubId,
+                    apiUrl: getApiUrl(),
+                    token: token,
+                    socket: socket || null,
+                    onModuleRefreshed: (moduleName, freshData) => {
+                        // Update in-memory cache
+                        setModuleCache(moduleName, freshData);
+                        // Re-render if the refreshed module's page is currently active
+                        const activePage = getActivePageName();
+                        const moduleToPage = {
+                            dashboardStats: 'home', members: 'members', events: 'events',
+                            announcements: 'announcements', polls: 'polls', certificates: 'certificates',
+                            projectProgress: 'project-progress', analytics: 'analytics',
+                            workshops: 'workshops', notifications: null, messagesContacts: 'messages'
+                        };
+                        if (moduleToPage[moduleName] === activePage) {
+                            console.log(`🔄 Re-rendering ${moduleName} (active page)`);
+                            switchPage(activePage, { force: true });
+                        }
+                    }
+                });
+            } catch (syncErr) {
+                console.warn('SyncEngine init warning:', syncErr);
+            }
+        }
+
         console.log('Dashboard initialization complete!');
     } catch (error) {
         console.error('Auth error:', error);
@@ -601,6 +652,11 @@ function handleLogout(e) {
     // Clear all data
     localStorage.removeItem('token');
     localStorage.removeItem('darkMode');
+
+    // Clear caches
+    if (window.DataStore) { window.DataStore.clearAll().catch(() => { }); }
+    if (window.SyncEngine) { window.SyncEngine.destroy(); }
+    moduleCache.clear();
 
     // Redirect to login
     window.location.href = 'index.html';
@@ -918,6 +974,7 @@ async function loadDashboard() {
 }
 
 async function loadDashboardStats() {
+    if (window.Telemetry) window.Telemetry.start('loadDashboardStats');
     try {
         console.log('📊 Loading dashboard stats for current owner...');
         const [statsResponse, membersResponse, eventsResponse] = await Promise.all([
@@ -940,6 +997,7 @@ async function loadDashboardStats() {
             const errorText = await statsResponse.text();
             console.error('Dashboard stats API error:', statsResponse.status, errorText);
             showNotification('Failed to load dashboard stats. Please check if server is running.', 'error');
+            if (window.Telemetry) window.Telemetry.end('loadDashboardStats');
             return;
         }
 
@@ -1168,6 +1226,11 @@ async function loadDashboardStats() {
             showNotification(`Cannot connect to server! Please make sure backend server is running on ${getApiUrl()}`, 'error');
         } else {
             showNotification('Failed to load dashboard stats: ' + error.message, 'error');
+        }
+    } finally {
+        if (window.Telemetry) {
+            const dur = window.Telemetry.end('loadDashboardStats');
+            if (dur) console.log(`⏱️ loadDashboardStats finished in ${dur}ms`);
         }
     }
 }
@@ -2932,7 +2995,7 @@ async function loadAdvancedAnalytics() {
             return;
         }
 
-        const response = await fetch(`${getApiUrl()}/owner/advanced-analytics?period=${period}`, {
+        const response = await fetch(`${getApiUrl()}/owner/analytics?period=${period}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }

@@ -1,0 +1,81 @@
+﻿≡ƒÜÇ Starting Offline QA Test with Puppeteer...
+≡ƒôî Navigating to login page...
+≡ƒôî Logging in...
+node : Γ¥î TEST ERROR: 
+TimeoutError: Waiting for 
+selector `#username-in` 
+failed
+At line:1 char:1
++ node offline_test.js > 
+out.log 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (Γ¥î TES  
+  T ERROR:...name-in` fail   
+ ed:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+    at 
+CSSQueryHandler.waitFor (C:\U
+sers\ayush_lr8ru2y\Desktop\Cl
+ub Connect\qa_test\node_modul
+es\puppeteer-core\lib\cjs\pup
+peteer\common\QueryHandler.js
+:214:46)
+    at async 
+CdpFrame.waitForSelector (C:\
+Users\ayush_lr8ru2y\Desktop\C
+lub Connect\qa_test\node_modu
+les\puppeteer-core\lib\cjs\pu
+ppeteer\api\Frame.js:544:21)
+    at async 
+CdpPage.waitForSelector (C:\U
+sers\ayush_lr8ru2y\Desktop\Cl
+ub Connect\qa_test\node_modul
+es\puppeteer-core\lib\cjs\pup
+peteer\api\Page.js:1391:20)
+    at async C:\Users\ayush_l
+r8ru2y\Desktop\Club Connect\q
+a_test\offline_test.js:18:9 {
+  cause: TimeoutError: 
+Waiting failed: 30000ms 
+exceeded
+      at new WaitTask (C:\Use
+rs\ayush_lr8ru2y\Desktop\Club
+ Connect\qa_test\node_modules
+\puppeteer-core\lib\cjs\puppe
+teer\common\WaitTask.js:49:34
+)
+      at IsolatedWorld.waitFo
+rFunction (C:\Users\ayush_lr8
+ru2y\Desktop\Club Connect\qa_
+test\node_modules\puppeteer-c
+ore\lib\cjs\puppeteer\api\Rea
+lm.js:25:26)
+      at 
+CSSQueryHandler.waitFor (C:\U
+sers\ayush_lr8ru2y\Desktop\Cl
+ub Connect\qa_test\node_modul
+es\puppeteer-core\lib\cjs\pup
+peteer\common\QueryHandler.js
+:179:95)
+      at async 
+CdpFrame.waitForSelector (C:\
+Users\ayush_lr8ru2y\Desktop\C
+lub Connect\qa_test\node_modu
+les\puppeteer-core\lib\cjs\pu
+ppeteer\api\Frame.js:544:21)
+      at async 
+CdpPage.waitForSelector (C:\U
+sers\ayush_lr8ru2y\Desktop\Cl
+ub Connect\qa_test\node_modul
+es\puppeteer-core\lib\cjs\pup
+peteer\api\Page.js:1391:20)
+      at async C:\Users\ayush
+_lr8ru2y\Desktop\Club Connect
+\qa_test\offline_test.js:18:9
+}
+≡ƒÅü Test completed.

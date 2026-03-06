@@ -15,6 +15,42 @@ let memberHasSections = false;
 let memberWorkshopSocketBound = false;
 let latestAttendance = [];
 
+// ========== MODULE CACHE (in-memory + IndexedDB persistence) ==========
+const _memberModuleCache = new Map();
+const _MEMBER_CACHE_TTL = 120000; // 2 min in-memory TTL
+
+function _memberCacheKey(moduleName) {
+    const uid = parseJwt(token)?.id || 'anon';
+    const cid = window.activeClubId || 'none';
+    return `${moduleName}:${uid}:${cid}`;
+}
+
+function getMemberCache(moduleName, ttl = _MEMBER_CACHE_TTL) {
+    const key = _memberCacheKey(moduleName);
+    const entry = _memberModuleCache.get(key);
+    if (!entry) {
+        if (window.Telemetry) window.Telemetry.logCacheMiss(moduleName, 'mem_cache');
+        return null;
+    }
+    if (Date.now() - entry.ts < ttl) {
+        if (window.Telemetry) window.Telemetry.logCacheHit(moduleName, 'mem_cache');
+        return entry.data;
+    }
+    _memberModuleCache.delete(key);
+    if (window.Telemetry) window.Telemetry.logCacheMiss(moduleName, 'mem_cache_expired');
+    return null;
+}
+
+function setMemberCache(moduleName, data) {
+    const key = _memberCacheKey(moduleName);
+    _memberModuleCache.set(key, { data, ts: Date.now() });
+    if (window.DataStore) {
+        const uid = parseJwt(token)?.id || null;
+        const cid = window.activeClubId || null;
+        window.DataStore.saveToCache(moduleName, data, null, uid, cid).catch(() => { });
+    }
+}
+
 // Check authentication
 if (!token) {
     window.location.href = 'index.html';
@@ -88,6 +124,37 @@ async function verifyAuth() {
 
         if (typeof initializeSocket === 'function') {
             initializeSocket();
+        }
+
+        // Initialize SyncEngine for background sync + socket invalidation
+        if (window.SyncEngine && window.activeClubId) {
+            try {
+                const decoded = parseJwt(token);
+                await window.SyncEngine.init({
+                    role: 'member',
+                    userId: decoded ? decoded.id : null,
+                    clubId: window.activeClubId,
+                    apiUrl: API_URL,
+                    token: token,
+                    socket: socket || null,
+                    onModuleRefreshed: (moduleName, freshData) => {
+                        setMemberCache(moduleName, freshData);
+                        const activePage = getActivePageName();
+                        const moduleToPage = {
+                            dashboard: 'home', events: 'events', attendance: 'attendance',
+                            leaderboard: 'leaderboard', announcements: 'announcements',
+                            polls: 'polls', myProjects: 'my-project', certificates: 'certificates',
+                            profile: 'profile', notifications: null, messagesContacts: 'messages'
+                        };
+                        if (moduleToPage[moduleName] === activePage) {
+                            console.log(`🔄 Re-rendering ${moduleName} (active)`);
+                            refreshActivePageData();
+                        }
+                    }
+                });
+            } catch (syncErr) {
+                console.warn('SyncEngine init warning:', syncErr);
+            }
         }
 
         // Auth success - hide preloader
@@ -333,6 +400,10 @@ async function switchClub(clubId) {
 document.getElementById('logoutBtn').addEventListener('click', (e) => {
     e.preventDefault();
     localStorage.removeItem('token');
+    // Clear caches
+    if (window.DataStore) { window.DataStore.clearAll().catch(() => { }); }
+    if (window.SyncEngine) { window.SyncEngine.destroy(); }
+    _memberModuleCache.clear();
     window.location.href = 'index.html';
 });
 
@@ -573,7 +644,22 @@ async function loadDashboard() {
 }
 
 async function loadDashboardStats() {
+    if (window.Telemetry) window.Telemetry.start('loadDashboardStats_member_all');
     try {
+        // Try cache first for instant render
+        const cachedDash = getMemberCache('dashboard');
+        const cachedLeader = getMemberCache('leaderboard');
+        const cachedAttend = getMemberCache('attendance');
+
+        if (cachedDash && cachedLeader && cachedAttend) {
+            _renderDashboardStats(cachedDash, cachedLeader, cachedAttend);
+            if (window.Telemetry) {
+                const dur = window.Telemetry.end('loadDashboardStats_member_all');
+                if (dur) console.log(`⏱️ Dashboard rendered from cache in ${dur}ms`);
+            }
+            return;
+        }
+
         const [dashResponse, leaderboardResponse, attendanceResponse] = await Promise.all([
             fetch(`${API_URL}/member/dashboard`, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -594,11 +680,16 @@ async function loadDashboardStats() {
         const dashData = await dashResponse.json();
         const leaderData = await leaderboardResponse.json();
         const attendanceData = await attendanceResponse.json();
+
+        // Cache the fresh data
+        setMemberCache('dashboard', dashData);
+        setMemberCache('leaderboard', leaderData);
+        setMemberCache('attendance', attendanceData);
+
         latestAttendance = attendanceData.success ? (attendanceData.attendance || []) : [];
 
         if (dashData.success) {
             const dash = dashData.dashboard;
-
             console.log('🔍 Dashboard data:', dash);
             console.log('📋 hasNoClub:', dash.hasNoClub, 'status:', dash.status);
 
@@ -758,14 +849,69 @@ async function loadDashboardStats() {
             initActivityChart();
             initAttendanceChart();
             setDashboardLoading(false);
-            initAttendanceChart();
-            setDashboardLoading(false);
         } else {
             throw new Error(dashData.message || 'Failed to load dashboard data');
         }
     } catch (error) {
         console.error('Error loading dashboard:', error);
         showNotification(`Error: ${error.message}`, 'error');
+    } finally {
+        if (window.Telemetry) {
+            const dur = window.Telemetry.end('loadDashboardStats_member_all');
+            if (dur) console.log(`⏱️ Member loadDashboardStats finished in ${dur}ms`);
+        }
+    }
+}
+
+// Helper to render from cached dashboard data (same format as fresh)
+function _renderDashboardStats(dashData, leaderData, attendanceData) {
+    latestAttendance = attendanceData && attendanceData.success ? (attendanceData.attendance || []) : [];
+    if (dashData.success) {
+        const dash = dashData.dashboard;
+        if (dash.hasNoClub === true || dash.status === 'unassigned') {
+            setDashboardLoading(false);
+            return;
+        }
+        const dashboardContent = document.getElementById('dashboard-content');
+        if (dashboardContent) dashboardContent.style.display = 'block';
+
+        if (dash.totalPoints !== undefined) {
+            const el = document.getElementById('memberPoints');
+            if (el) el.textContent = dash.totalPoints;
+        } else {
+            const el = document.getElementById('memberPoints');
+            if (el) el.textContent = dash.points;
+        }
+        const rankEl = document.getElementById('memberRank');
+        if (rankEl) rankEl.textContent = dash.rank;
+        const attPctEl = document.getElementById('attendancePercent');
+        if (attPctEl) attPctEl.textContent = dash.attendancePercentage + '%';
+
+        if (document.getElementById('sidebarPoints')) {
+            document.getElementById('sidebarPoints').textContent = dash.totalPoints !== undefined ? dash.totalPoints : dash.points;
+        }
+        const sidebarRank = document.getElementById('sidebarRank');
+        if (sidebarRank) sidebarRank.textContent = dash.rank;
+
+        if (attendanceData && attendanceData.success) {
+            const attendedCount = attendanceData.attendance.length;
+            const totalEvents = dash.totalEvents || 0;
+            const attendedEl = document.getElementById('attendedEvents');
+            if (attendedEl) attendedEl.textContent = attendedCount;
+            const totalEl = document.getElementById('totalEventsCount');
+            if (totalEl) totalEl.textContent = totalEvents > 0 ? totalEvents : attendedCount;
+        }
+
+        const rankProgress = { 'Rookie': 20, 'Bronze': 40, 'Silver': 60, 'Gold': 80, 'Platinum': 100 };
+        const rpEl = document.getElementById('rankProgress');
+        if (rpEl) rpEl.style.width = (rankProgress[dash.rank] || 20) + '%';
+
+        if (leaderData && leaderData.success) {
+            const userPosition = leaderData.leaderboard.findIndex(u => u.isCurrentUser) + 1;
+            const lpEl = document.getElementById('leaderboardPosition');
+            if (lpEl) lpEl.textContent = userPosition || '-';
+        }
+        setDashboardLoading(false);
     }
 }
 
@@ -1174,8 +1320,19 @@ function initEventsUi() {
 }
 
 async function loadEvents() {
+    if (window.Telemetry) window.Telemetry.start('loadEvents_member');
     initEventsUi();
     try {
+        const cached = getMemberCache('events');
+        if (cached && cached.success) {
+            if (window.Telemetry) window.Telemetry.logCacheHit('events', 'mem_cache');
+            eventsAll = Array.isArray(cached.events) ? cached.events : [];
+            renderEvents();
+            if (window.Telemetry) window.Telemetry.end('loadEvents_member');
+            return;
+        }
+
+        if (window.Telemetry) window.Telemetry.logCacheMiss('events', 'mem_cache');
         const response = await fetch(`${API_URL}/member/events`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -1185,6 +1342,7 @@ async function loadEvents() {
             throw new Error(data.message || 'Failed to load events');
         }
 
+        setMemberCache('events', data);
         eventsAll = Array.isArray(data.events) ? data.events : [];
         renderEvents();
     } catch (error) {
@@ -1192,6 +1350,8 @@ async function loadEvents() {
         showNotification('Failed to load events', 'error');
         eventsAll = [];
         renderEvents();
+    } finally {
+        if (window.Telemetry) window.Telemetry.end('loadEvents_member');
     }
 }
 
@@ -1477,6 +1637,12 @@ async function markAttendanceFromScanner(eventIdParam) {
 // Load Attendance
 async function loadAttendance() {
     try {
+        const cached = getMemberCache('attendance');
+        if (cached && cached.success) {
+            _renderAttendance(cached);
+            return;
+        }
+
         const response = await fetch(`${API_URL}/member/attendance`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -1493,117 +1659,138 @@ async function loadAttendance() {
             throw new Error(data.message || 'Failed to load attendance');
         }
 
-        const attendance = Array.isArray(data.attendance) ? data.attendance : [];
-
-        const totalAttendedEl = document.getElementById('totalAttended');
-        if (totalAttendedEl) {
-            totalAttendedEl.textContent = attendance.length;
-        }
-
-        const totalEvents = typeof data.totalEvents === 'number' ? data.totalEvents : attendance.length;
-        const rate = totalEvents > 0 ? Math.round((attendance.length / totalEvents) * 100) : 0;
-
-        const percentTextEl = document.getElementById('attendancePercentText');
-        if (percentTextEl) {
-            percentTextEl.textContent = `${rate}%`;
-        }
-
-        const circleFill = document.getElementById('attendanceCircleFill');
-        if (circleFill) {
-            circleFill.setAttribute('stroke-dasharray', `${rate}, 100`);
-        }
-
-        const totalMissedEl = document.getElementById('totalMissed');
-        if (totalMissedEl) {
-            const missed = typeof data.missedCount === 'number'
-                ? data.missedCount
-                : Math.max(totalEvents - attendance.length, 0);
-            totalMissedEl.textContent = missed;
-        }
-
-        const currentStreakEl = document.getElementById('currentStreak');
-        if (currentStreakEl) {
-            currentStreakEl.textContent = typeof data.currentStreak === 'number' ? data.currentStreak : 0;
-        }
-
-        const historyBody = document.getElementById('attendanceHistory');
-        if (!historyBody) return;
-
-        if (attendance.length === 0) {
-            historyBody.innerHTML = '<tr><td colspan="5" class="loading">No attendance records yet</td></tr>';
-            return;
-        }
-
-        historyBody.innerHTML = attendance.map(record => {
-            const eventDate = record.eventDate ? new Date(record.eventDate) : null;
-            const checkIn = record.timestamp ? new Date(record.timestamp) : null;
-            const statusText = record.status ? record.status : 'present';
-            return `
-                <tr>
-                    <td>${record.eventTitle || 'Unknown Event'}</td>
-                    <td>${eventDate ? eventDate.toLocaleDateString() : '-'}</td>
-                    <td>${checkIn ? checkIn.toLocaleTimeString() : '-'}</td>
-                    <td>${statusText}</td>
-                    <td>-</td>
-                </tr>
-            `;
-        }).join('');
+        setMemberCache('attendance', data);
+        _renderAttendance(data);
     } catch (error) {
         console.error('Error loading attendance:', error);
         showNotification('Failed to load attendance', 'error');
     }
 }
 
+function _renderAttendance(data) {
+    const attendance = Array.isArray(data.attendance) ? data.attendance : [];
+
+    const totalAttendedEl = document.getElementById('totalAttended');
+    if (totalAttendedEl) {
+        totalAttendedEl.textContent = attendance.length;
+    }
+
+    const totalEvents = typeof data.totalEvents === 'number' ? data.totalEvents : attendance.length;
+    const rate = totalEvents > 0 ? Math.round((attendance.length / totalEvents) * 100) : 0;
+
+    const percentTextEl = document.getElementById('attendancePercentText');
+    if (percentTextEl) {
+        percentTextEl.textContent = `${rate}%`;
+    }
+
+    const circleFill = document.getElementById('attendanceCircleFill');
+    if (circleFill) {
+        circleFill.setAttribute('stroke-dasharray', `${rate}, 100`);
+    }
+
+    const totalMissedEl = document.getElementById('totalMissed');
+    if (totalMissedEl) {
+        const missed = typeof data.missedCount === 'number'
+            ? data.missedCount
+            : Math.max(totalEvents - attendance.length, 0);
+        totalMissedEl.textContent = missed;
+    }
+
+    const currentStreakEl = document.getElementById('currentStreak');
+    if (currentStreakEl) {
+        currentStreakEl.textContent = typeof data.currentStreak === 'number' ? data.currentStreak : 0;
+    }
+
+    const historyBody = document.getElementById('attendanceHistory');
+    if (!historyBody) return;
+
+    if (attendance.length === 0) {
+        historyBody.innerHTML = '<tr><td colspan="5" class="loading">No attendance records yet</td></tr>';
+        return;
+    }
+
+    historyBody.innerHTML = attendance.map(record => {
+        const eventDate = record.eventDate ? new Date(record.eventDate) : null;
+        const checkIn = record.timestamp ? new Date(record.timestamp) : null;
+        const statusText = record.status ? record.status : 'present';
+        return `
+            <tr>
+                <td>${record.eventTitle || 'Unknown Event'}</td>
+                <td>${eventDate ? eventDate.toLocaleDateString() : '-'}</td>
+                <td>${checkIn ? checkIn.toLocaleTimeString() : '-'}</td>
+                <td>${statusText}</td>
+                <td>-</td>
+        `;
+    }).join('');
+}
+
 // Load Leaderboard
 async function loadLeaderboard() {
+    if (window.Telemetry) window.Telemetry.start('loadLeaderboard_member');
     try {
+        const cached = getMemberCache('leaderboard');
+        if (cached && cached.success) {
+            if (window.Telemetry) window.Telemetry.logCacheHit('leaderboard', 'mem_cache');
+            _renderLeaderboard(cached);
+            if (window.Telemetry) window.Telemetry.end('loadLeaderboard_member');
+            return;
+        }
+
+        if (window.Telemetry) window.Telemetry.logCacheMiss('leaderboard', 'mem_cache');
         const response = await fetch(`${API_URL}/member/leaderboard`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
 
         const data = await response.json();
 
         if (data.success) {
-            const leaderboard = data.leaderboard;
-
-            // 1. Update Podium (Top 3)
-            updatePodium(leaderboard);
-
-            // 2. Update Your Position Card
-            updateYourPositionCard(leaderboard);
-
-            // 3. Update Table
-            const tbody = document.getElementById('leaderboardTable');
-            if (leaderboard.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="loading">No members yet</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = leaderboard.map(member => `
-                <tr ${member.isCurrentUser ? 'style="background: var(--primary-light); font-weight: 600;"' : ''}>
-                    <td>${member.rank}</td>
-                    <td>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div class="table-avatar" style="width: 32px; height: 32px; border-radius: 50%; background: var(--gray-200); display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                                ${member.profilePic
-                    ? `<img src="${member.profilePic}" style="width: 100%; height: 100%; object-fit: cover;">`
-                    : `<i class="fa-solid fa-user" style="color: var(--gray-500); font-size: 14px;"></i>`}
-                            </div>
-                            <span>${member.username} ${member.isCurrentUser ? '(You)' : ''}</span>
-                        </div>
-                    </td>
-                    <td style="font-weight: 600; color: var(--primary-color);">${member.points} pts</td>
-                    <td>${member.eventsAttended || 0}</td>
-                    <td><span class="rank-badge ${member.rankTitle.toLowerCase()}">${member.rankTitle}</span></td>
-                </tr>
-            `).join('');
+            setMemberCache('leaderboard', data);
+            _renderLeaderboard(data);
         }
     } catch (error) {
         console.error('Error loading leaderboard:', error);
         showNotification('Failed to load leaderboard', 'error');
+    } finally {
+        if (window.Telemetry) window.Telemetry.end('loadLeaderboard_member');
     }
+}
+
+function _renderLeaderboard(data) {
+    const leaderboard = data.leaderboard;
+
+    // 1. Update Podium (Top 3)
+    if (typeof updatePodium === 'function') updatePodium(leaderboard);
+
+    // 2. Update Your Position Card
+    if (typeof updateYourPositionCard === 'function') updateYourPositionCard(leaderboard);
+
+    // 3. Update Table
+    const tbody = document.getElementById('leaderboardTable');
+    if (!tbody) return;
+
+    if (leaderboard.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="loading">No members yet</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = leaderboard.map(member => `
+        <tr ${member.isCurrentUser ? 'style="background: var(--primary-light); font-weight: 600;"' : ''}>
+            <td>${member.rank}</td>
+            <td>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="table-avatar" style="width: 32px; height: 32px; border-radius: 50%; background: var(--gray-200); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                        ${member.profilePic
+            ? `<img src="${member.profilePic}" style="width: 100%; height: 100%; object-fit: cover;">`
+            : `<i class="fa-solid fa-user" style="color: var(--gray-500); font-size: 14px;"></i>`}
+                    </div>
+                    <span>${member.username} ${member.isCurrentUser ? '(You)' : ''}</span>
+                </div>
+            </td>
+            <td style="font-weight: 600; color: var(--primary-color);">${member.points} pts</td>
+            <td>${member.eventsAttended || 0}</td>
+            <td><span class="rank-badge ${member.rankTitle.toLowerCase()}">${member.rankTitle}</span></td>
+        </tr>
+    `).join('');
 }
 
 function updatePodium(leaderboard) {
@@ -1681,6 +1868,12 @@ function updateYourPositionCard(leaderboard) {
 // Load Announcements
 async function loadAnnouncements() {
     try {
+        const cached = getMemberCache('announcements');
+        if (cached && cached.success) {
+            _renderAnnouncements(cached);
+            return;
+        }
+
         const response = await fetch(`${API_URL}/member/announcements`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -1690,29 +1883,35 @@ async function loadAnnouncements() {
         const data = await response.json();
 
         if (data.success) {
-            const list = document.getElementById('announcementsList');
-
-            if (data.announcements.length === 0) {
-                list.innerHTML = '<p class="loading">No announcements yet</p>';
-                return;
-            }
-
-            list.innerHTML = '<div style="background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);">' +
-                data.announcements.map(announcement => `
-                    <div class="announcement-item">
-                        <h4>${announcement.title}</h4>
-                        <p>${announcement.message}</p>
-                        <div class="date">
-                            <i class="fa-solid fa-clock"></i>
-                            ${new Date(announcement.date).toLocaleString()}
-                        </div>
-                    </div>
-                `).join('') + '</div>';
+            setMemberCache('announcements', data);
+            _renderAnnouncements(data);
         }
     } catch (error) {
         console.error('Error loading announcements:', error);
         showNotification('Failed to load announcements', 'error');
     }
+}
+
+function _renderAnnouncements(data) {
+    const list = document.getElementById('announcementsList');
+    if (!list) return;
+
+    if (!data.announcements || data.announcements.length === 0) {
+        list.innerHTML = '<p class="loading">No announcements yet</p>';
+        return;
+    }
+
+    list.innerHTML = '<div style="background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);">' +
+        data.announcements.map(announcement => `
+            <div class="announcement-item">
+                <h4>${announcement.title}</h4>
+                <p>${announcement.message}</p>
+                <div class="date">
+                    <i class="fa-solid fa-clock"></i>
+                    ${new Date(announcement.date).toLocaleString()}
+                </div>
+            </div>
+        `).join('') + '</div>';
 }
 
 // Load Polls (Member)
