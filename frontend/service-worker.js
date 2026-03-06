@@ -1,5 +1,5 @@
-const CACHE_NAME = 'club-connect-cache-v3';
-const API_CACHE = 'club-connect-api-v3';
+const CACHE_NAME = 'club-connect-cache-v4';
+const API_CACHE = 'club-connect-api-v4';
 
 const STATIC_ASSETS = [
     './',
@@ -93,6 +93,13 @@ self.addEventListener('fetch', event => {
         }
 
         // GET request -> Network First
+        // IMPORTANT: Skip auth endpoints (/auth/me) - let them fail naturally when offline
+        // so the dashboard JS code's catch block fires and uses the localStorage fallback.
+        if (url.pathname.includes('/auth/me') || url.pathname.includes('/auth/verify')) {
+            // Don't intercept auth checks - let them throw on network failure
+            return;
+        }
+
         event.respondWith(
             fetch(event.request).then(response => {
                 // Ignore 206 Partial Content or opaque responses which cannot be cached correctly usually
