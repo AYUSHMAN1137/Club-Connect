@@ -495,6 +495,120 @@ app.post('/auth/register', async (req, res) => {
     }
 });
 
+// ========== FORGOT PASSWORD / RESET PASSWORD ==========
+// Step 1: Verify identity (email + username + studentId)
+app.post('/auth/verify-identity', async (req, res) => {
+    try {
+        const { email, username, studentId } = req.body;
+
+        if (!email || !username || !studentId) {
+            return res.status(400).json({
+                success: false,
+                message: 'All fields are required (Email, Full Name, Student ID).'
+            });
+        }
+
+        // Find user by email first
+        const user = await db.findUserByEmail(email.trim());
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'Credentials do not match our records. Please contact support.'
+            });
+        }
+
+        // Verify username (case-insensitive) and studentId match
+        const usernameMatch = user.username.toLowerCase() === username.trim().toLowerCase();
+        const studentIdMatch = user.studentId === studentId.trim();
+
+        if (!usernameMatch || !studentIdMatch) {
+            return res.status(404).json({
+                success: false,
+                message: 'Credentials do not match our records. Please contact support.'
+            });
+        }
+
+        // All three match — issue a short-lived reset token (10 min)
+        const resetToken = jwt.sign(
+            { id: user.id, purpose: 'password-reset' },
+            JWT_SECRET,
+            { expiresIn: '10m' }
+        );
+
+        console.log(`🔑 Password reset identity verified for: ${user.username}`);
+
+        res.json({
+            success: true,
+            message: 'Identity verified! You can now set a new password.',
+            resetToken
+        });
+    } catch (error) {
+        console.error('Verify identity error:', error);
+        res.status(500).json({ success: false, message: 'Server error! Please try again.' });
+    }
+});
+
+// Step 2: Set new password (requires the short-lived resetToken from Step 1)
+app.post('/auth/reset-password', async (req, res) => {
+    try {
+        const { resetToken, newPassword } = req.body;
+
+        if (!resetToken || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'Reset token and new password are required.'
+            });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password must be at least 6 characters.'
+            });
+        }
+
+        // Verify the reset token
+        let decoded;
+        try {
+            decoded = jwt.verify(resetToken, JWT_SECRET);
+        } catch (err) {
+            return res.status(401).json({
+                success: false,
+                message: 'Reset session expired. Please verify your identity again.'
+            });
+        }
+
+        if (decoded.purpose !== 'password-reset') {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid reset token.'
+            });
+        }
+
+        const user = await db.findUserById(decoded.id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found.'
+            });
+        }
+
+        // Hash and save the new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await db.updateUser(user.id, { password: hashedPassword });
+
+        console.log(`✅ Password reset successful for: ${user.username}`);
+
+        res.json({
+            success: true,
+            message: 'Password reset successful! You can now login with your new password.'
+        });
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ success: false, message: 'Server error! Please try again.' });
+    }
+});
+
 // LOGIN Route - NOW USING SQL DATABASE
 app.post('/auth/login', async (req, res) => {
     try {

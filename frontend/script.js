@@ -578,16 +578,227 @@ inputs.forEach(input => {
     });
 });
 
-// ========== FORGOT PASSWORD ==========
+// ========== FORGOT PASSWORD (Multi-Step Identity Verification + Reset) ==========
 const forgotPasswordLink = document.querySelector('.forgot-password');
+const fpModal = document.getElementById('forgotPasswordModal');
+const fpCloseBtn = document.getElementById('fpCloseBtn');
+const fpStep1 = document.getElementById('fpStep1');
+const fpStep2 = document.getElementById('fpStep2');
+const fpVerifyForm = document.getElementById('fpVerifyForm');
+const fpResetForm = document.getElementById('fpResetForm');
+
+let _fpResetToken = null; // short-lived token received after identity verification
+
+function openForgotPasswordModal() {
+    // Reset to Step 1
+    fpStep1.style.display = '';
+    fpStep2.style.display = 'none';
+    _fpResetToken = null;
+    // Clear all fields
+    fpVerifyForm.reset();
+    fpResetForm.reset();
+    fpModal.querySelectorAll('input').forEach(input => {
+        input.classList.remove('error', 'success');
+        const err = input.parentElement.querySelector('.error-message');
+        if (err) { err.textContent = ''; err.classList.remove('show'); }
+    });
+    const fpPwdStrength = document.getElementById('fpPasswordStrength');
+    if (fpPwdStrength) fpPwdStrength.classList.remove('show');
+    fpModal.classList.add('show');
+}
+
+function closeForgotPasswordModal() {
+    fpModal.classList.remove('show');
+}
+
 if (forgotPasswordLink) {
     forgotPasswordLink.addEventListener('click', (e) => {
         e.preventDefault();
-        successMessage.textContent = 'Password reset link sent to your email!';
-        showSuccessModal();
-        setTimeout(() => {
-            hideSuccessModal();
-        }, 3000);
+        openForgotPasswordModal();
+    });
+}
+
+if (fpCloseBtn) {
+    fpCloseBtn.addEventListener('click', closeForgotPasswordModal);
+}
+
+// Close on backdrop click
+if (fpModal) {
+    fpModal.addEventListener('click', (e) => {
+        if (e.target === fpModal) closeForgotPasswordModal();
+    });
+}
+
+// Close on Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && fpModal && fpModal.classList.contains('show')) {
+        closeForgotPasswordModal();
+    }
+});
+
+// --- Step 1: Verify Identity ---
+if (fpVerifyForm) {
+    fpVerifyForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const emailInput = document.getElementById('fp-email');
+        const usernameInput = document.getElementById('fp-username');
+        const studentIdInput = document.getElementById('fp-studentid');
+
+        // Validate
+        const v1 = validateInput(emailInput);
+        const v2 = validateInput(usernameInput);
+        const v3 = validateInput(studentIdInput);
+        if (!v1 || !v2 || !v3) return;
+
+        const submitBtn = fpVerifyForm.querySelector('button[type="submit"]');
+        submitBtn.classList.add('loading');
+        submitBtn.disabled = true;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+        try {
+            const response = await fetch(`${API_URL}/auth/verify-identity`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: emailInput.value.trim(),
+                    username: usernameInput.value.trim(),
+                    studentId: studentIdInput.value.trim()
+                }),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+            const data = await response.json();
+
+            submitBtn.classList.remove('loading');
+            submitBtn.disabled = false;
+
+            if (data.success && data.resetToken) {
+                _fpResetToken = data.resetToken;
+                // Transition to Step 2
+                fpStep1.style.display = 'none';
+                fpStep2.style.display = '';
+                showNotification('Identity verified! Set your new password.', 'success', 'Verified');
+                // Re-init password toggle for new fields
+                initPasswordToggle();
+            } else {
+                showNotification(data.message || 'Credentials do not match our records. Please contact support.', 'error', 'Verification Failed');
+            }
+        } catch (error) {
+            clearTimeout(timeoutId);
+            submitBtn.classList.remove('loading');
+            submitBtn.disabled = false;
+            if (error.name === 'AbortError') {
+                showNotification('Connection timed out. Please try again.', 'error', 'Timeout');
+            } else {
+                showNotification('Cannot connect to server. Please try again later.', 'error');
+            }
+        }
+    });
+}
+
+// --- Step 2: Password Strength Checker for Reset ---
+const fpNewPasswordInput = document.getElementById('fp-new-password');
+const fpStrengthBar = document.getElementById('fpStrengthBar');
+const fpStrengthText = document.getElementById('fpStrengthText');
+const fpPasswordStrength = document.getElementById('fpPasswordStrength');
+
+if (fpNewPasswordInput) {
+    fpNewPasswordInput.addEventListener('input', function () {
+        const password = this.value;
+        if (password.length === 0) {
+            fpPasswordStrength.classList.remove('show');
+            fpStrengthBar.className = 'strength-bar';
+            fpStrengthText.textContent = '';
+            return;
+        }
+        fpPasswordStrength.classList.add('show');
+        const strength = calculatePasswordStrength(password);
+        fpStrengthBar.className = 'strength-bar ' + strength.level;
+        fpStrengthText.textContent = strength.text;
+        fpStrengthText.style.color = strength.color;
+    });
+}
+
+// --- Step 2: Submit New Password ---
+if (fpResetForm) {
+    fpResetForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const newPwdInput = document.getElementById('fp-new-password');
+        const confirmPwdInput = document.getElementById('fp-confirm-password');
+
+        const v1 = validateInput(newPwdInput);
+        const v2 = validateInput(confirmPwdInput);
+        if (!v1 || !v2) return;
+
+        if (newPwdInput.value !== confirmPwdInput.value) {
+            showError(confirmPwdInput, 'Passwords do not match');
+            return;
+        }
+
+        if (newPwdInput.value.length < 6) {
+            showError(newPwdInput, 'Minimum 6 characters required');
+            return;
+        }
+
+        if (!_fpResetToken) {
+            showNotification('Session expired. Please start over.', 'error');
+            fpStep2.style.display = 'none';
+            fpStep1.style.display = '';
+            return;
+        }
+
+        const submitBtn = fpResetForm.querySelector('button[type="submit"]');
+        submitBtn.classList.add('loading');
+        submitBtn.disabled = true;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+        try {
+            const response = await fetch(`${API_URL}/auth/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    resetToken: _fpResetToken,
+                    newPassword: newPwdInput.value
+                }),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+            const data = await response.json();
+
+            submitBtn.classList.remove('loading');
+            submitBtn.disabled = false;
+
+            if (data.success) {
+                closeForgotPasswordModal();
+                showNotification('Password reset successful! You can now sign in with your new password.', 'success', 'Password Reset');
+                _fpResetToken = null;
+            } else {
+                showNotification(data.message || 'Password reset failed. Please try again.', 'error');
+                // If token expired, send back to step 1
+                if (data.message && data.message.toLowerCase().includes('expired')) {
+                    fpStep2.style.display = 'none';
+                    fpStep1.style.display = '';
+                    _fpResetToken = null;
+                }
+            }
+        } catch (error) {
+            clearTimeout(timeoutId);
+            submitBtn.classList.remove('loading');
+            submitBtn.disabled = false;
+            if (error.name === 'AbortError') {
+                showNotification('Connection timed out. Please try again.', 'error', 'Timeout');
+            } else {
+                showNotification('Cannot connect to server. Please try again later.', 'error');
+            }
+        }
     });
 }
 

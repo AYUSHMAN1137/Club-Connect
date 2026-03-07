@@ -1140,3 +1140,191 @@ input.success {
         max-width: 100%;
     }
 }
+
+/* ========== FORGOT PASSWORD MODAL ========== */
+.fp-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+    padding: 20px;
+}
+
+.fp-modal.show {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.fp-modal-content {
+    background: linear-gradient(145deg, #ffffff, #f8f9fa);
+    border-radius: 24px;
+    padding: 44px 40px 36px;
+    width: 100%;
+    max-width: 440px;
+    position: relative;
+    transform: scale(0.85) translateY(30px);
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.35),
+        0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+}
+
+.fp-modal.show .fp-modal-content {
+    transform: scale(1) translateY(0);
+}
+
+.fp-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: var(--gray-100, #f1f5f9);
+    color: var(--text-2, #475569);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.25s ease;
+    padding: 0;
+}
+
+.fp-close-btn:hover {
+    background: #e74c3c;
+    color: #fff;
+    transform: rotate(90deg);
+}
+
+.fp-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    animation: fpFadeIn 0.4s ease;
+}
+
+@keyframes fpFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.fp-icon-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, rgba(15, 118, 110, 0.18), rgba(37, 99, 235, 0.12));
+    border: 1px solid rgba(15, 118, 110, 0.2);
+    box-shadow: 0 12px 32px rgba(15, 118, 110, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+    animation: iconFloat 3s ease-in-out infinite;
+}
+
+.fp-icon-circle i {
+    font-size: 32px;
+    color: #0f766e;
+}
+
+.fp-icon-circle.fp-icon-success {
+    background: linear-gradient(145deg, rgba(39, 174, 96, 0.18), rgba(34, 153, 84, 0.10));
+    border-color: rgba(39, 174, 96, 0.2);
+    box-shadow: 0 12px 32px rgba(39, 174, 96, 0.18);
+}
+
+.fp-icon-circle.fp-icon-success i {
+    color: #27ae60;
+}
+
+.fp-step h2 {
+    font-family: var(--font-display, 'Sora', sans-serif);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-1, #0f172a);
+    margin-bottom: 6px;
+}
+
+.fp-subtitle {
+    font-size: 14px;
+    color: var(--text-2, #475569);
+    margin-bottom: 22px;
+    line-height: 1.5;
+    max-width: 340px;
+}
+
+.fp-step form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0;
+    height: auto;
+    text-align: left;
+}
+
+.fp-step .input-container {
+    margin-top: 10px;
+}
+
+.fp-btn {
+    margin-top: 18px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.fp-btn .btn-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Focus & validation inside modal — reuse existing global input styles automatically */
+
+.fp-step .password-strength {
+    margin-top: 6px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.fp-step .password-strength.show {
+    opacity: 1;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .fp-modal-content {
+        padding: 32px 22px 28px;
+        border-radius: 20px;
+    }
+
+    .fp-step h2 {
+        font-size: 22px;
+    }
+
+    .fp-subtitle {
+        font-size: 13px;
+    }
+
+    .fp-icon-circle {
+        width: 66px;
+        height: 66px;
+    }
+
+    .fp-icon-circle i {
+        font-size: 26px;
+    }
+}

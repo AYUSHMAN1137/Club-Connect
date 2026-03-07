@@ -165,6 +165,78 @@
         </div>
     </div>
 
+    <!-- Forgot Password Modal -->
+    <div id="forgotPasswordModal" class="fp-modal">
+        <div class="fp-modal-content">
+            <button class="fp-close-btn" id="fpCloseBtn" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <!-- Step 1: Verify Identity -->
+            <div id="fpStep1" class="fp-step">
+                <div class="fp-icon-circle">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <h2>Verify Identity</h2>
+                <p class="fp-subtitle">Enter your details exactly as you registered to verify your identity.</p>
+
+                <form id="fpVerifyForm" autocomplete="off">
+                    <div class="input-container">
+                        <input type="email" id="fp-email" placeholder="Email Address" required>
+                        <i class="fa-solid fa-envelope"></i>
+                        <span class="error-message"></span>
+                    </div>
+                    <div class="input-container">
+                        <input type="text" id="fp-username" placeholder="Full Name" required>
+                        <i class="fa-solid fa-user"></i>
+                        <span class="error-message"></span>
+                    </div>
+                    <div class="input-container">
+                        <input type="text" id="fp-studentid" placeholder="Student ID" required>
+                        <i class="fa-solid fa-id-card"></i>
+                        <span class="error-message"></span>
+                    </div>
+                    <button class="btn-submit fp-btn" type="submit">
+                        <span class="btn-text"><i class="fa-solid fa-arrow-right"></i> Verify</span>
+                        <div class="btn-loader"></div>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Step 2: Set New Password -->
+            <div id="fpStep2" class="fp-step" style="display:none;">
+                <div class="fp-icon-circle fp-icon-success">
+                    <i class="fa-solid fa-lock-open"></i>
+                </div>
+                <h2>Set New Password</h2>
+                <p class="fp-subtitle">Identity verified! Choose a strong new password for your account.</p>
+
+                <form id="fpResetForm" autocomplete="off">
+                    <div class="input-container password-field">
+                        <input type="password" id="fp-new-password" placeholder="New Password" required minlength="6">
+                        <i class="fa-solid fa-lock"></i>
+                        <i class="fa-solid fa-eye-slash toggle-password"></i>
+                        <span class="error-message"></span>
+                    </div>
+                    <div class="password-strength" id="fpPasswordStrength">
+                        <div class="strength-bar" id="fpStrengthBar"></div>
+                        <span class="strength-text" id="fpStrengthText"></span>
+                    </div>
+                    <div class="input-container password-field">
+                        <input type="password" id="fp-confirm-password" placeholder="Confirm New Password" required minlength="6">
+                        <i class="fa-solid fa-lock"></i>
+                        <i class="fa-solid fa-eye-slash toggle-password"></i>
+                        <span class="error-message"></span>
+                    </div>
+                    <button class="btn-submit fp-btn" type="submit">
+                        <span class="btn-text"><i class="fa-solid fa-check"></i> Reset Password</span>
+                        <div class="btn-loader"></div>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 
