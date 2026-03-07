@@ -138,7 +138,11 @@
         async init() {
             if (_db) return;
             if (_initPromise) return _initPromise;
-            _initPromise = openDB().then(db => { _db = db; });
+            // Reset _initPromise on failure so callers can retry (e.g. if IDB was temporarily unavailable)
+            _initPromise = openDB().then(db => { _db = db; }).catch(err => {
+                _initPromise = null;
+                throw err;
+            });
             await _initPromise;
             console.log('📦 DataStore initialised (IndexedDB)');
         },
@@ -183,7 +187,11 @@
                     dirty: false
                 });
             } catch (err) {
-                console.warn('DataStore.saveToCache error:', err);
+                if (err && err.name === 'QuotaExceededError') {
+                    console.warn(`DataStore.saveToCache: storage quota exceeded — cache not updated for "${moduleName}". Consider clearing old data.`);
+                } else {
+                    console.warn('DataStore.saveToCache error:', err);
+                }
             }
         },
 

@@ -217,7 +217,13 @@ async function verifyAuth() {
                     token: token,
                     socket: socket || null,
                     onModuleRefreshed: (moduleName, freshData) => {
-                        setMemberCache(moduleName, freshData);
+                        // Only refresh in-memory cache here.
+                        // IDB was already saved with the correct server version by SyncEngine.refreshModule().
+                        // Calling setMemberCache() here would overwrite the IDB entry with version=null (→0),
+                        // causing checkManifest() to always see version 0 < server version and re-fetch endlessly.
+                        const key = _memberCacheKey(moduleName);
+                        _memberModuleCache.set(key, { data: freshData, ts: Date.now() });
+
                         const activePage = getActivePageName();
                         const moduleToPage = {
                             dashboard: 'home', events: 'events', attendance: 'attendance',
@@ -3308,6 +3314,9 @@ async function deleteCertificate(certId) {
 }
 
 // ========== NOTIFICATIONS ==========
+// Shared in-memory unread count — keeps refreshNotificationBadge from making a separate network call.
+let _cachedNotificationCount = null;
+
 async function loadNotifications() {
     try {
         const response = await fetch(`${API_URL}/notifications`, {
@@ -3319,7 +3328,8 @@ async function loadNotifications() {
         const data = await response.json();
 
         if (data.success) {
-            updateNotificationBadge(data.unreadCount || 0);
+            _cachedNotificationCount = data.unreadCount || 0;
+            updateNotificationBadge(_cachedNotificationCount);
 
             // Show notification modal (create if doesn't exist)
             let modal = document.getElementById('notificationsModal');
@@ -3383,6 +3393,12 @@ function updateNotificationBadge(count) {
 }
 
 async function refreshNotificationBadge() {
+    // Reuse the count already fetched by loadNotifications() if available —
+    // avoids a redundant network call on every page load.
+    if (_cachedNotificationCount !== null) {
+        updateNotificationBadge(_cachedNotificationCount);
+        return;
+    }
     try {
         const response = await fetch(`${API_URL}/notifications`, {
             headers: {
@@ -3391,7 +3407,8 @@ async function refreshNotificationBadge() {
         });
         const data = await response.json();
         if (data && data.success) {
-            updateNotificationBadge(data.unreadCount || 0);
+            _cachedNotificationCount = data.unreadCount || 0;
+            updateNotificationBadge(_cachedNotificationCount);
         } else {
             updateNotificationBadge(0);
         }
@@ -3415,6 +3432,8 @@ async function markNotificationRead(notifId) {
                 'Authorization': `Bearer ${token}`
             }
         });
+        // Invalidate cached count so next badge refresh re-fetches from server
+        _cachedNotificationCount = null;
         loadNotifications();
     } catch (error) {
         console.error('Error marking notification as read:', error);

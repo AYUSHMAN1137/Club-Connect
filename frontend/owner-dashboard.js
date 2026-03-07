@@ -4,7 +4,6 @@ console.log('=== Owner Dashboard JavaScript Loading ===');
 // Global error handler for debugging
 window.addEventListener('error', function (e) {
     console.error('❌ Global error caught:', e.error, e.message, e.filename, e.lineno);
-    alert('JavaScript Error: ' + e.message + '\n\nCheck console (F12) for details.');
 });
 
 // Unhandled promise rejection handler
@@ -704,8 +703,13 @@ async function verifyAuth() {
                     token: token,
                     socket: socket || null,
                     onModuleRefreshed: (moduleName, freshData) => {
-                        // Update in-memory cache
-                        setModuleCache(moduleName, freshData);
+                        // Only refresh in-memory cache here.
+                        // IDB was already saved with the correct server version by SyncEngine.refreshModule().
+                        // Calling setModuleCache() here would overwrite the IDB entry with version=null (→0),
+                        // causing checkManifest() to always see version 0 < server version and re-fetch endlessly.
+                        const key = getModuleCacheKey(moduleName);
+                        moduleCache.set(key, { data: freshData, timestamp: Date.now() });
+
                         // Re-render if the refreshed module's page is currently active
                         const activePage = getActivePageName();
                         const moduleToPage = {

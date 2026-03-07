@@ -175,14 +175,15 @@
                     );
 
                     if (serverVer > localVer) {
-                        refreshTasks.push(moduleName);
+                        refreshTasks.push({ mod: moduleName, ver: serverVer });
                     }
                 }
 
                 if (refreshTasks.length > 0) {
-                    console.log('🔄 Modules to refresh:', refreshTasks);
+                    console.log('🔄 Modules to refresh:', refreshTasks.map(t => t.mod));
                     await Promise.allSettled(
-                        refreshTasks.map(mod => this.refreshModule(mod))
+                        // Pass the already-known server version so refreshModule doesn't re-fetch the manifest
+                        refreshTasks.map(({ mod, ver }) => this.refreshModule(mod, ver))
                     );
                 }
             } catch (err) {
@@ -199,8 +200,11 @@
 
         /**
          * Fetch fresh data for a single module and update cache.
+         * @param {string} moduleName
+         * @param {number|null} knownVersion - Pass the already-fetched server version to avoid
+         *   a redundant manifest re-fetch. If omitted, falls back to fetching the manifest.
          */
-        async refreshModule(moduleName) {
+        async refreshModule(moduleName, knownVersion) {
             if (_destroyed || !_config) return;
             const endpoints = getEndpoints();
             const endpoint = endpoints[moduleName];
@@ -209,14 +213,17 @@
             try {
                 const data = await apiFetch(endpoint);
 
-                // Get latest version from manifest or sync-state
-                let version = 0;
-                try {
-                    const manifest = await apiFetch(getManifestUrl());
-                    if (manifest.success && manifest.versions) {
-                        version = manifest.versions[moduleName] || 0;
-                    }
-                } catch { /* ignore — version 0 is safe */ }
+                // Use the caller-supplied version if available (avoids a redundant manifest fetch).
+                // Only fall back to fetching the manifest when we genuinely don't know the version.
+                let version = (knownVersion != null) ? knownVersion : 0;
+                if (knownVersion == null) {
+                    try {
+                        const manifest = await apiFetch(getManifestUrl());
+                        if (manifest.success && manifest.versions) {
+                            version = manifest.versions[moduleName] || 0;
+                        }
+                    } catch { /* ignore — version 0 is safe */ }
+                }
 
                 await window.DataStore.saveToCache(
                     moduleName, data, version, _config.userId, _config.clubId
@@ -293,6 +300,10 @@
                 socket.emit('join-club', _config.clubId);
             }
 
+            // Remove any existing listener before adding a new one to prevent duplicates
+            // if SyncEngine.init() is called again (e.g. after a club switch).
+            socket.off('module-invalidated');
+
             // Listen for module invalidation
             socket.on('module-invalidated', async (payload) => {
                 if (!payload || !payload.modules) return;
@@ -362,26 +373,28 @@
                 return { data: cached.data, fromCache: true };
             }
 
-            // 3. Fetch fresh
+            // 3. Fetch fresh — fetch manifest and data in parallel to avoid sequential round-trips
             if (window.Telemetry) window.Telemetry.logCacheMiss(moduleName, 'cachedFetch');
             const endpoints = getEndpoints();
             const endpoint = endpointOverride || endpoints[moduleName];
             if (!endpoint) return { data: null, fromCache: false };
 
             try {
-                const data = await apiFetch(endpoint);
+                const [data, manifest] = await Promise.allSettled([
+                    apiFetch(endpoint),
+                    apiFetch(getManifestUrl())
+                ]);
 
-                // Get version from manifest
+                if (data.status === 'rejected') throw data.reason;
+
+                const freshData = data.value;
                 let version = 0;
-                try {
-                    const manifest = await apiFetch(getManifestUrl());
-                    if (manifest.success && manifest.versions) {
-                        version = manifest.versions[moduleName] || 0;
-                    }
-                } catch { /* use version 0 */ }
+                if (manifest.status === 'fulfilled' && manifest.value.success && manifest.value.versions) {
+                    version = manifest.value.versions[moduleName] || 0;
+                }
 
-                await window.DataStore.saveToCache(moduleName, data, version, userId, clubId);
-                return { data, fromCache: false };
+                await window.DataStore.saveToCache(moduleName, freshData, version, userId, clubId);
+                return { data: freshData, fromCache: false };
             } catch (err) {
                 // Network error — fall back to stale cache if available
                 if (cached) {

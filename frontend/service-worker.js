@@ -49,7 +49,14 @@ function isApiRoute(url) {
         url.pathname.startsWith('/owner') ||
         url.pathname.startsWith('/member') ||
         url.pathname.startsWith('/auth') ||
-        url.pathname.startsWith('/sync');
+        url.pathname.startsWith('/sync') ||
+        url.pathname.startsWith('/workshops') ||
+        url.pathname.startsWith('/sessions') ||
+        url.pathname.startsWith('/attendance') ||
+        url.pathname.startsWith('/notifications') ||
+        url.pathname.startsWith('/messages') ||
+        url.pathname.startsWith('/gallery') ||
+        url.pathname.startsWith('/admin');
 }
 
 self.addEventListener('fetch', event => {
@@ -198,7 +205,15 @@ function openQueueDB() {
             e.target.result.createObjectStore('outbox', { keyPath: 'id', autoIncrement: true });
         };
         req.onsuccess = e => resolve(e.target.result);
-        req.onerror = e => reject(e.target.error);
+        req.onerror = e => {
+            const err = e.target.error;
+            if (err && err.name === 'QuotaExceededError') {
+                console.error('[ServiceWorker] openQueueDB: storage quota exceeded — offline mutations cannot be queued.');
+            } else {
+                console.error('[ServiceWorker] openQueueDB error:', err);
+            }
+            reject(err);
+        };
     });
 }
 function addToQueue(db, record) {
@@ -206,7 +221,7 @@ function addToQueue(db, record) {
         const tx = db.transaction('outbox', 'readwrite');
         tx.objectStore('outbox').put(record);
         tx.oncomplete = () => resolve();
-        tx.onerror = () => reject();
+        tx.onerror = e => reject(e.target.error);
     });
 }
 function getQueueItems(db) {
@@ -214,7 +229,7 @@ function getQueueItems(db) {
         const tx = db.transaction('outbox', 'readonly');
         const req = tx.objectStore('outbox').getAll();
         req.onsuccess = e => resolve(e.target.result);
-        req.onerror = () => reject();
+        req.onerror = e => reject(e.target.error);
     });
 }
 function deleteFromQueue(db, id) {
@@ -222,7 +237,7 @@ function deleteFromQueue(db, id) {
         const tx = db.transaction('outbox', 'readwrite');
         tx.objectStore('outbox').delete(id);
         tx.oncomplete = () => resolve();
-        tx.onerror = () => reject();
+        tx.onerror = e => reject(e.target.error);
     });
 }
 function updateQueueItem(db, record) {
@@ -230,6 +245,6 @@ function updateQueueItem(db, record) {
         const tx = db.transaction('outbox', 'readwrite');
         tx.objectStore('outbox').put(record);
         tx.oncomplete = () => resolve();
-        tx.onerror = () => reject();
+        tx.onerror = e => reject(e.target.error);
     });
 }
