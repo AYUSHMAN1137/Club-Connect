@@ -763,11 +763,11 @@
                         <p>Top performing club members</p>
                     </div>
                     <div class="page-actions">
-                        <select id="leaderboardPeriod">
-                            <option value="all">All Time</option>
-                            <option value="month">This Month</option>
-                            <option value="week">This Week</option>
-                        </select>
+                        <div class="period-tabs" id="leaderboardPeriodTabs">
+                            <button class="period-tab active" data-period="all">All Time</button>
+                            <button class="period-tab" data-period="month">This Month</button>
+                            <button class="period-tab" data-period="week">This Week</button>
+                        </div>
                     </div>
                 </div>
 
@@ -805,23 +805,38 @@
 
                 <!-- Your Position Card -->
                 <div class="your-position-card" id="yourPositionCard">
-                    <div class="your-position-info">
-                        <span class="position-label">Your Position</span>
-                        <span class="position-rank">#<span id="yourRankPosition">-</span></span>
+                    <div class="your-position-bg-decoration"></div>
+                    <div class="your-position-main">
+                        <div class="your-position-info">
+                            <div class="position-label-row">
+                                <i class="fa-solid fa-user-astronaut position-icon"></i>
+                                <span class="position-label">Your Position</span>
+                            </div>
+                            <span class="position-rank">#<span id="yourRankPosition">-</span></span>
+                        </div>
+                        <div class="your-position-details">
+                            <div class="detail">
+                                <i class="fa-solid fa-star detail-icon"></i>
+                                <span class="detail-value" id="yourTotalPoints">0</span>
+                                <span class="detail-label">Points</span>
+                            </div>
+                            <div class="detail">
+                                <i class="fa-solid fa-medal detail-icon"></i>
+                                <span class="detail-value" id="yourRankTitle">Rookie</span>
+                                <span class="detail-label">Rank</span>
+                            </div>
+                            <div class="detail">
+                                <i class="fa-solid fa-bolt detail-icon"></i>
+                                <span class="detail-value" id="pointsBehind">0</span>
+                                <span class="detail-label">Points to Next</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="your-position-details">
-                        <div class="detail">
-                            <span class="detail-value" id="yourTotalPoints">0</span>
-                            <span class="detail-label">Points</span>
+                    <div class="your-position-progress">
+                        <div class="progress-track">
+                            <div class="progress-fill" id="rankProgressBar" style="width: 0%"></div>
                         </div>
-                        <div class="detail">
-                            <span class="detail-value" id="yourRankTitle">Rookie</span>
-                            <span class="detail-label">Rank</span>
-                        </div>
-                        <div class="detail">
-                            <span class="detail-value" id="pointsBehind">0</span>
-                            <span class="detail-label">Points to Next</span>
-                        </div>
+                        <span class="progress-hint" id="rankProgressHint">Keep earning points to climb higher!</span>
                     </div>
                 </div>
 

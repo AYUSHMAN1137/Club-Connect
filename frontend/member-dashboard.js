@@ -14,6 +14,7 @@ let memberSessionStatus = 'DRAFT';
 let memberHasSections = false;
 let memberWorkshopSocketBound = false;
 let latestAttendance = [];
+let latestAnnouncements = [];
 
 // ========== MODULE CACHE (in-memory + IndexedDB persistence) ==========
 const _memberModuleCache = new Map();
@@ -1851,9 +1852,8 @@ async function loadLeaderboard() {
         const cached = await getMemberCacheOrIDB('leaderboard');
         if (cached && cached.data.success) {
             _renderLeaderboard(cached.data);
-            if (cached.fromIDB) {
-                revalidateMemberInBackground('leaderboard', `${API_URL}/member/leaderboard`, _renderLeaderboard);
-            }
+            // Always revalidate in background so updated fields like profilePic appear
+            revalidateMemberInBackground('leaderboard', `${API_URL}/member/leaderboard`, _renderLeaderboard);
             if (window.Telemetry) window.Telemetry.end('loadLeaderboard_member');
             return;
         }
@@ -1899,7 +1899,13 @@ function _renderLeaderboard(data) {
         const isYou = !!member.isCurrentUser;
         const username = member.username || 'Member';
         const initial = username.charAt(0).toUpperCase();
-        const profilePic = member.profilePic || '';
+        let profilePic = member.profilePic || '';
+        if (!profilePic && isYou) {
+            try {
+                const u = JSON.parse(localStorage.getItem('user') || 'null');
+                if (u && u.profilePic) profilePic = u.profilePic;
+            } catch (_) { }
+        }
         const imgSrc = profilePic ? getFullImageUrl(profilePic) : '';
         return `
         <tr class="${isYou ? 'you' : ''}">
@@ -1935,8 +1941,16 @@ function updatePodium(leaderboard) {
             element.querySelector('.podium-name').textContent = member.username;
             element.querySelector('.podium-points').textContent = `${member.points} pts`;
             const img = element.querySelector('img');
-            if (member.profilePic) {
-                img.src = member.profilePic;
+            let pic = member.profilePic || '';
+            if (!pic && member.isCurrentUser) {
+                try {
+                    const u = JSON.parse(localStorage.getItem('user') || 'null');
+                    if (u && u.profilePic) pic = u.profilePic;
+                } catch (_) { }
+            }
+            if (pic) {
+                const imgSrc = getFullImageUrl(pic);
+                img.src = imgSrc;
                 img.style.display = 'block';
                 const placeholder = element.querySelector('.podium-avatar-placeholder');
                 if (placeholder) placeholder.remove();
@@ -1992,10 +2006,42 @@ function updateYourPositionCard(leaderboard) {
             pointsNeed = nextUser.points - currentUser.points;
         }
         document.getElementById('pointsBehind').textContent = pointsNeed > 0 ? pointsNeed : 'Leader!';
+
+        // Update progress bar
+        const progressBar = document.getElementById('rankProgressBar');
+        const progressHint = document.getElementById('rankProgressHint');
+        if (progressBar) {
+            if (currentIndex === 0) {
+                progressBar.style.width = '100%';
+                if (progressHint) progressHint.textContent = '🏆 You are at the top!';
+            } else {
+                const nextUser = leaderboard[currentIndex - 1];
+                const prevUser = currentIndex < leaderboard.length - 1 ? leaderboard[currentIndex + 1] : null;
+                const rangeBottom = prevUser ? prevUser.points : 0;
+                const rangeTop = nextUser.points;
+                const range = Math.max(rangeTop - rangeBottom, 1);
+                const progress = Math.max(0, Math.min(100, ((currentUser.points - rangeBottom) / range) * 100));
+                progressBar.style.width = `${Math.round(progress)}%`;
+                if (progressHint) progressHint.textContent = `${pointsNeed} pts needed to beat ${nextUser.username}`;
+            }
+        }
     } else if (container) {
         container.style.display = 'none';
     }
 }
+
+// Period tab switching for leaderboard
+document.addEventListener('DOMContentLoaded', () => {
+    const tabsEl = document.getElementById('leaderboardPeriodTabs');
+    if (tabsEl) {
+        tabsEl.addEventListener('click', (e) => {
+            const btn = e.target.closest('.period-tab');
+            if (!btn) return;
+            tabsEl.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    }
+});
 
 // Load Announcements
 async function loadAnnouncements() {
@@ -2027,26 +2073,133 @@ async function loadAnnouncements() {
     }
 }
 
+function normalizeAnnouncementPriority(priority) {
+    const normalized = String(priority || 'normal').trim().toLowerCase();
+    if (normalized === 'urgent' || normalized === 'important') return normalized;
+    return 'normal';
+}
+
+function getAnnouncementDateValue(announcement) {
+    const rawDate = announcement?.date
+        || announcement?.createdAt
+        || announcement?.created_at
+        || announcement?.updatedAt
+        || announcement?.updated_at
+        || null;
+    if (!rawDate) return null;
+    const parsed = new Date(rawDate);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function normalizeAnnouncement(announcement, index) {
+    const title = String(announcement?.title || 'Announcement').trim() || 'Announcement';
+    const message = String(announcement?.message || '').trim();
+    const priority = normalizeAnnouncementPriority(announcement?.priority);
+    const clubName = String(
+        announcement?.clubName
+        || announcement?.club?.name
+        || announcement?.club?.clubName
+        || ''
+    ).trim();
+    const dateValue = getAnnouncementDateValue(announcement);
+
+    return {
+        id: announcement?.id || `announcement-${index}`,
+        title,
+        message,
+        priority,
+        clubName,
+        dateValue,
+        relativeDate: dateValue ? formatTimeAgo(dateValue.toISOString()) : 'Recently',
+        fullDate: dateValue ? dateValue.toLocaleString() : 'Date unavailable'
+    };
+}
+
+function populateAnnouncementClubFilter() {
+    const clubFilter = document.getElementById('announcementClubFilter');
+    if (!clubFilter) return;
+
+    const currentValue = clubFilter.value || 'all';
+    const clubNames = [...new Set(latestAnnouncements.map(item => item.clubName).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+
+    clubFilter.innerHTML = '<option value="all">All Clubs</option>'
+        + clubNames.map(name => `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`).join('');
+
+    clubFilter.value = clubNames.includes(currentValue) ? currentValue : 'all';
+}
+
+function renderFilteredAnnouncements() {
+    const list = document.getElementById('announcementsList');
+    if (!list) return;
+
+    const searchTerm = String(document.getElementById('announcementSearchInput')?.value || '').trim().toLowerCase();
+    const selectedClub = document.getElementById('announcementClubFilter')?.value || 'all';
+    const selectedPriority = document.getElementById('announcementPriorityFilter')?.value || 'all';
+
+    const filteredAnnouncements = latestAnnouncements.filter(item => {
+        const matchesSearch = !searchTerm
+            || item.title.toLowerCase().includes(searchTerm)
+            || item.message.toLowerCase().includes(searchTerm)
+            || item.clubName.toLowerCase().includes(searchTerm);
+        const matchesClub = selectedClub === 'all' || item.clubName === selectedClub;
+        const matchesPriority = selectedPriority === 'all' || item.priority === selectedPriority;
+        return matchesSearch && matchesClub && matchesPriority;
+    });
+
+    if (filteredAnnouncements.length === 0) {
+        list.innerHTML = `
+            <div class="empty-state">
+                <i class="fa-solid fa-bullhorn"></i>
+                <p>No announcements match your filters.</p>
+            </div>
+        `;
+        return;
+    }
+
+    list.innerHTML = filteredAnnouncements.map(item => `
+        <article class="announcement-card ${item.priority}">
+            <div class="announcement-card-header">
+                <div class="announcement-card-title-wrap">
+                    <h3>${escapeHtml(item.title)}</h3>
+                    <div class="announcement-card-meta">
+                        <span class="announcement-priority ${item.priority}">${escapeHtml(item.priority)}</span>
+                        ${item.clubName ? `<span><i class="fa-solid fa-users"></i> ${escapeHtml(item.clubName)}</span>` : ''}
+                    </div>
+                </div>
+                <span class="announcement-date" title="${escapeAttr(item.fullDate)}">${escapeHtml(item.relativeDate)}</span>
+            </div>
+            <p>${escapeHtml(item.message || 'No details provided.')}</p>
+        </article>
+    `).join('');
+}
+
+function initializeAnnouncementFilters() {
+    const searchInput = document.getElementById('announcementSearchInput');
+    const clubFilter = document.getElementById('announcementClubFilter');
+    const priorityFilter = document.getElementById('announcementPriorityFilter');
+
+    if (!searchInput || !clubFilter || !priorityFilter || searchInput.dataset.bound === 'true') return;
+
+    searchInput.dataset.bound = 'true';
+    searchInput.addEventListener('input', renderFilteredAnnouncements);
+    clubFilter.addEventListener('change', renderFilteredAnnouncements);
+    priorityFilter.addEventListener('change', renderFilteredAnnouncements);
+}
+
 function _renderAnnouncements(data) {
     const list = document.getElementById('announcementsList');
     if (!list) return;
 
-    if (!data.announcements || data.announcements.length === 0) {
+    initializeAnnouncementFilters();
+    latestAnnouncements = (data?.announcements || []).map(normalizeAnnouncement);
+    populateAnnouncementClubFilter();
+
+    if (latestAnnouncements.length === 0) {
         list.innerHTML = '<p class="loading">No announcements yet</p>';
         return;
     }
 
-    list.innerHTML = '<div style="background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);">' +
-        data.announcements.map(announcement => `
-            <div class="announcement-item">
-                <h4>${announcement.title}</h4>
-                <p>${announcement.message}</p>
-                <div class="date">
-                    <i class="fa-solid fa-clock"></i>
-                    ${new Date(announcement.date).toLocaleString()}
-                </div>
-            </div>
-        `).join('') + '</div>';
+    renderFilteredAnnouncements();
 }
 
 // Load Polls (Member)
@@ -4244,16 +4397,21 @@ async function loadLatestAnnouncements() {
         if (!container) return;
 
         if (data.success && data.announcements && data.announcements.length > 0) {
-            container.innerHTML = data.announcements.slice(0, 3).map(ann => `
+            container.innerHTML = data.announcements.slice(0, 3).map((ann, index) => {
+                const normalized = normalizeAnnouncement(ann, index);
+                const previewText = normalized.message.length > 100
+                    ? `${normalized.message.slice(0, 100)}...`
+                    : (normalized.message || 'No details provided.');
+                return `
                 <div class="announcement-preview-item">
                     <div class="announcement-header-row">
-                        <span class="announcement-priority ${ann.priority || 'normal'}">${ann.priority || 'normal'}</span>
-                        <span class="announcement-date">${formatTimeAgo(ann.date)}</span>
+                        <span class="announcement-priority ${normalized.priority}">${escapeHtml(normalized.priority)}</span>
+                        <span class="announcement-date">${escapeHtml(normalized.relativeDate)}</span>
                     </div>
-                    <h4>${ann.title}</h4>
-                    <p>${ann.message.substring(0, 100)}...</p>
-                </div>
-            `).join('');
+                    <h4>${escapeHtml(normalized.title)}</h4>
+                    <p>${escapeHtml(previewText)}</p>
+                </div>`;
+            }).join('');
         } else {
             container.innerHTML = '<div class="empty-state"><p>No announcements</p></div>';
         }
