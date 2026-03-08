@@ -1895,24 +1895,30 @@ function _renderLeaderboard(data) {
         return;
     }
 
-    tbody.innerHTML = leaderboard.map(member => `
-        <tr ${member.isCurrentUser ? 'style="background: var(--primary-light); font-weight: 600;"' : ''}>
-            <td>${member.rank}</td>
-            <td>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="table-avatar" style="width: 32px; height: 32px; border-radius: 50%; background: var(--gray-200); display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                        ${member.profilePic
-            ? `<img src="${member.profilePic}" style="width: 100%; height: 100%; object-fit: cover;">`
-            : `<i class="fa-solid fa-user" style="color: var(--gray-500); font-size: 14px;"></i>`}
+    tbody.innerHTML = leaderboard.map(member => {
+        const isYou = !!member.isCurrentUser;
+        const username = member.username || 'Member';
+        const initial = username.charAt(0).toUpperCase();
+        const profilePic = member.profilePic || '';
+        const imgSrc = profilePic ? getFullImageUrl(profilePic) : '';
+        return `
+        <tr class="${isYou ? 'you' : ''}">
+            <td data-label="Rank">${member.rank}</td>
+            <td data-label="Member">
+                <div class="user-cell">
+                    <div class="table-avatar">
+                        ${profilePic
+                ? `<img src="${imgSrc}" alt="${username}">`
+                : `<span class="avatar-initial">${initial}</span>`}
                     </div>
-                    <span>${member.username} ${member.isCurrentUser ? '(You)' : ''}</span>
+                    <span class="user-name">${username} ${isYou ? '<span class="you-pill">You</span>' : ''}</span>
                 </div>
             </td>
-            <td style="font-weight: 600; color: var(--primary-color);">${member.points} pts</td>
-            <td>${member.eventsAttended || 0}</td>
-            <td><span class="rank-badge ${member.rankTitle.toLowerCase()}">${member.rankTitle}</span></td>
-        </tr>
-    `).join('');
+            <td data-label="Points" class="points-cell">${member.points} pts</td>
+            <td data-label="Events">${member.eventsAttended || 0}</td>
+            <td data-label="Rank Title"><span class="rank-badge ${String(member.rankTitle || '').toLowerCase()}">${member.rankTitle || '-'}</span></td>
+        </tr>`;
+    }).join('');
 }
 
 function updatePodium(leaderboard) {
@@ -1924,12 +1930,16 @@ function updatePodium(leaderboard) {
     const fillSlot = (element, member) => {
         if (!element) return;
         if (member) {
+            element.classList.remove('empty');
+            element.style.display = '';
             element.querySelector('.podium-name').textContent = member.username;
             element.querySelector('.podium-points').textContent = `${member.points} pts`;
             const img = element.querySelector('img');
             if (member.profilePic) {
                 img.src = member.profilePic;
                 img.style.display = 'block';
+                const placeholder = element.querySelector('.podium-avatar-placeholder');
+                if (placeholder) placeholder.remove();
             } else {
                 // Determine color based on rank for fallback avatar background
                 const colors = ['#f59e0b', '#6366f1', '#10b981']; // Gold, Purple, Green
@@ -1955,8 +1965,8 @@ function updatePodium(leaderboard) {
                 }
             }
         } else {
-            element.querySelector('.podium-name').textContent = '-';
-            element.querySelector('.podium-points').textContent = '-';
+            element.classList.add('empty');
+            element.style.display = 'none';
         }
     };
 
@@ -4184,14 +4194,16 @@ async function loadLeaderboardPreview() {
         if (!container) return;
 
         if (data.success && data.leaderboard && data.leaderboard.length > 0) {
-            container.innerHTML = data.leaderboard.slice(0, 5).map((member, index) => `
+            container.innerHTML = data.leaderboard.slice(0, 5).map((member, index) => {
+                const imgSrc = member.profilePic ? getFullImageUrl(member.profilePic) : null;
+                return `
                 <div class="leaderboard-preview-item ${member.isCurrentUser ? 'highlight' : ''}">
                     <div class="leaderboard-rank ${index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : 'normal'}">
                         ${index + 1}
                     </div>
                     <div class="leaderboard-user">
                         <div class="leaderboard-avatar">
-                            ${member.username.charAt(0).toUpperCase()}
+                            ${imgSrc ? `<img src="${imgSrc}" alt="${member.username}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : member.username.charAt(0).toUpperCase()}
                         </div>
                         <div class="leaderboard-user-info">
                             <h4>${member.username}${member.isCurrentUser ? ' (You)' : ''}</h4>
@@ -4199,8 +4211,8 @@ async function loadLeaderboardPreview() {
                         </div>
                     </div>
                     <div class="leaderboard-points">${member.points} pts</div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         } else {
             container.innerHTML = '<div class="empty-state"><p>No leaderboard data</p></div>';
         }

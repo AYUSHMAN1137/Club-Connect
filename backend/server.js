@@ -2577,6 +2577,7 @@ app.get('/member/leaderboard', verifyToken, isMember, async (req, res) => {
             username: m.username,
             points: m.points,
             rankTitle: m.badge,
+            profilePic: m.profilePic || null,
             isCurrentUser: m.id === req.user.id
         }));
 
