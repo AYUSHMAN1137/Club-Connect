@@ -5478,6 +5478,251 @@ body.dark-mode .chat-message.sent .chat-message-content {
     flex: 1;
 }
 
+/* ==================== REFINED DARK MODE POLISH ==================== */
+body.dark-mode {
+    background:
+        radial-gradient(circle at top left, rgba(45, 212, 191, 0.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 22%),
+        linear-gradient(180deg, #020817 0%, #071224 42%, #08101e 100%);
+    color: #e2e8f0;
+}
+
+body.dark-mode .top-navbar {
+    background: rgba(2, 6, 23, 0.86);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+    box-shadow: 0 18px 42px rgba(2, 6, 23, 0.45);
+    backdrop-filter: blur(16px);
+}
+
+body.dark-mode .top-navbar::after {
+    display: none !important;
+}
+
+body.dark-mode .navbar-brand,
+body.dark-mode #clubName,
+body.dark-mode .page-header h1,
+body.dark-mode .panel-title {
+    color: #f8fafc;
+}
+
+body.dark-mode .page-header p,
+body.dark-mode .owner-stat-subtext,
+body.dark-mode .owner-welcome-text p,
+body.dark-mode .panel-text,
+body.dark-mode .empty-state p {
+    color: #94a3b8;
+}
+
+body.dark-mode .navbar-icon-btn,
+body.dark-mode .notification-bell,
+body.dark-mode .user-menu-btn {
+    background: rgba(15, 23, 42, 0.78);
+    border-color: rgba(148, 163, 184, 0.16);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+body.dark-mode .navbar-icon-btn:hover,
+body.dark-mode .notification-bell:hover,
+body.dark-mode .user-menu-btn:hover {
+    background: rgba(15, 23, 42, 0.96);
+    border-color: rgba(45, 212, 191, 0.28);
+}
+
+body.dark-mode .user-name,
+body.dark-mode .user-dropdown a,
+body.dark-mode .search-input,
+body.dark-mode .data-table td,
+body.dark-mode .owner-stat-value,
+body.dark-mode .owner-stat-value-lg {
+    color: #e2e8f0;
+}
+
+body.dark-mode .user-role,
+body.dark-mode .owner-stat-label,
+body.dark-mode .search-icon,
+body.dark-mode .data-table th {
+    color: #94a3b8;
+}
+
+body.dark-mode .user-dropdown,
+body.dark-mode .dropdown-content,
+body.dark-mode .action-dropdown-content,
+body.dark-mode .modal-content {
+    background: rgba(7, 17, 32, 0.97);
+    border-color: rgba(148, 163, 184, 0.16);
+    box-shadow: 0 24px 50px rgba(2, 6, 23, 0.55);
+}
+
+body.dark-mode .user-dropdown a:hover,
+body.dark-mode .dropdown-content a:hover,
+body.dark-mode .action-dropdown-content button:hover {
+    background: rgba(30, 41, 59, 0.82);
+}
+
+body.dark-mode .sidebar {
+    background: linear-gradient(180deg, #081120 0%, #0b1426 100%);
+    border-right: 1px solid rgba(148, 163, 184, 0.12);
+    box-shadow: 14px 0 30px rgba(2, 6, 23, 0.22);
+}
+
+body.dark-mode .menu-item {
+    color: #cbd5e1;
+}
+
+body.dark-mode .menu-item i {
+    color: #7c8ca3;
+}
+
+body.dark-mode .menu-item:hover {
+    background: rgba(45, 212, 191, 0.08);
+    color: #f8fafc;
+}
+
+body.dark-mode .menu-item:hover i {
+    color: #5eead4;
+}
+
+body.dark-mode .menu-item.active {
+    background: linear-gradient(135deg, rgba(45, 212, 191, 0.18), rgba(37, 99, 235, 0.18));
+    border-right-color: rgba(94, 234, 212, 0.32);
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.28);
+}
+
+body.dark-mode .menu-item.active,
+body.dark-mode .menu-item.active i {
+    color: #f8fafc;
+}
+
+body.dark-mode .owner-welcome {
+    background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.72) 0%, rgba(13, 148, 136, 0.44) 48%, rgba(8, 47, 73, 0.84) 100%);
+    border: 1px solid rgba(94, 234, 212, 0.12);
+    box-shadow: 0 24px 50px rgba(2, 6, 23, 0.34);
+}
+
+body.dark-mode .owner-welcome::before {
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.12), transparent 60%);
+}
+
+body.dark-mode .owner-welcome::after {
+    background:
+        radial-gradient(circle at 18% 82%, rgba(255, 255, 255, 0.06) 0%, transparent 48%),
+        radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.05) 0%, transparent 46%);
+}
+
+body.dark-mode .owner-welcome-text h1,
+body.dark-mode .owner-welcome-actions .btn-secondary {
+    color: #f8fafc;
+}
+
+body.dark-mode .owner-welcome-actions .btn-primary {
+    background: linear-gradient(135deg, #5eead4 0%, #2dd4bf 100%);
+    color: #042f2e;
+    border-color: transparent;
+    box-shadow: 0 12px 28px rgba(45, 212, 191, 0.25);
+}
+
+body.dark-mode .owner-welcome-actions .btn-secondary {
+    background: rgba(15, 23, 42, 0.38);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+body.dark-mode .owner-visual-card {
+    background: rgba(15, 23, 42, 0.28);
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+body.dark-mode .owner-stat-card,
+body.dark-mode .owner-dashboard-card,
+body.dark-mode .panel,
+body.dark-mode .modern-stat-card,
+body.dark-mode .section-modern,
+body.dark-mode .members-table-container,
+body.dark-mode .event-card,
+body.dark-mode .announcement-form,
+body.dark-mode .announcements-list,
+body.dark-mode .analytics-card,
+body.dark-mode .settings-form,
+body.dark-mode .quick-actions,
+body.dark-mode .event-form-container,
+body.dark-mode .quick-action-card,
+body.dark-mode .analytics-chart-container,
+body.dark-mode .poll-create-card,
+body.dark-mode .polls-list-panel,
+body.dark-mode .poll-card,
+body.dark-mode .polls-summary-card,
+body.dark-mode .recent-event-item,
+body.dark-mode .search-result-item,
+body.dark-mode .attendance-member-item {
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(10, 17, 30, 0.96) 100%);
+    border-color: rgba(148, 163, 184, 0.14);
+    box-shadow: 0 20px 44px rgba(2, 6, 23, 0.28);
+}
+
+body.dark-mode .owner-stat-card:hover,
+body.dark-mode .owner-dashboard-card:hover,
+body.dark-mode .quick-action-card:hover,
+body.dark-mode .event-card:hover,
+body.dark-mode .recent-event-item:hover {
+    border-color: rgba(45, 212, 191, 0.2);
+    box-shadow: 0 24px 54px rgba(2, 6, 23, 0.34);
+}
+
+body.dark-mode .owner-stat-card::after,
+body.dark-mode .owner-dashboard-card::after {
+    background: linear-gradient(135deg, transparent 0 62%, rgba(255, 255, 255, 0.02) 62% 100%);
+}
+
+body.dark-mode .search-input,
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select {
+    background: rgba(15, 23, 42, 0.88);
+    border-color: rgba(148, 163, 184, 0.16);
+    color: #e2e8f0;
+}
+
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+    color: #64748b;
+}
+
+body.dark-mode .search-input:focus,
+body.dark-mode input:focus,
+body.dark-mode textarea:focus,
+body.dark-mode select:focus {
+    border-color: rgba(45, 212, 191, 0.3);
+    box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.14);
+}
+
+body.dark-mode .data-table thead {
+    background: rgba(15, 23, 42, 0.92);
+}
+
+body.dark-mode .data-table th,
+body.dark-mode .data-table td,
+body.dark-mode .modal-header {
+    border-color: rgba(148, 163, 184, 0.12);
+}
+
+body.dark-mode .data-table tbody tr:hover {
+    background: rgba(30, 41, 59, 0.68);
+}
+
+body.dark-mode .announcement-item .date,
+body.dark-mode .poll-card-meta .poll-chip,
+body.dark-mode .owner-action-btn,
+body.dark-mode .owner-check-item {
+    background: rgba(15, 23, 42, 0.72);
+    border-color: rgba(148, 163, 184, 0.14);
+}
+
+body.dark-mode .empty-state {
+    background: rgba(15, 23, 42, 0.52);
+    border: 1px dashed rgba(148, 163, 184, 0.2);
+    border-radius: var(--radius-card);
+}
+
 .field-label {
     display: block;
     margin-bottom: 8px;
@@ -8476,6 +8721,77 @@ body.dark-mode .ws-participant-count {
 body.dark-mode .ws-preview-container iframe {
     background: #111827;
     border-color: #374151;
+}
+
+/* ==================== FINAL DARK MODE OVERRIDES ==================== */
+body.dark-mode {
+    background:
+        radial-gradient(circle at top left, rgba(45, 212, 191, 0.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 22%),
+        linear-gradient(180deg, #020817 0%, #071224 42%, #08101e 100%);
+}
+
+body.dark-mode .top-navbar {
+    background: rgba(2, 6, 23, 0.86);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+    box-shadow: 0 18px 42px rgba(2, 6, 23, 0.45);
+}
+
+body.dark-mode .sidebar {
+    background: linear-gradient(180deg, #081120 0%, #0b1426 100%);
+    border-right: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+body.dark-mode .menu-item {
+    color: #cbd5e1;
+}
+
+body.dark-mode .menu-item i {
+    color: #7c8ca3;
+}
+
+body.dark-mode .menu-item:hover {
+    background: rgba(45, 212, 191, 0.08);
+    color: #f8fafc;
+}
+
+body.dark-mode .menu-item.active {
+    background: linear-gradient(135deg, rgba(45, 212, 191, 0.18), rgba(37, 99, 235, 0.18));
+    color: #f8fafc;
+}
+
+body.dark-mode .owner-welcome {
+    background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.72) 0%, rgba(13, 148, 136, 0.44) 48%, rgba(8, 47, 73, 0.84) 100%);
+    border: 1px solid rgba(94, 234, 212, 0.12);
+    box-shadow: 0 24px 50px rgba(2, 6, 23, 0.34);
+}
+
+body.dark-mode .owner-stat-card,
+body.dark-mode .owner-dashboard-card,
+body.dark-mode .panel,
+body.dark-mode .recent-event-item,
+body.dark-mode .event-card,
+body.dark-mode .announcement-item,
+body.dark-mode .poll-card,
+body.dark-mode .certificate-card,
+body.dark-mode .confirm-content {
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(10, 17, 30, 0.96) 100%);
+    border-color: rgba(148, 163, 184, 0.14);
+    box-shadow: 0 20px 44px rgba(2, 6, 23, 0.28);
+}
+
+body.dark-mode .search-input,
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select {
+    background: rgba(15, 23, 42, 0.88);
+    border-color: rgba(148, 163, 184, 0.16);
+    color: #e2e8f0;
+}
+
+body.dark-mode .data-table tbody tr:hover {
+    background: rgba(30, 41, 59, 0.68);
 }
 
 body.dark-mode .ws-editor-area {
